@@ -180,15 +180,12 @@ def categorize_batch():
 	#dictionary to reflect the changing conditions, and select the appropriate folder
 	#names from the list we globbed
 	start = timer()
-	given_params = json.load(open("params.json", 'r'))
 	seedFolders = []
 	paramDicts = []
 	simDicts_2 = []
 	for i in range(ndiff):
 		simDicts_2.append(simDicts[i*nseeds])
-		vpp = units.vpp(simDicts[i*nseeds]['fieldk'],given_params)
-		params = given_params.copy()
-		params['vpp'] = vpp
+		params = json.load(open(sims[i*nseeds]+"params.json", 'r'))
 		paramDicts.append(params)
 		seedFolders.append(sims[isSame[i*nseeds]==1])
 	end = timer()

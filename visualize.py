@@ -82,6 +82,17 @@ def Ci6(coordinates, shellradius = 1.6):
 
 	return C6, Nc
 
+def nearBoundary(coordinates, aFrac = 0.906):
+	N = coordinates.shape[0]
+	R = np.round(np.mean(np.linalg.norm(coordinates,axis=1)),5)
+	zs = coordinates[:,2]
+
+	maxZ = N/(8*aFrac*R)
+	border = ((R-zs)-maxZ)
+	border[border<-0.5]=0
+	return border
+
+
 #a simple coordination number 
 def Nc(coordinates, shellradius = 1.6):
 	npart = coordinates.shape[0]
@@ -102,28 +113,40 @@ def Vc(coordinates):
 	sv = SphericalVoronoi(coordinates, radius = radius)
 	Vc = np.array([len(region) for region in sv.regions])
 
+	border = nearBoundary(coordinates, aFrac = 0.9)
+	#if you're on the other side of the arbitrary border you're colored blue
+	Vc[border>0] = -1
+	#if you're close to the border and you're 5-coordinated, you're colored blue
+	Vc[(Vc<6)*(border<0)] = -1
+
+	#border = 1*(sv.calculate_areas() > 1.2*np.pi/(4*0.71))
+
 	return Vc
+
 """
 returns a good-lookin RGB array for an order parameter N, normalized to one for
 6-fold order
 """
 def getRGB(N):
+	#gray particles
+	r,g,b = 0.6, 0.6, 0.6
+
+	#blue if it's on the border:
+	if N == -1:
+		r,g,b = 0.02, 0.02, 0.6
 	# green if it's close to 7-fold
-	if N > 1:
-		r,g,b = 0, 0.5*N, 0.02
+	elif N > 6:
+		r,g,b = 0, 0.5*(N/6), 0.02
 	#red if it's close to 5-fold
-	elif N < 1:
-		r,g,b = 1-0.5*N,0, 0.02
-	#gray otherwise
-	else:
-		r,g,b = 0.6, 0.6, 0.6
+	elif N < 6:
+		r,g,b = 1-0.5*(N/6),0, 0.02
 
 	return r, g, b
 
 if __name__=="__main__":
 	framepath = ""
 	coordshell = (1.44635/1.4)*0.5*(1+np.sqrt(3))
-	print(coordshell)
+	#print(coordshell)
 
 	nargs = len(sys.argv)
 	if nargs <= 1:
@@ -149,7 +172,7 @@ if __name__=="__main__":
 		vFile.write("C ")
 		for c in frame[i]:
 			vFile.write(f"{c} ")
-		r,g,b = getRGB(N/6)
+		r,g,b = getRGB(N)
 		vFile.write(f"{r} {g} {b}\n")
 	vFile.close()
 
