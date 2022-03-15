@@ -40,8 +40,8 @@ def dumpDictionaryYAML(dict, name):
 	return None
 
 #kinda brute-forced atm
-def getRandomInputFile(shellRadius, wd=""):
-	files = glob.glob(wd+f"/*R_{shellRadius:.3f}_Solids*/*")
+def getRandomInputFile(shellRadius):
+	files = glob.glob(f"*R_{shellRadius:.3f}_Solids*/*")
 	return random.choice(files)
 
 #turns a dictionary of the MC code's lyra keys into a string
