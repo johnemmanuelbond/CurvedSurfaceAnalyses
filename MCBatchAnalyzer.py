@@ -185,9 +185,9 @@ def categorize_batch():
 	simDicts_2 = []
 	for i in range(ndiff):
 		simDicts_2.append(simDicts[i*nseeds])
-		params = json.load(open(sims[i*nseeds]+"params.json", 'r'))
-		paramDicts.append(params)
 		seedFolders.append(sims[isSame[i*nseeds]==1])
+		params = json.load(open(seedFolders[i][0]+"params.json", 'r'))
+		paramDicts.append(params)
 	end = timer()
 	log.write(f"{dt}:: simArgument dictionary, params dictionary, and seed directory list organization time: {end-start}s\n")
 	
