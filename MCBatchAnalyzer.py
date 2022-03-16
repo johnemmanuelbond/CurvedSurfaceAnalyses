@@ -169,14 +169,17 @@ def categorize_batch():
 				if d1[arg] != d2[arg]:
 					same = 0
 			isSame[i,j] = same
-			#isSame[j,i] = same
+			isSame[j,i] = same
 	nseeds = int(np.sum(isSame,axis=0)[0])
 	ndiff = isSame[0].size//nseeds
 	end = timer()
 	log.write(f"{dt}:: simArgument Dictionary Comparison Time: {end-start}s\n")
 
-	print(isSame)
-
+	start = timer()
+	print(np.unique(isSame))
+	end = timer()
+	print(start-end)
+	
 	#once we've determined the grouping in the isSame array, we simply assign a
 	#simArgument dictionary from the seeds, slightly modify the experimetal parameter
 	#dictionary to reflect the changing conditions, and select the appropriate folder
