@@ -195,7 +195,6 @@ def categorize_batch():
 	
 	log.write("\n")
 	log.close()
-	print(seedFolders)
 	return simDicts_2, paramDicts, seedFolders
 
 """
