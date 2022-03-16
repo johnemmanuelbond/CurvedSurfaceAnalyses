@@ -175,6 +175,8 @@ def categorize_batch():
 	end = timer()
 	log.write(f"{dt}:: simArgument Dictionary Comparison Time: {end-start}s\n")
 
+	print(isSame)
+
 	#once we've determined the grouping in the isSame array, we simply assign a
 	#simArgument dictionary from the seeds, slightly modify the experimetal parameter
 	#dictionary to reflect the changing conditions, and select the appropriate folder
