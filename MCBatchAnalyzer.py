@@ -173,9 +173,9 @@ def categorize_batch():
 	nseeds = int(np.sum(isSame,axis=0)[0])
 	ndiff = isSame[0].size//nseeds
 	end = timer()
+	pairs = np.array(np.unique(isSame,axis=0))
 	log.write(f"{dt}:: simArgument Dictionary Comparison Time: {end-start}s\n")
 
-	print(np.unique(isSame,axis=0))
 
 	#once we've determined the grouping in the isSame array, we simply assign a
 	#simArgument dictionary from the seeds, slightly modify the experimetal parameter
@@ -185,9 +185,9 @@ def categorize_batch():
 	seedFolders = []
 	paramDicts = []
 	simDicts_2 = []
-	for i in range(ndiff):
-		simDicts_2.append(simDicts[i*nseeds])
-		seedFolders.append(sims[isSame[i*nseeds]==1])
+	for i,l in enumerate(pairs):
+		seedFolders.append(sims[l==1])
+		simDicts_2.append(simDicts[np.where(l==1)[0][0]])
 		params = json.load(open(seedFolders[i][0]+"params.json", 'r'))
 		paramDicts.append(params)
 	end = timer()
