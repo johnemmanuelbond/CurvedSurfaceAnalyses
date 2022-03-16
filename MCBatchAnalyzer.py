@@ -169,7 +169,7 @@ def categorize_batch():
 				if d1[arg] != d2[arg]:
 					same = 0
 			isSame[i,j] = same
-			isSame[j,i] = same
+			#isSame[j,i] = same
 	nseeds = int(np.sum(isSame,axis=0)[0])
 	ndiff = isSame[0].size//nseeds
 	end = timer()
@@ -195,8 +195,6 @@ def categorize_batch():
 	
 	log.write("\n")
 	log.close()
-	print(simDicts_2)
-	print(paramDicts)
 	print(seedFolders)
 	return simDicts_2, paramDicts, seedFolders
 
