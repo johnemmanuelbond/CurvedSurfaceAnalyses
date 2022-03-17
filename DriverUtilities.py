@@ -39,14 +39,13 @@ def dumpDictionaryJSON(dic, name):
 def dumpDictionaryYAML(dict, name):
 	return None
 
-#kinda brute-forced atm
-def getRandomInputFile(shellRadius):
-	files = glob.glob(f"*R_{shellRadius:.3f}_Solids*/*")
+def getRandomInputFile(dicString):
+	files = glob.glob(dicString)
 	return random.choice(files)
 
 #turns a dictionary of the MC code's lyra keys into a string
 #which the command line can run
-def getSimcmd(simArgument, exepath, isPC = False):
+def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
 	cmd = "time " + exepath
 	if isPC:
 		cmd = exepath
@@ -56,16 +55,18 @@ def getSimcmd(simArgument, exepath, isPC = False):
 			cmd += f" -{arg} {simArgument[arg]}"
 		elif arg == "start_from_config":
 			if simArgument[arg]:
-				cmd+= f" --datapath {getRandomInputFile(simArgument['radius'])}"
+				if start_config_path == None:
+					raise Exception("No starting configuration given")
+				cmd+= f" --datapath {start_config_path}"
 		else:
 			cmd += f" --{arg} {simArgument[arg]}"
 
 	return cmd
 
 #runs a simulation using Marcc's parallelism
-def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved):
+def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved, start_config_path = None):
 	pwd = os.getcwd()
-	cmd = getSimcmd(simArgument,exe)
+	cmd = getSimcmd(simArgument,exe, start_config_path = start_config_path)
 	print("Foldername :", fldr)
 	# Commands to create folder and run jobs
 
@@ -97,10 +98,10 @@ def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved):
 	return
 
 #runs a simulation using a version of the code compiled on a windows machine
-def runPCSim(simArgument, params, fldr, exe = exe_Jack_Curved):
+def runPCSim(simArgument, params, fldr, exe = exe_Jack_Curved, start_config_path = None;):
 	start = timer()
 
-	cmd = getSimcmd(simArgument,exe,isPC=True)
+	cmd = getSimcmd(simArgument,exe,isPC=True, start_config_path = start_config_path)
 
 	print("Foldername :", fldr)
 	# Commands to create folder and run jobs

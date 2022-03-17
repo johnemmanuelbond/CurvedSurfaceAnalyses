@@ -109,7 +109,7 @@ def Nc(coordinates, shellradius = 1.6):
 
 #coordination number based of voronoi triangulation
 def Vc(coordinates):
-	radius = np.round(np.mean(np.linalg.norm(coordinates,axis=1)),5)
+	radius = np.mean(np.linalg.norm(coordinates,axis=1))
 	sv = SphericalVoronoi(coordinates, radius = radius)
 	Vc = np.array([len(region) for region in sv.regions])
 
