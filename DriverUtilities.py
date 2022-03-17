@@ -98,7 +98,7 @@ def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved, start_config_
 	return
 
 #runs a simulation using a version of the code compiled on a windows machine
-def runPCSim(simArgument, params, fldr, exe = exe_Jack_Curved, start_config_path = None;):
+def runPCSim(simArgument, params, fldr, exe = exe_Jack_Curved, start_config_path = None):
 	start = timer()
 
 	cmd = getSimcmd(simArgument,exe,isPC=True, start_config_path = start_config_path)
