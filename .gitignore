@@ -12,6 +12,9 @@ testbatch/
 
 #any frames
 *.xyz
+*.atom
+
+FourierMovieMaker.py
 
 # C extensions
 *.so

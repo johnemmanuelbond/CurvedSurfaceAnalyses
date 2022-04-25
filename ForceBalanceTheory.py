@@ -134,6 +134,8 @@ def profileFromFieldStrength(params, target_N, tol_e=-3, aeff=None, shellRadius=
 	guess_eta = (hi_eta-lo_eta)/2
 	guess_N = 0
 	
+	k = 0
+
 	while np.round(guess_N, decimals=-int(tol_e)) != target_N:
 		eta_in = np.linspace(guess_eta,0.001,num=400)#all_etas[all_etas<guess_eta]
 		U = energyFromForceBalance(eta_in)#all_U[all_etas<guess_eta]
@@ -155,7 +157,11 @@ def profileFromFieldStrength(params, target_N, tol_e=-3, aeff=None, shellRadius=
 			new_guess = guess_eta + (hi_eta - guess_eta)/2
 			lo_eta = guess_eta
 			guess_eta = new_guess
-		
+		if k > 1e4:
+			print("Density Profile Timed Out")
+			break
+		k+=1
+
 	end = timer()
 	#print(rs)
 	#print(f"bisection in {end-start}s")
@@ -232,8 +238,10 @@ if __name__=="__main__":
 
 	print(units.getAEff(params))
 
+	testN = 300
+
 	vpps = np.array([1.5, 2.3, 3, 10])
-	Rs = np.array([4,5,6,100])
+	Rs = np.array([7.471, 11.201, 23.330, 32.661, 93.313])
 
 	etas = np.linspace(eta_cp-0.001, 0.001, 40000)
 
@@ -264,12 +272,12 @@ if __name__=="__main__":
 		ax.set_ylabel("$\eta_{\text{eff}}$")
 		ax.set_title(f"Theoretical Density Profiles for $V_{{pp}}$ = {v}V")
 		
-		eta_th, rs, guess_N = profileFromFieldStrength(params,100, tol_e=-3)
+		eta_th, rs, guess_N = profileFromFieldStrength(params,testN, tol_e=-2)
 		ax.plot(rs*2*a, eta_th,ls='--', label=f'Flat Case')
 		
 		for R in Rs:
 			#eta_th, rs, guess_N = sphericalBisectionProfile(params,100, R, tol_e=-3)
-			eta_th, rs, guess_N = profileFromFieldStrength(params,100, shellRadius = R, tol_e=-3)
+			eta_th, rs, guess_N = profileFromFieldStrength(params,testN, shellRadius = R, tol_e=-2)
 			ax.plot(rs*2*a, eta_th,ls='--', label=f'Radius: {R*2*a:.2f} [$\mu m$]')
 		
 		#ax.legend(bbox_to_anchor=(1.5,1))
@@ -289,13 +297,13 @@ if __name__=="__main__":
 	ax.set_ylabel("$\eta_{\text{eff}}$")
 	ax.set_title(f"Theoretical Density Profiles for $\eta_0$ = {eta_0}")
 
-	eta_th, rs, guess_N, pcopy = profileFromCentralDensity(eta_0, params,100, tol_e=-3)
+	eta_th, rs, guess_N, pcopy = profileFromCentralDensity(eta_0, params,testN, tol_e=-2)
 	ax.plot(rs*2*a, eta_th,ls='--', label=f'Flat Case')
 	print(f"Flat Case: {pcopy['vpp']} V")
 
 	for R in Rs:
 		#eta_th, rs, guess_N = sphericalBisectionProfile(params,100, R, tol_e=-3)
-		eta_th, rs, guess_N, pcopy = profileFromCentralDensity(eta_0, params,100, shellRadius = R, tol_e=-3)
+		eta_th, rs, guess_N, pcopy = profileFromCentralDensity(eta_0, params,testN, shellRadius = R, tol_e=-2)
 		ax.plot(rs*2*a, eta_th,ls='--', label=f'Radius: {R*2*a:.2f} [$\mu m$]')
 		print(f"{R} [2a]: {pcopy['vpp']} V")
 

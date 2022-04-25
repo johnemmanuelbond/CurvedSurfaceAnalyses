@@ -51,7 +51,7 @@ def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
 		cmd = exepath
 
 	for arg in simArgument:
-		if arg == "a" or arg == "i":
+		if arg == "a" or arg == "i" or arg == 'k':
 			cmd += f" -{arg} {simArgument[arg]}"
 		elif arg == "start_from_config":
 			if simArgument[arg]:
@@ -61,6 +61,7 @@ def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
 		else:
 			cmd += f" --{arg} {simArgument[arg]}"
 
+	print(cmd)
 	return cmd
 
 #runs a simulation using Marcc's parallelism

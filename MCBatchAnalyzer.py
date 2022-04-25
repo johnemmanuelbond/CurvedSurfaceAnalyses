@@ -23,6 +23,7 @@ from datetime import datetime
 
 import UnitConversions as units
 import ForceBalanceTheory as model
+import OrderParameters as order
 
 """Reads xyz coordinates from a .xyz file. Expected format:
 number of particles
@@ -53,6 +54,22 @@ def read_xyz_frame(filename):
 			else:
 				print("extra: " + line)
 	return np.array(frame)
+
+"""Given a frame or set of frames, saves them to filename as xyz file"""
+def save_xyz(coords, filename, comment=None):
+    if comment == None:
+        comment = "idx x(um)   y(um)   z(um)   token\n"
+    if len(coords.shape) == 2:
+        coords = coords[np.newaxis,:] #make single frames correct size
+    print(filename)
+    with open(filename, 'w', newline='') as output:        
+        for i, frame in enumerate(coords):
+            #print number of particles in frame
+            output.write("{}\n".format(frame.shape[0]))
+            output.write(comment)
+            for j, part in enumerate(frame):
+                output.write("C {:.6e} {:.6e} {:.6e} \n".format(
+                             *part))
 
 """calculates particle number density projected onto xy-plane
 given a N x M x d array"""
@@ -256,7 +273,7 @@ def sample_frames(seedFolders, label = "N_n_R_r_V_v", last_section = 1/3, reset 
 		tmp = []
 		maxlabel = len(glob.glob(seedFolders[0]+"output*"))
 		for seed in seedFolders:
-			for l in np.arange(int((1-last_section)*maxlabel),maxlabel+1):
+			for l in np.arange(int((1-last_section)*maxlabel),maxlabel):
 				tmp.append(read_xyz_frame(seed+"output_"+str(l)+".xyz"))
 		multiple = np.stack(tmp).squeeze()
 		np.save(f"{label}_traj_xyz.npy", multiple)
@@ -312,6 +329,164 @@ def compute_SI_density_profile(seedFolders, params, simArgument, label = "N_n_R_
 
 	return mids, rho, eta, rs, eta_th
 
+"""
+calculates particle number density as a function of arclength on a sphere
+given a N x M x d array of coordinates and an N x M array of charges, as
+as well as that sphere's radius--which is necessary for computing arclengths.
+"""
+def spherical_charge_hist(frames, charges, shellRadius, furthest=None, bin_width=2):
+	fnum, pnum, _ = frames.shape #get number of frames and particles
+	
+	zcoords = frames[:,:,-1].flatten()
+	charges = charges.flatten()
+	zcoords[zcoords>shellRadius]=shellRadius
+	zcoords[zcoords<-1*shellRadius] = -1*shellRadius
+	
+	arc_from_top = shellRadius*np.arccos(zcoords/shellRadius)
+	#arc_from_bot = shellRadius*np.arccos(-1*zcoords/shellRadius)
+	arclengths = arc_from_top#np.minimum(arc_from_top,arc_from_bot)
+	
+	# if furthest is not defined, include 20% beyond farthest arclength
+	if furthest is None:
+		furthest = max(arclengths)*1.2
+	
+	hbin_edge = np.histogram_bin_edges(arclengths,
+								   bins=int(furthest/bin_width),
+								   range=(0, furthest))
+	print(hbin_edge)
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+	
+	#so I did this calculus on paper, it would be helpful to find a reference for it.
+	area = (2*np.pi*shellRadius**2)*(np.cos(hbin_edge[:-1]/shellRadius)-np.cos(hbin_edge[1:]/shellRadius))
+	hval = 0*mids
+
+	for i, l in enumerate(mids):
+		relevant = 1*(arclengths>=hbin_edge[i])*(arclengths<=hbin_edge[i+1])
+		print(relevant.size)
+		hval[i] = np.sum(charges[relevant==1])
+		print(hval[i]/fnum)
+
+	#hval, hbin = np.histogram(arclengths, bins=hbin_edge)
+	
+	charge = hval / (fnum*area)
+	
+	return mids, charge, hbin_edge
+
+"""
+Given a batch of seeds and the respective dictionaries--one for the experimental parameters,
+one for the simulation argument--this method will return binned charge as a function of arclength.
+"""
+def compute_topological_charge_profile(seedFolders, params, simArgument, label = "N_n_R_r_V_v", bs=1):
+	#we want to log any time we read a file
+	log = open("log.txt", "a")
+	now = datetime.now()
+	dt = now.strftime("%d/%m/%Y %H:%M:%S")
+
+	start = timer()
+	frames = np.array(sample_frames(seedFolders,label=label))
+
+	#relevant lengths in relevant units
+	a = params['particle_radius']*1e6 #microns
+	aeff = units.getAEff(params)*1e6 #microns
+	R = simArgument['radius'] #2a
+
+	N = simArgument['npart']
+
+	charges = [];
+	for frame in frames:
+		q = order.charge(frame,R=R)
+		charges.append(q)
+	charges = np.array(charges)
+
+	mids, charge, charge_bin = spherical_charge_hist(frames, charges, R, bin_width=bs)
+
+	log.write(f"{dt}:: Histogram bin size: {bs}\n")
+	avg_charge = integrate_histogram(charge, charge_bin, shellRadius=R)
+	log.write(f"{dt}:: Found average topological charge: {avg_charge}\n")
+
+	mids*=2*a #convert to microns
+	charge*=(1/(2*a))**2 #convert to per micron^2
+
+	end = timer()
+	log.write(f"{dt}:: Computed {label} density profiles in {end-start}s\n\n")
+	log.close()
+
+	return mids, charge, avg_charge
+
+def pair_charge_correlation(q1,q2,frames, charges, shellRadius, bin_width=2):
+	fnum, pnum, _ = frames.shape #get number of frames and particles
+	V = 4*np.pi*shellRadius**2
+
+	allrs = []
+	norms = []
+	for f,frame in enumerate(frames):
+		q1s = frame[charges[f]==q1]
+		Nq1 = len(q1s)
+		q2s = frame[charges[f]==q2]
+		Nq2 = len(q2s)
+
+		norms.append(Nq1*Nq2-Nq1*(q1==q2))
+
+		rs = np.zeros((Nq1,Nq2))
+		for i, r1 in enumerate(q1s):
+			for j, r2 in enumerate(q2s):
+				if np.all(r1 == r2):
+					rs[i,j] == 0
+				else:
+					rs[i,j] = shellRadius*np.arccos(np.dot(r1,r2)/(np.linalg.norm(r1)*np.linalg.norm(r2)))
+		allrs.append(rs.flatten())
+
+	hbin_edge = np.histogram_bin_edges(allrs[0],
+								   bins=int(np.pi*shellRadius/bin_width),
+								   range=(0, np.pi*shellRadius))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+	hval = 0*mids
+
+	for i, norm in enumerate(np.array(norms)):
+		counts,_ = np.histogram(allrs[i], bins=hbin_edge)
+		hval += counts/(norm*fnum) * 2/(np.cos((mids-widths/2)/shellRadius)-np.cos((mids+widths/2)/shellRadius))
+
+	return mids, hval, hbin_edge
+
+def compute_average_pair_charge_correlation(q1,q2,seedFolders, simArgument, label = "N_n_R_r_V_v", bs = np.pi/40):
+	#we want to log any time we read a file
+	log = open("log.txt", "a")
+	now = datetime.now()
+	dt = now.strftime("%d/%m/%Y %H:%M:%S")
+
+	start = timer()
+	frames = np.array(sample_frames(seedFolders,label=label,last_section=1/3))
+
+	#relevant lengths in relevant units
+	R = simArgument['radius'] #2a
+	charges = [];
+	Qs = []
+	for frame in frames:
+		q = order.charge(frame,R=R)
+		charges.append(q)
+		Qs.append(np.sum(q))
+	
+	charges = np.array(charges)
+	Qs = np.array(Qs)
+
+	mids, g, _ = pair_charge_correlation(q1,q1,frames,charges,R,bin_width=R*bs)
+
+
+	log.write(f"{dt}:: Histogram bin size: {bs:.3f}\n")
+	avg_charge = np.mean(Qs)
+	log.write(f"{dt}:: Found average topological charge: {avg_charge}\n")
+
+	mids*=1/R #convert to angles
+
+	end = timer()
+	log.write(f"{dt}:: Computed {label} pair correlation functions in {end-start}s\n\n")
+	log.close()
+
+	return mids, g, Qs
 
 if __name__=="__main__":
 
@@ -319,39 +494,77 @@ if __name__=="__main__":
 
 	#print(get_average_computation_time(seedFoldersList[0])[0])
 
-	#experimental conditions/assumptions
-	eta_c = 0.85
+	As = np.array([d['a'] for d in simDicts])
 
-	Rs = np.array([d['radius'] for d in simDicts])
-	vs = np.array([p['vpp'] for p in paramDicts])
-	print(Rs,vs)
-
-	a = paramDicts[0]['particle_radius']*1e6 #microns
-	aeff = units.getAEff(paramDicts[0])*1e6 #microns
 
 	#setting up density visualization
 	fig, ax = plt.subplots()
-	ax.set_title(f"Density Profiles for Phase Coexistence(?) on Surfaces of Varying Curvatures with $\eta_c={eta_c}$")
-	ax.set_xlabel("Arclength [$\mu m$]")
-	ax.set_ylabel(r"Density [$\mu m^{-2}$]")
-
-	fig2, ax2 = plt.subplots()
-	ax2.set_title(f"Comparison to Theoretical Area Fraction for Two-Phase Shells with $\eta_c={eta_c}$")
-	ax2.set_xlabel("Arclength [$\mu m$]")
-	ax2.set_ylabel(r"$\eta_{eff}$")
-	ax2.set_ylim([0,1])
+	ax.set_title(f"Pair Correlation Functions for Long-Range Repulsion")
+	ax.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+	ax.set_ylabel(r"$g_{{55}}$")
+	ax.set_ylim([0,2])
+	ax.set_xlim([0,1])
 
 	for i,seedFolders in enumerate(seedFoldersList):
-		mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=f"R_{Rs[i]}")
-		ax2.plot(rs, eta_th,ls='--')
-		ax.scatter(mids, rho, label=f'Radius: {Rs[i]*2*a:.2f} [$\mu m$]')
-		ax2.scatter(mids, eta, label=f'Radius: {Rs[i]*2*a:.2f} [$\mu m$], VPP: {vs[i]:.2f} [V]')
+		lab = f"A={As[i]:.1f}"
+		mids, g, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,simDicts[i],label=lab)
+		print(f"{lab}: Total Charge per Frame: {Qs}")
+		ax.plot(mids/np.pi, g, label=lab,linewidth = 0.5)
 
 	ax.legend()#bbox_to_anchor=(1.5,1))
-	ax2.legend()#bbox_to_anchor=(1.5,1))
+	
+	fig.savefig("5-5 Pair Correlation.jpg", bbox_inches='tight')
 
-	fig.savefig("Density.jpg", bbox_inches='tight')
-	fig2.savefig("AreaFraction.jpg", bbox_inches='tight')
+	# lastLabel = 134
+	# N = 300
+	# for i, seedFolders in enumerate(seedFoldersList):
+	# 	for j,folder in enumerate(seedFolders):
+	# 		frame = read_xyz_frame(f"{folder}/output_{lastLabel}.xyz")
+	# 		R = simDicts[i]['radius'] #2a
+	# 		_, Q = order.totalCharge(frame,R=R)
+	# 		print(Q)
+	# 		top = frame[np.argsort(frame[:,2])][-N:]
+	# 		save_xyz(top,f"{os.getcwd()}/FinalStates/InitialState_{j}_A_{simDicts[i]['a']}_long.xyz")
+
+
+	#experimental conditions/assumptions
+	#eta_c = 0.85
+
+	# Rs = np.array([d['radius'] for d in simDicts])
+	# vs = np.array([p['vpp'] for p in paramDicts])
+	# print(Rs,vs)
+
+	# a = paramDicts[0]['particle_radius']*1e6 #microns
+	# aeff = units.getAEff(paramDicts[0])*1e6 #microns
+
+	# #setting up density visualization
+	# fig, ax = plt.subplots()
+	# ax.set_title(f"Charge Density Profiles, Vpp = 2V, Random Starting States")
+	# ax.set_xlabel("Arclength [$\mu m$]")
+	# ax.set_ylabel(r"Average Topological Charge Density $[\mu m^{-2}]$")
+
+	# fig2, ax2 = plt.subplots()
+	# ax2.set_title(f"Comparison to Theoretical Area Fraction, Vpp = 2V, Random Starting States")
+	# ax2.set_xlabel("Arclength [$\mu m$]")
+	# ax2.set_ylabel(r"$\eta_{eff}$")
+	# ax2.set_ylim([0,1])
+
+	# for i,seedFolders in enumerate(seedFoldersList):
+	# 	if simDicts[i]['start_from_config'] == False:
+	# 		lab = f"R_{Rs[i]:.2f}"
+	# 		if simDicts[i]['start_from_config']==False:
+	# 			lab+="_random"
+	# 		mids, charge, avg_charge = compute_topological_charge_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
+	# 		mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
+	# 		ax2.plot(rs, eta_th,ls='--')
+	# 		ax.scatter(mids, charge, label=lab)
+	# 		ax2.scatter(mids, eta, label=lab)
+
+	# ax.legend(bbox_to_anchor=(1.5,1))
+	# ax2.legend()#bbox_to_anchor=(1.5,1))
+
+	# fig.savefig("ChargeDensity - Random.jpg", bbox_inches='tight')
+	# fig2.savefig("AreaFraction - Random.jpg", bbox_inches='tight')
 
 
 # def var_bin_rho_hist(frames, var_bins=None):
