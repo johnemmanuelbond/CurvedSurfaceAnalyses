@@ -10,7 +10,6 @@ a specific order parameter.
 
 import numpy as np
 import scipy as sp
-from scipy.spatial import SphericalVoronoi, geometric_slerp
 
 import os, glob, sys, json
 import OrderParameters as order
