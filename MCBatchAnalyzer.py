@@ -71,6 +71,10 @@ def save_xyz(coords, filename, comment=None):
                 output.write("C {:.6e} {:.6e} {:.6e} \n".format(
                              *part))
 
+def chopCap(frame, newN, name = "N_n_R_r_V_v"):
+	top = frame[np.argsort(frame[:,2])][-N:]
+	save_xyz(top,f"{os.getcwd()}/{name}.xyz")	
+
 """calculates particle number density projected onto xy-plane
 given a N x M x d array"""
 def rho_hist(frames, furthest=None, bin_width=2):
@@ -271,10 +275,16 @@ def sample_frames(seedFolders, label = "N_n_R_r_V_v", last_section = 1/3, reset 
 	#otherwise we have to read each file individually and group them into a single array
 	else:
 		tmp = []
-		maxlabel = len(glob.glob(seedFolders[0]+"output*"))
+		hasOutput0 = 1.0*os.path.exists(seedFolders[0]+"output_0.xyz")
+		maxlabel = len(glob.glob(seedFolders[0]+"output*.xyz"))-hasOutput0
 		for seed in seedFolders:
-			for l in np.arange(int((1-last_section)*maxlabel),maxlabel):
-				tmp.append(read_xyz_frame(seed+"output_"+str(l)+".xyz"))
+			if (last_section<0):
+				if(last_section%1!=0): raise Exception("Noninteger negative last_section")
+				tmp.append(read_xyz_frame(seed+"output_"+str(int(maxlabel+last_section))+".xyz"))
+			else:
+				if(last_section>1): raise Exception("Nonfraction positive last_section")
+				for l in np.arange(int((1-last_section)*maxlabel)+1-hasOutput0,maxlabel):
+					tmp.append(read_xyz_frame(seed+"output_"+str(int(l))+".xyz"))
 		multiple = np.stack(tmp).squeeze()
 		np.save(f"{label}_traj_xyz.npy", multiple)
 
@@ -396,7 +406,7 @@ def compute_topological_charge_profile(seedFolders, params, simArgument, label =
 
 	charges = [];
 	for frame in frames:
-		q = order.charge(frame,R=R)
+		q = 6-order.Vc(frame,R=R)
 		charges.append(q)
 	charges = np.array(charges)
 
@@ -415,42 +425,34 @@ def compute_topological_charge_profile(seedFolders, params, simArgument, label =
 
 	return mids, charge, avg_charge
 
-def pair_charge_correlation(q1,q2,frames, charges, shellRadius, bin_width=2):
-	fnum, pnum, _ = frames.shape #get number of frames and particles
-	V = 4*np.pi*shellRadius**2
+def pair_charge_correlation(q1,q2,frame, shellRadius, bin_width=2):	
+	qs = 6-order.Vc(frame,R=shellRadius)
+	#qs = 6-order.Nc(frame,shellradius=order.firstCoordinationShell(frame))
 
-	allrs = []
-	norms = []
-	for f,frame in enumerate(frames):
-		q1s = frame[charges[f]==q1]
-		Nq1 = len(q1s)
-		q2s = frame[charges[f]==q2]
-		Nq2 = len(q2s)
-
-		norms.append(Nq1*Nq2-Nq1*(q1==q2))
-
-		rs = np.zeros((Nq1,Nq2))
-		for i, r1 in enumerate(q1s):
-			for j, r2 in enumerate(q2s):
-				if np.all(r1 == r2):
-					rs[i,j] == 0
-				else:
-					rs[i,j] = shellRadius*np.arccos(np.dot(r1,r2)/(np.linalg.norm(r1)*np.linalg.norm(r2)))
-		allrs.append(rs.flatten())
-
-	hbin_edge = np.histogram_bin_edges(allrs[0],
-								   bins=int(np.pi*shellRadius/bin_width),
-								   range=(0, np.pi*shellRadius))
+	hbin_edge = np.histogram_bin_edges(range(10),
+							   bins=int(np.pi*shellRadius/bin_width),
+							   range=(0, np.pi*shellRadius))
 
 	widths = hbin_edge[1:] - hbin_edge[:-1]
 	mids = hbin_edge[:-1] + widths/2
 	hval = 0*mids
 
-	for i, norm in enumerate(np.array(norms)):
-		counts,_ = np.histogram(allrs[i], bins=hbin_edge)
-		hval += counts/(norm*fnum) * 2/(np.cos((mids-widths/2)/shellRadius)-np.cos((mids+widths/2)/shellRadius))
+	q1s = frame[qs==q1]
+	Nq1 = len(q1s)
+	q2s = frame[qs==q2]
+	Nq2 = len(q2s)
+	
+	norm = Nq1*Nq2-Nq1*(q1==q2)
 
-	return mids, hval, hbin_edge
+	thetas = np.einsum("ik,i,jk,j->ij",q1s,1/np.linalg.norm(q1s,axis=-1),q2s,1/np.linalg.norm(q2s,axis=-1))
+	thetas[thetas>1.0]=1.0
+	thetas[thetas<-1.0]=-1.0
+
+	ws = shellRadius*np.arccos(thetas).flatten()		
+	counts,_ = np.histogram(ws, bins=hbin_edge)
+	hval = counts/(norm/2*(np.cos((mids-widths/2)/shellRadius)-np.cos((mids+widths/2)/shellRadius)))
+
+	return mids, hval, hbin_edge, qs
 
 def compute_average_pair_charge_correlation(q1,q2,seedFolders, simArgument, label = "N_n_R_r_V_v", bs = np.pi/40):
 	#we want to log any time we read a file
@@ -459,21 +461,25 @@ def compute_average_pair_charge_correlation(q1,q2,seedFolders, simArgument, labe
 	dt = now.strftime("%d/%m/%Y %H:%M:%S")
 
 	start = timer()
-	frames = np.array(sample_frames(seedFolders,label=label,last_section=1/3))
+	frames = np.array(sample_frames(seedFolders,label=label,last_section=-1))
 
 	#relevant lengths in relevant units
 	R = simArgument['radius'] #2a
-	charges = [];
 	Qs = []
-	for frame in frames:
-		q = order.charge(frame,R=R)
-		charges.append(q)
-		Qs.append(np.sum(q))
-	
-	charges = np.array(charges)
-	Qs = np.array(Qs)
+	hvals = []
+	midss = []
 
-	mids, g, _ = pair_charge_correlation(q1,q1,frames,charges,R,bin_width=R*bs)
+	for frame in frames:
+		#qs = 6-order.Nc(frame,shellradius=order.firstCoordinationShell(frame))
+		#print(np.sum(qs),qs[qs==1].size,qs[qs==-1].size)
+		mids, hval, _, qs = pair_charge_correlation(q1,q2,frame,R,bin_width=R*bs)
+		midss.append(mids)
+		hvals.append(hval)
+		Qs.append(np.sum(qs))
+	
+	Qs = np.array(Qs)
+	mids = np.mean(np.array(midss),axis=0)
+	g = np.mean(np.array(hvals),axis=0)
 
 
 	log.write(f"{dt}:: Histogram bin size: {bs:.3f}\n")
@@ -488,44 +494,316 @@ def compute_average_pair_charge_correlation(q1,q2,seedFolders, simArgument, labe
 
 	return mids, g, Qs
 
+from scipy.signal import find_peaks
+def firstCoordinationShell(seedFolders,label):
+	
+	frames = np.array(sample_frames(seedFolders,label=label,last_section=1/2))
+	npart = frames[0].shape[0]
+
+	dists = []
+	frameshells = []
+	for f in frames:
+		_,info = order.radialDistributionFunction(f)
+		dists.append(info["distance_list"])
+		frameshells.append(info["first_coordination_shell"])
+
+	dists = np.array(dists).flatten()
+	hbin_edge = np.histogram_bin_edges(dists,
+								   bins=int(npart/10),
+								   range=(0, 3*min(dists)))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+
+	hval, _ = np.histogram(dists, bins=hbin_edge)
+
+	peaks, _ = find_peaks(hval,prominence=10)
+
+	# if(len(peaks)<2):
+	# 	print(label)
+	# 	print(mids[peaks])
+	# 	raise Exception("Not enough peaks")
+
+	# shellRadius = (mids[peaks[1]]+mids[peaks[0]])/2
+	spacing = mids[peaks[0]]
+
+	relevant = (mids>spacing)*(mids<2*spacing)
+	relevantMids = mids[relevant]
+	relevantHval = hval[relevant]
+	shellRadius = relevantMids[np.argmin(relevantHval)]
+
+	return mids, hval, shellRadius, spacing
+
+def scar_correlation(frame, shellRadius, bin_width=2):	
+	scars, scarCharges = order.findScars(frame)
+
+	hbin_edge = np.histogram_bin_edges(range(10),
+							   bins=int(np.pi*shellRadius/bin_width),
+							   range=(0, np.pi*shellRadius))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+	hval = 0*mids
+
+	#print(scars, np.where(scarCharges!=0)[0])
+	chargedScars = [scars[i] for i in np.where(scarCharges!=0)[0]]
+
+	meanscarpositions = np.array([np.mean(frame[scar],axis=0) for scar in chargedScars])
+	meanscarpositions = np.array([shellRadius*p/np.linalg.norm(p,axis=-1) for p in meanscarpositions])
+	
+	Nscar = len(meanscarpositions)
+
+	norm = Nscar*(Nscar-1)
+
+	thetas = np.einsum("ik,i,jk,j->ij",meanscarpositions,1/np.linalg.norm(meanscarpositions,axis=-1),meanscarpositions,1/np.linalg.norm(meanscarpositions,axis=-1))
+	thetas[thetas>1.0]=1.0
+	thetas[thetas<-1.0]=-1.0
+
+	ws = shellRadius*np.arccos(thetas).flatten()		
+	counts,_ = np.histogram(ws, bins=hbin_edge)
+	hval = counts/(norm/2*(np.cos((mids-widths/2)/shellRadius)-np.cos((mids+widths/2)/shellRadius)))
+
+	return mids, hval, scars, meanscarpositions
+
+def compute_average_scar_correlation(seedFolders, simArgument, label = "N_n_R_r_V_v", bs = np.pi/40):
+	#we want to log any time we read a file
+	log = open("log.txt", "a")
+	now = datetime.now()
+	dt = now.strftime("%d/%m/%Y %H:%M:%S")
+
+	start = timer()
+	frames = np.array(sample_frames(seedFolders,label=label,last_section=-1))
+
+	#relevant lengths in relevant units
+	R = simArgument['radius'] #2a
+	scarCount=[]
+	hvals = []
+	midss = []
+
+	for frame in frames:
+		#qs = 6-order.Nc(frame,shellradius=order.firstCoordinationShell(frame))
+		#print(np.sum(qs),qs[qs==1].size,qs[qs==-1].size)
+		mids, hval, _,meanscarpositions = scar_correlation(frame,R,bin_width=R*bs)
+		midss.append(mids)
+		hvals.append(hval)
+		scarCount.append(meanscarpositions.shape[0])
+	
+	mids = np.mean(np.array(midss),axis=0)
+	g = np.mean(np.array(hvals),axis=0)
+
+
+	log.write(f"{dt}:: Histogram bin size: {bs:.3f}\n")
+	avg_scarCount = np.mean(scarCount)
+	log.write(f"{dt}:: Found average scar count: {avg_scarCount}\n")
+
+	mids*=1/R #convert to angles
+
+	end = timer()
+	log.write(f"{dt}:: Computed {label} scar correlation functions in {end-start}s\n\n")
+	log.close()
+
+	return mids, g, scarCount
+
+def BoltzmannInversion(mids,widths,hval):
+	hval[hval==0]=1e-3
+	norm = np.sum(widths*hval)
+	Ukt = -1*np.log(hval/norm)
+
+	return mids, Ukt
+
 if __name__=="__main__":
 
-	simDicts, paramDicts, seedFoldersList, = categorize_batch()
+	start = timer()
+
+	simDicts, paramDicts, seedFoldersList = categorize_batch()
 
 	#print(get_average_computation_time(seedFoldersList[0])[0])
 
-	As = np.array([d['a'] for d in simDicts])
+# Charge Correlation Visualization for 5s and 7s at once
+	# fig, [ax1,ax2,ax3] = plt.subplots(1,3,figsize=(15,5))
+	# fig.suptitle("Pair Correlation Functions for Long-Range Repulsion")
+	# ax2.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+	# ax1.set_title(r"$g_{{55}}$")
+	# ax2.set_title(r"$g_{{57}}$")
+	# ax3.set_title(r"$g_{{77}}$")
+	
+	# ax1.set_ylim([0,2])
+	# ax1.set_xlim([0,1])
+	# ax2.set_ylim([0,2])
+	# ax2.set_xlim([0,1])
+	# ax3.set_ylim([0,2])
+	# ax3.set_xlim([0,1])
 
+#+1 +1 charge correlation visualization
+	fig55,ax55 = plt.subplots()
+	ax55.set_title("5-5 Pair Correlation Functions for Long-Range Repulsion")
+	ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+	ax55.set_ylim([0,2])
+	ax55.set_xlim([0,1])
 
-	#setting up density visualization
-	fig, ax = plt.subplots()
-	ax.set_title(f"Pair Correlation Functions for Long-Range Repulsion")
-	ax.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
-	ax.set_ylabel(r"$g_{{55}}$")
-	ax.set_ylim([0,2])
-	ax.set_xlim([0,1])
+#Scar Scar correlation visualization
+	figScar, axScar = plt.subplots()
+	axScar.set_title("Scar-Scar Correlation Functions for Long-Range Repulsion")
+	axScar.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+	axScar.set_ylim([0,2])
+	axScar.set_xlim([0,1])
+
+#icosohedral angles
+	r_ico = np.sin(2*np.pi/5)
+	theta1 = 2*np.arcsin(1/2/r_ico)
+	theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
+
+	# ax1.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
+	# ax1.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
+	# ax2.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
+	# ax2.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
+	# ax3.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
+	# ax3.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
+	ax55.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
+	ax55.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
+	axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
+	axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
+
+#Radial Distribution Function
+	figRad, axRad = plt.subplots()
+	axRad.set_title("Radial DistributionFunctions for Long-Range Repulsion")
+	axRad.set_xlabel(r"Euclidean Displacement [$2a$]")
+	axRad.set_ylabel("Counts")
+
+#Excess Charge Visualization
+	figCharge, axCharge = plt.subplots()
+	axCharge.set_title("Excess Charge vs Sweeps")
+	axCharge.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
+	axCharge.set_xlabel("sweeps")
+
+#More Excess Charge Visualization
+	figXS1, axXS1 = plt.subplots()
+	axXS1.set_title("Excess Charge vs Initial R/a")
+	axXS1.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
+	axXS1.set_xlabel("R/a")
+
+	figXS2, axXS2 = plt.subplots()
+	axXS2.set_title(r"Excess Charge vs $\eta_{{eff}}$")
+	axXS2.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
+	axXS2.set_xlabel(r"$\eta_{{eff}}$")
+
+	avg_excess_charge = []
+	R_on_a = []
+	etas = []
 
 	for i,seedFolders in enumerate(seedFoldersList):
-		lab = f"A={As[i]:.1f}"
-		mids, g, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,simDicts[i],label=lab)
-		print(f"{lab}: Total Charge per Frame: {Qs}")
-		ax.plot(mids/np.pi, g, label=lab,linewidth = 0.5)
+		N = simDicts[i]['npart']
+		R = simDicts[i]['radius']
+		a = paramDicts[i]["particle_radius"]
+		aeff = units.getAEff(paramDicts[i])
+		eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
-	ax.legend()#bbox_to_anchor=(1.5,1))
+		initFrame = read_xyz_frame(seedFolders[0]+"output_0.xyz")
+		_,info = order.radialDistributionFunction(initFrame)
+		spacing = info['particle_spacing']
+
+		lab = lab = f"eta_eff={eta_eff:.3f},R={R:.1f}"
+		midsRad, hval, coordinationShell, _ = firstCoordinationShell(seedFolders, label=lab)
+		Ra = R/spacing
+		
+		pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R/a={Ra:.1f}"
+
+		frames = np.array(sample_frames(seedFolders,label=lab,reset=True))
+
+		vcs = [order.Vc(frame, R = R) for frame in frames]
+		XS = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
+			
+
+		if(True):
+			etas.append(np.round(eta_eff,3))
+			avg_excess_charge.append(np.mean(XS))
+			R_on_a.append(np.round(Ra,3))
+			mids55, g55, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,simDicts[i],label=lab)
+			# mids57, g57, Qs = compute_average_pair_charge_correlation(1,-1,seedFolders,simDicts[i],label=lab)
+			# mids77, g77, Qs = compute_average_pair_charge_correlation(-1,-1,seedFolders,simDicts[i],label=lab)
+
+			#print(f"{lab}: Total Charge per Frame: {Qs}")
+			
+			# ax1.plot(mids55/np.pi, g55, label=pltlab,lw = 0.5)
+			# ax2.plot(mids57/np.pi, g57, label=pltlab,lw = 0.5)
+			# ax3.plot(mids77/np.pi, g77, label=pltlab,lw = 0.5)
+			ax55.plot(mids55/np.pi, g55, label=pltlab,lw = 0.5)
+
+			#print(f"{pltlab} first coordination shell: {coordinationShell} [2a]")
+			axRad.plot(midsRad,hval, label = pltlab, lw=0.6)
+
+			midsScar, gScar, scarCount = compute_average_scar_correlation(seedFolders, simDicts[i], label=lab)
+			axScar.plot(midsScar/np.pi,gScar,label=pltlab,lw=0.5)
+
+			numSim=0
+			sim = np.array(sample_frames(seedFolders[numSim:numSim+1], label = lab+f"_{numSim}th_seed", last_section = 1.0))
+			
+			sweeps = simDicts[i]['nsnap']*(1+np.arange(sim.shape[0]))
+			#ncs = [order.Nc(frame, shellradius=coordinationShell) for frame in sim]
+			vcs = [order.Vc(frame) for frame in sim]
+
+			excessVC = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
+			axCharge.plot(sweeps,excessVC,label=pltlab)#, c = cm.hsv(i/len(seedFoldersList)),lw=0.6)
+
+	avg_excess_charge = np.array(avg_excess_charge)
+	R_on_a = np.array(R_on_a)
+	etas = np.array(etas)
+
+	section = 0
+
+	#ax1.legend();ax2.legend();ax3.legend();
+	ax55.legend(bbox_to_anchor=(1.5,1))
+
+	#bbox_to_anchor=(1.5,1))
 	
-	fig.savefig("5-5 Pair Correlation.jpg", bbox_inches='tight')
+	#fig.savefig("Pair Correlations.png", bbox_inches='tight')
+	fig55.savefig(f"5-5 Pair Correlations_{section}.png", bbox_inches='tight')
+	
+	axRad.legend()
+
+	figRad.savefig(f"Radial Distribution Function_{section}.png")
+
+	for h in np.unique(etas):
+		xs = R_on_a[etas==h]
+		ind = np.argsort(xs)
+		ys = avg_excess_charge[etas==h]
+		axXS1.plot(xs[ind],ys[ind],label=rf"$\eta_{{eff}}$={h}",lw=0.6)
+	axXS1.legend()
+
+	figXS1.savefig("Excess Charge vs R over a.png")
+
+	for r in np.unique(R_on_a):
+		xs = etas[R_on_a==r]
+		ind = np.argsort(xs)
+		ys = avg_excess_charge[R_on_a==r]
+		axXS2.plot(xs[ind],ys[ind],label=rf"R/a={r:.2f}",lw=0.6)
+	axXS2.legend()
+
+	figXS2.savefig("Excess Charge vs effective Eta.png")
+
+	axCharge.legend()
+
+	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep_{section}.png")
+
+	axCharge.set_xlim([simDicts[0]['nsweeps']/2,simDicts[0]['nsweeps']])
+	axCharge.set_ylim([0,10])
+
+	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep (last half)_{section}.png")
+
+	axScar.legend(bbox_to_anchor=(1.5,1))
+	figScar.savefig(f"Scar-Scar Correlations_{section}.png", bbox_inches='tight')
+
+	end = timer()
+	print(f"{end-start}s total pair correlation runtime")
+
+
+#Density and Charge Density Visualizations for nearly hard discs
 
 	# lastLabel = 134
-	# N = 300
-	# for i, seedFolders in enumerate(seedFoldersList):
-	# 	for j,folder in enumerate(seedFolders):
-	# 		frame = read_xyz_frame(f"{folder}/output_{lastLabel}.xyz")
-	# 		R = simDicts[i]['radius'] #2a
-	# 		_, Q = order.totalCharge(frame,R=R)
-	# 		print(Q)
-	# 		top = frame[np.argsort(frame[:,2])][-N:]
-	# 		save_xyz(top,f"{os.getcwd()}/FinalStates/InitialState_{j}_A_{simDicts[i]['a']}_long.xyz")
-
+		# N = 300
+		# for i, seedFolders in enumerate(seedFoldersList):
+		# 	for j,folder in enumerate(seedFolders):
+		#		chopCap(read_xyz_frame(f"{folder}/output_{lastlabel}.xyz"), N, name = f"{N}-particle cap, {lastlabel}-{i},{j}")
 
 	#experimental conditions/assumptions
 	#eta_c = 0.85
@@ -563,8 +841,8 @@ if __name__=="__main__":
 	# ax.legend(bbox_to_anchor=(1.5,1))
 	# ax2.legend()#bbox_to_anchor=(1.5,1))
 
-	# fig.savefig("ChargeDensity - Random.jpg", bbox_inches='tight')
-	# fig2.savefig("AreaFraction - Random.jpg", bbox_inches='tight')
+	# fig.savefig("ChargeDensity - Random.png", bbox_inches='tight')
+	# fig2.savefig("AreaFraction - Random.png", bbox_inches='tight')
 
 
 # def var_bin_rho_hist(frames, var_bins=None):

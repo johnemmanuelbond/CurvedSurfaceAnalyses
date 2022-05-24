@@ -1,10 +1,12 @@
 import UnitConversions as units
-from visualize import getRGB
-from visualize import read_xyz_frame
+#from visualize import getRGB
+#from MCBatchAnalyzer import read_xyz_frame
 
 import numpy as np
 import scipy as sp
+from scipy.spatial.distance import pdist
 from scipy.spatial import SphericalVoronoi#, geometric_slerp
+from scipy.signal import find_peaks
 
 import os, sys, glob, json
 
@@ -12,6 +14,24 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from timeit import default_timer as timer
+
+def read_xyz_frame(filename):
+	frame = []
+	with open(filename, 'r') as xyzfile:
+		pnum = None
+		for i, line in enumerate(xyzfile):
+			if i == 0:
+				pnum = float(line.strip())
+			elif i == 1:
+				pass  #throw away comment
+			elif i <= pnum+1:
+				# assumes format as below for particle coordinates
+				# index xcomp ycomp zcomp ... (unspecified afterwards)
+				coordinates = line.split()[1:4]
+				frame.append([float(coord) for coord in coordinates])
+			else:
+				print("extra: " + line)
+	return np.array(frame)
 
 """from a a spherical cap in 3D coordinates, returns a 2D projection
 in polar coordinates where the radius is the arclength from the pole and
@@ -26,13 +46,66 @@ def capPolarProjection(frame):
 	jacobian = Rs*np.sin(l/Rs)
 	return np.array([x,y]).T, np.array([l,phi]).T, jacobian
 
+def radialDistributionFunction(frame, info=None):
+	npart = frame.shape[0]
+	
+
+	if info == None:
+		dr_norm = sp.spatial.distance.squareform(pdist(frame))
+		i,j = np.mgrid[0:npart,0:npart]
+		dists = dr_norm[i<j].flatten()
+		info = {
+			"distance_matrix": dr_norm,
+			"distance_list": dists
+			}
+	else:
+		dists = info["distance_list"]
+
+	hbin_edge = np.histogram_bin_edges(dists,
+								   bins=int(npart),
+								   range=(0, 3*min(dists)))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+
+	#print(min(info['distance_list']))
+
+	hval, hbin = np.histogram(dists, bins=hbin_edge)
+
+	hist = np.array([mids,hval])
+
+	#minimumDistance = mids[hval!=0][0]
+
+	#relevant = mids<4*minimumDistance
+
+	#mids = mids[relevant]
+	#hval = hval[relevant]
+
+	peaks, _ = find_peaks(hval,prominence=10)
+
+	# shellRadius = (mids[peaks[1]]+mids[peaks[0]])/2
+	spacing = mids[peaks[0]]
+	info["particle_spacing"] = spacing
+
+	relevant = (mids>spacing)*(mids<2*spacing)
+	relevantMids = mids[relevant]
+	relevantHval = hval[relevant]
+	shellRadius = relevantMids[np.argmin(relevantHval)]
+
+	info["first_coordination_shell"] = shellRadius
+
+	return hist, info
+
+def firstCoordinationShell(frame, info=None):
+	if(info == None):
+		_, info = radialDistributionFunction(frame, info)
+	return info["first_coordination_shell"]
+
 #a simple coordination number 
-def Nc(coordinates, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
-	npart = coordinates.shape[0]
+def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+	npart = frame.shape[0]
 	i,j = np.mgrid[0:npart,0:npart]
-	dr_vec = coordinates[i]-coordinates[j]
-	dr_norm = np.linalg.norm(dr_vec,axis=-1)
-	dr_norm[i==j] = 0
+	dr_norm = sp.spatial.distance.squareform(pdist(frame))
 	
 	neighbors = dr_norm<shellradius
 	neighbors[i==j]=False
@@ -52,25 +125,91 @@ def Vc(frame,excludeborder=False,R=None):
 	Vc = np.zeros(frame.shape[0])
 	for i, region in enumerate(sv.regions):
 		Vc[i] = len(region)
-		for v in sv.vertices[region]:
-			if(v[2]<minZ):
-				Vc[i] -= 1
-				if(excludeborder):
-					Vc[i]=-1
+		if(excludeborder):
+			for v in sv.vertices[region]:
+				if(v[2]<minZ):
+					Vc[i]+=-1
+					#Vc[i]=-1
 	return Vc
 
-def charge(frame, excludeborder=False,R=None):
-	return 6-Vc(frame,excludeborder=excludeborder,R=R)
+def shareVoronoiVertex(sv, i, j):
+	vertices_i = sv.regions[i]
+	vertices_j = sv.regions[j]
 
-def totalCharge(frame,R=None):
-	vc = Vc(frame,excludeborder=True,R=R)
-	charge = 6-vc[vc!=-1]
-	return charge, np.sum(charge)
+def findScarsCarefully(frame):
+	N = frame.shape[0]
+	radius = np.mean(np.linalg.norm(frame,axis=1))
+	sv = SphericalVoronoi(frame, radius = radius)
+	qs = np.array([6-len(region) for region in sv.regions])
 
-def averageCharge(frame,R=None):
-	vc = Vc(frame,excludeborder=True,R=R)
-	charge = 6-vc[vc!=-1]
-	return charge, np.mean(charge)
+	shared_vertices = np.array([[np.sum(np.isin(r1,r2)) for r1 in sv.regions] for r2 in sv.regions])
+	charged_pairs = np.abs(np.array([qs for _ in qs])*np.array([qs for _ in qs]).T)
+
+	charged_neighbors = np.array((shared_vertices>=1)*(charged_pairs>0))
+
+	scars = []
+
+	for i, ptcl in enumerate(charged_neighbors):
+		links = np.sort(np.where(ptcl!=0)[0])
+		if links.size !=0:
+			uniquePtcls = True
+			for j, scar in enumerate(scars):
+				if(np.any(np.isin(scar, links))):
+					newscar = np.unique(np.append(scar,links))
+					scars.pop(j)
+					scars.append(newscar)
+					links = newscar
+					uniquePtcls = False
+			if(uniquePtcls):
+				scars.append(links)
+
+	scarCharges = np.array([np.sum(qs[scar]) for scar in scars])
+
+	return scars, scarCharges
+
+
+def findScars(frame):
+
+	charge = 6-Vc(frame)
+	_,info = radialDistributionFunction(frame)
+
+	neighbors = np.array(1*(info["distance_matrix"]<=info["first_coordination_shell"]))
+	#neighbors = neighbors-np.eye(len(charge))
+	charged_pairs = np.abs(np.array([charge for _ in charge])*np.array([charge for _ in charge]).T)
+
+	charged_neighbors = np.array(neighbors*charged_pairs)
+
+	scars = []
+	
+	# pairs = np.unique(np.sort(np.array(np.where(charged_neighbors)).T,axis=-1),axis=0)
+	# for pair in pairs:
+	# 	uniquePtcls = True
+	# 	for i, scar in enumerate(scars):
+	# 		if(np.any(np.isin(scar, pair))):
+	# 			newscar = np.unique(np.append(scar,pair))
+	# 			scars.pop(i)
+	# 			scars.append(newscar)
+	# 			uniquePtcls = False
+	# 	if(uniquePtcls):
+	# 		scars.append(pair)
+	
+	for i, ptcl in enumerate(charged_neighbors):
+		links = np.sort(np.where(ptcl!=0)[0])
+		if links.size !=0:
+			uniquePtcls = True
+			for j, scar in enumerate(scars):
+				if(np.any(np.isin(scar, links))):
+					newscar = np.unique(np.append(scar,links))
+					scars.pop(j)
+					scars.append(newscar)
+					links = newscar
+					uniquePtcls = False
+			if(uniquePtcls):
+				scars.append(links)
+
+	scarCharges = np.array([np.sum(charge[scar]) for scar in scars])
+
+	return scars, scarCharges
 
 def shells(pnum):
     """from particle number, calculate number of shells assuming hexagonal crystal"""
@@ -83,7 +222,8 @@ def c6_hex(pnum):
     s = shells(pnum)
     return 6*(3*s**2 + s)/pnum
 
-def findNeighbors(frame):
+# a little depricated atm
+def findNeighbors(frame, info = None):
 	N = frame.shape[0]
 	i,j = np.mgrid[0:N,0:N]
 
@@ -99,7 +239,6 @@ def findNeighbors(frame):
 		neighbors[k,nearest] = 1
 
 	return neighbors, vc
-
 
 def Psi6(frame, reference = np.array([0,1,0])):
 	N = frame.shape[0]
@@ -210,33 +349,59 @@ if __name__=="__main__":
 		plt.savefig("Order Parameters",bbox_inches = 'tight')
 
 	elif nargs == 2:
+
 		framepath = sys.argv[1]
 		frame = np.array(read_xyz_frame(framepath))
 		n,vc = findNeighbors(frame)
 
-		print(totalCharge(frame),averageCharge(frame))
+		rad_dist, info = radialDistributionFunction(frame)
 
-		simArgument = json.load(open("simArgument.json",'r'))
-		R = simArgument['radius']
-
-		proj, _,_ = capPolarProjection(frame)
-		fig,[ax1,ax2] = plt.subplots(1,2, figsize = (8,4))
-
-		plt.suptitle(f"Projected snapshot R={R:.3f}")
-
-		plt.tight_layout()#rect=[0, 0.03, 1, 1.2])
-		ax1.set_aspect('equal', 'box')
-		ax1.set_title("Particles Colored by Voronoi Charge")
-		ax1.scatter(proj[:,0],proj[:,1],color=[getRGB(v) for v in Vc(frame,excludeborder=True)])
+		coord_shell = info["first_coordination_shell"]
+		a = info["particle_spacing"]
 
 
-		localC, meanC, psi, globalPsi = C6(frame)
-		print(meanC,globalPsi)
+		nc = Nc(frame, coord_shell)
+		#print(nc[np.where(vc!=nc)],vc[np.where(nc!=vc)], (6-nc[np.where(vc!=nc)])-(6-vc[np.where(nc!=vc)]))
 
-		ax2.set_aspect('equal', 'box')
-		ax2.set_title(r"Particles Colored by $C_6$")
-		ax2.scatter(proj[:,0],proj[:,1],c=localC,cmap='viridis')
-		plt.savefig(f"{framepath}.png",bbox_inches = 'tight')
+		print(f"Voronoi Tesselation: total charge: {np.sum(6-vc)} excess charge: {0.5*(np.sum(np.abs(6-vc))/12-1)}")
+		print(f"Coordination Number: total charge: {np.sum(6-nc)} excess charge: {0.5*(np.sum(np.abs(6-nc))/12-1)}")
+
+		start = timer()
+		qs = 6-Nc(frame,shellradius=coord_shell)
+		end = timer()
+		print(f"charges computed in {end-start}s")
+
+
+		[rs, hval] = rad_dist
+		print(f"First Coordination Shell: {coord_shell}")
+		print(f"R/a: {np.mean(np.linalg.norm(frame,axis=-1))/a}")
+		fig, ax = plt.subplots()
+		ax.plot(rs,hval,lw=0.6,c="black")
+		plt.show()
+
+		findScars(frame)
+
+		# simArgument = json.load(open("simArgument.json",'r'))
+		# R = simArgument['radius']
+
+		# proj, _,_ = capPolarProjection(frame)
+		# fig,[ax1,ax2] = plt.subplots(1,2, figsize = (8,4))
+
+		# plt.suptitle(f"Projected snapshot R={R:.3f}")
+
+		# plt.tight_layout()#rect=[0, 0.03, 1, 1.2])
+		# ax1.set_aspect('equal', 'box')
+		# ax1.set_title("Particles Colored by Voronoi Charge")
+		# ax1.scatter(proj[:,0],proj[:,1],c=nc)
+
+
+		# localC, meanC, psi, globalPsi = C6(frame)
+		# print(meanC,globalPsi)
+
+		# ax2.set_aspect('equal', 'box')
+		# ax2.set_title(r"Particles Colored by $C_6$")
+		# ax2.scatter(proj[:,0],proj[:,1],c=localC,cmap='viridis')
+		# plt.savefig(f"{framepath}.png",bbox_inches = 'tight')
 
 	elif nargs > 2:
 		raise Exception("You entered too much stuff, fool")
