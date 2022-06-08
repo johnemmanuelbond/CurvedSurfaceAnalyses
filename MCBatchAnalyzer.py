@@ -72,7 +72,7 @@ def save_xyz(coords, filename, comment=None):
                              *part))
 
 def chopCap(frame, newN, name = "N_n_R_r_V_v"):
-	top = frame[np.argsort(frame[:,2])][-N:]
+	top = frame[np.argsort(frame[:,2])][-newN:]
 	save_xyz(top,f"{os.getcwd()}/{name}.xyz")	
 
 """calculates particle number density projected onto xy-plane
@@ -604,12 +604,13 @@ def compute_average_scar_correlation(seedFolders, simArgument, label = "N_n_R_r_
 
 	return mids, g, scarCount
 
+#given a histogram of something, takes the negative log of the probability
+#distribution in order to get an 'energy'
 def BoltzmannInversion(mids,widths,hval):
-	hval[hval==0]=1e-3
 	norm = np.sum(widths*hval)
 	Ukt = -1*np.log(hval/norm)
-
 	return mids, Ukt
+
 
 if __name__=="__main__":
 
@@ -617,66 +618,19 @@ if __name__=="__main__":
 
 	simDicts, paramDicts, seedFoldersList = categorize_batch()
 
-	#print(get_average_computation_time(seedFoldersList[0])[0])
-
-# Charge Correlation Visualization for 5s and 7s at once
-	# fig, [ax1,ax2,ax3] = plt.subplots(1,3,figsize=(15,5))
-	# fig.suptitle("Pair Correlation Functions for Long-Range Repulsion")
-	# ax2.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
-	# ax1.set_title(r"$g_{{55}}$")
-	# ax2.set_title(r"$g_{{57}}$")
-	# ax3.set_title(r"$g_{{77}}$")
-	
-	# ax1.set_ylim([0,2])
-	# ax1.set_xlim([0,1])
-	# ax2.set_ylim([0,2])
-	# ax2.set_xlim([0,1])
-	# ax3.set_ylim([0,2])
-	# ax3.set_xlim([0,1])
-
-#+1 +1 charge correlation visualization
-	fig55,ax55 = plt.subplots()
-	ax55.set_title("5-5 Pair Correlation Functions for Long-Range Repulsion")
-	ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
-	ax55.set_ylim([0,2])
-	ax55.set_xlim([0,1])
-
-#Scar Scar correlation visualization
-	figScar, axScar = plt.subplots()
-	axScar.set_title("Scar-Scar Correlation Functions for Long-Range Repulsion")
-	axScar.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
-	axScar.set_ylim([0,2])
-	axScar.set_xlim([0,1])
-
-#icosohedral angles
-	r_ico = np.sin(2*np.pi/5)
-	theta1 = 2*np.arcsin(1/2/r_ico)
-	theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
-
-	# ax1.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
-	# ax1.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-	# ax2.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
-	# ax2.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-	# ax3.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
-	# ax3.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-	ax55.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
-	ax55.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-	axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
-	axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-
 #Radial Distribution Function
 	figRad, axRad = plt.subplots()
 	axRad.set_title("Radial DistributionFunctions for Long-Range Repulsion")
 	axRad.set_xlabel(r"Euclidean Displacement [$2a$]")
 	axRad.set_ylabel("Counts")
 
-#Excess Charge Visualization
+#Excess Charge v Sweeps Visualization
 	figCharge, axCharge = plt.subplots()
 	axCharge.set_title("Excess Charge vs Sweeps")
 	axCharge.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
 	axCharge.set_xlabel("sweeps")
 
-#More Excess Charge Visualization
+#Excess Charge v system variables Visualization
 	figXS1, axXS1 = plt.subplots()
 	axXS1.set_title("Excess Charge vs Initial R/a")
 	axXS1.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
@@ -702,7 +656,7 @@ if __name__=="__main__":
 		_,info = order.radialDistributionFunction(initFrame)
 		spacing = info['particle_spacing']
 
-		lab = lab = f"eta_eff={eta_eff:.3f},R={R:.1f}"
+		lab = f"eta_eff={eta_eff:.3f},R={R:.1f}"
 		midsRad, hval, coordinationShell, _ = firstCoordinationShell(seedFolders, label=lab)
 		Ra = R/spacing
 		
@@ -712,30 +666,21 @@ if __name__=="__main__":
 
 		vcs = [order.Vc(frame, R = R) for frame in frames]
 		XS = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
-			
 
-		if(True):
-			etas.append(np.round(eta_eff,3))
-			avg_excess_charge.append(np.mean(XS))
-			R_on_a.append(np.round(Ra,3))
-			mids55, g55, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,simDicts[i],label=lab)
-			# mids57, g57, Qs = compute_average_pair_charge_correlation(1,-1,seedFolders,simDicts[i],label=lab)
-			# mids77, g77, Qs = compute_average_pair_charge_correlation(-1,-1,seedFolders,simDicts[i],label=lab)
+		avg_excess_charge.append(np.mean(XS))
+		R_on_a.append(Ra)
+		etas.append(eta_eff)
 
-			#print(f"{lab}: Total Charge per Frame: {Qs}")
-			
-			# ax1.plot(mids55/np.pi, g55, label=pltlab,lw = 0.5)
-			# ax2.plot(mids57/np.pi, g57, label=pltlab,lw = 0.5)
-			# ax3.plot(mids77/np.pi, g77, label=pltlab,lw = 0.5)
-			ax55.plot(mids55/np.pi, g55, label=pltlab,lw = 0.5)
+		#use to filter what shows up in the plot, for example we can do eta_eff>0.71
+		cond = True
+
+		#use to decide which seed we will plot against sweeps
+		numSim=0
+
+		if(cond):
 
 			#print(f"{pltlab} first coordination shell: {coordinationShell} [2a]")
 			axRad.plot(midsRad,hval, label = pltlab, lw=0.6)
-
-			midsScar, gScar, scarCount = compute_average_scar_correlation(seedFolders, simDicts[i], label=lab)
-			axScar.plot(midsScar/np.pi,gScar,label=pltlab,lw=0.5)
-
-			numSim=0
 			sim = np.array(sample_frames(seedFolders[numSim:numSim+1], label = lab+f"_{numSim}th_seed", last_section = 1.0))
 			
 			sweeps = simDicts[i]['nsnap']*(1+np.arange(sim.shape[0]))
@@ -749,100 +694,53 @@ if __name__=="__main__":
 	R_on_a = np.array(R_on_a)
 	etas = np.array(etas)
 
-	section = 0
-
-	#ax1.legend();ax2.legend();ax3.legend();
-	ax55.legend(bbox_to_anchor=(1.5,1))
-
-	#bbox_to_anchor=(1.5,1))
-	
-	#fig.savefig("Pair Correlations.png", bbox_inches='tight')
-	fig55.savefig(f"5-5 Pair Correlations_{section}.png", bbox_inches='tight')
-	
 	axRad.legend()
-
 	figRad.savefig(f"Radial Distribution Function_{section}.png")
 
+	#plots XS charge vs R/a for each eta
 	for h in np.unique(etas):
 		xs = R_on_a[etas==h]
 		ind = np.argsort(xs)
 		ys = avg_excess_charge[etas==h]
 		axXS1.plot(xs[ind],ys[ind],label=rf"$\eta_{{eff}}$={h}",lw=0.6)
 	axXS1.legend()
-
 	figXS1.savefig("Excess Charge vs R over a.png")
 
+	#plots XS charge vs eta for each R/a
 	for r in np.unique(R_on_a):
 		xs = etas[R_on_a==r]
 		ind = np.argsort(xs)
 		ys = avg_excess_charge[R_on_a==r]
 		axXS2.plot(xs[ind],ys[ind],label=rf"R/a={r:.2f}",lw=0.6)
 	axXS2.legend()
-
 	figXS2.savefig("Excess Charge vs effective Eta.png")
 
 	axCharge.legend()
-
-	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep_{section}.png")
+	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep.png")
 
 	axCharge.set_xlim([simDicts[0]['nsweeps']/2,simDicts[0]['nsweeps']])
 	axCharge.set_ylim([0,10])
+	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep (last half).png")
 
-	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep (last half)_{section}.png")
-
-	axScar.legend(bbox_to_anchor=(1.5,1))
-	figScar.savefig(f"Scar-Scar Correlations_{section}.png", bbox_inches='tight')
 
 	end = timer()
-	print(f"{end-start}s total pair correlation runtime")
+	print(f"{end-start}s runtime")
 
 
-#Density and Charge Density Visualizations for nearly hard discs
 
-	# lastLabel = 134
-		# N = 300
-		# for i, seedFolders in enumerate(seedFoldersList):
-		# 	for j,folder in enumerate(seedFolders):
-		#		chopCap(read_xyz_frame(f"{folder}/output_{lastlabel}.xyz"), N, name = f"{N}-particle cap, {lastlabel}-{i},{j}")
 
-	#experimental conditions/assumptions
-	#eta_c = 0.85
 
-	# Rs = np.array([d['radius'] for d in simDicts])
-	# vs = np.array([p['vpp'] for p in paramDicts])
-	# print(Rs,vs)
 
-	# a = paramDicts[0]['particle_radius']*1e6 #microns
-	# aeff = units.getAEff(paramDicts[0])*1e6 #microns
 
-	# #setting up density visualization
-	# fig, ax = plt.subplots()
-	# ax.set_title(f"Charge Density Profiles, Vpp = 2V, Random Starting States")
-	# ax.set_xlabel("Arclength [$\mu m$]")
-	# ax.set_ylabel(r"Average Topological Charge Density $[\mu m^{-2}]$")
 
-	# fig2, ax2 = plt.subplots()
-	# ax2.set_title(f"Comparison to Theoretical Area Fraction, Vpp = 2V, Random Starting States")
-	# ax2.set_xlabel("Arclength [$\mu m$]")
-	# ax2.set_ylabel(r"$\eta_{eff}$")
-	# ax2.set_ylim([0,1])
 
-	# for i,seedFolders in enumerate(seedFoldersList):
-	# 	if simDicts[i]['start_from_config'] == False:
-	# 		lab = f"R_{Rs[i]:.2f}"
-	# 		if simDicts[i]['start_from_config']==False:
-	# 			lab+="_random"
-	# 		mids, charge, avg_charge = compute_topological_charge_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
-	# 		mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
-	# 		ax2.plot(rs, eta_th,ls='--')
-	# 		ax.scatter(mids, charge, label=lab)
-	# 		ax2.scatter(mids, eta, label=lab)
 
-	# ax.legend(bbox_to_anchor=(1.5,1))
-	# ax2.legend()#bbox_to_anchor=(1.5,1))
 
-	# fig.savefig("ChargeDensity - Random.png", bbox_inches='tight')
-	# fig2.savefig("AreaFraction - Random.png", bbox_inches='tight')
+
+
+
+
+
 
 
 # def var_bin_rho_hist(frames, var_bins=None):

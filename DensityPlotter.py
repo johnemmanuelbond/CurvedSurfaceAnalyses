@@ -4,7 +4,8 @@ Created on Thu, Mar 5, 2022
 
 uses MCBatchAnalyzer to produce plots of denisty and area fraction
 for a batch of simulations, including theoretical predictions from
-ForceBalanceTheory
+ForceBalanceTheory, as well as charge distributions as a function of
+arclength
 
 @author: Jack Bond
 """
@@ -28,24 +29,30 @@ aeff = units.getAEff(paramDicts[0])*1e6 #microns
 
 #setting up density visualization
 fig, ax = plt.subplots()
-ax.set_title(f"Density Profiles for Phase Coexistence(?) on Surfaces of Varying Curvatures with $\eta_c={eta_c}$")
+ax.set_title(f"Charge Density Profiles, Vpp = 2V, Random Starting States")
 ax.set_xlabel("Arclength [$\mu m$]")
-ax.set_ylabel(r"Density [$\mu m^{-2}$]")
+ax.set_ylabel(r"Average Topological Charge Density $[\mu m^{-2}]$")
 
 fig2, ax2 = plt.subplots()
-ax2.set_title(f"Comparison to Theoretical Area Fraction for Two-Phase Shells with $\eta_c={eta_c}$")
+ax2.set_title(f"Comparison to Theoretical Area Fraction, Vpp = 2V, Random Starting States")
 ax2.set_xlabel("Arclength [$\mu m$]")
 ax2.set_ylabel(r"$\eta_{eff}$")
 ax2.set_ylim([0,1])
 
 for i,seedFolders in enumerate(seedFoldersList):
-	mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=f"R_{Rs[i]}")
-	ax2.plot(rs, eta_th,ls='--')
-	ax.scatter(mids, rho, label=f'Radius: {Rs[i]*2*a:.2f} [$\mu m$], VPP: {vs[i]:.2f} [V]')
-	ax2.scatter(mids, eta, label=f'Radius: {Rs[i]*2*a:.2f} [$\mu m$], VPP: {vs[i]:.2f} [V]')
+	if simDicts[i]['start_from_config'] == False:
+		lab = f"R_{Rs[i]:.2f}"
+		if simDicts[i]['start_from_config']==False:
+			lab+="_random"
+		mids, charge, avg_charge = compute_topological_charge_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
+		mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
+		ax2.plot(rs, eta_th,ls='--')
+		ax.scatter(mids, charge, label=lab)
+		ax2.scatter(mids, eta, label=lab)
 
-ax.legend()#bbox_to_anchor=(1.5,1))
+ax.legend(bbox_to_anchor=(1.5,1))
 ax2.legend()#bbox_to_anchor=(1.5,1))
 
-fig.savefig("Density.jpg", bbox_inches='tight')
-fig2.savefig("AreaFraction.jpg", bbox_inches='tight')
+fig.savefig("ChargeDensity - Random.png", bbox_inches='tight')
+fig2.savefig("AreaFraction - Random.png", bbox_inches='tight')
+
