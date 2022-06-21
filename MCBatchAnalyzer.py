@@ -153,6 +153,32 @@ def integrate_histogram(rhos, rho_bin, shellRadius = None):
 	counts = areas * rhos
 	return counts.sum()
 
+def categorize_batch():
+
+	# we want to log any calculations we do:
+	log = open('log.txt','a')
+	# datetime object containing current date and time
+	now = datetime.now()
+	dt = now.strftime("%d/%m/%Y %H:%M:%S")
+
+	#simulation output files are always in folders including the word "snapshots",
+	#so we locate all these folders and get the jsons from each
+	sims = np.array(glob.glob("*snapshots*/"))
+	configs = []
+	for sim in sims:
+		if os.path.exists("configFile.json"):
+			config = json.load(open(sim + "configFile.json",'r'))
+			util.dumpDictionaryJSON(config['params'],"params")
+			simArgument = config['simargument']
+			inter = config['interactions'][0]
+			simArgument['a'] = config["A"]
+			simArgument['length_scale'] = config['p']
+			util.dumpDictionaryJSON(simArgument,"simArgument")
+
+	
+	return categorize_batch_old()
+
+
 """
 The driver file outputs a json of the simulation argument in each seed folder.
 The driver also outputs a json of the experimental parameters, though they sometimes
@@ -161,7 +187,7 @@ where the simulation parameters are the same and the only difference is the init
 For each of these lists of folders, we also want a python dictionary of the simulation
 argument and a python dictionary of the experimental parameters.
 """
-def categorize_batch():
+def categorize_batch_old():
 
 	# we want to log any calculations we do:
 	log = open('log.txt','a')
