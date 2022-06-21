@@ -13,7 +13,7 @@ from MCBatchAnalyzer import *
 simDicts, paramDicts, seedFoldersList = categorize_batch()
 
 for i,seedFolders in enumerate(seedFoldersList):
-	
+
 	#label generation
 	N = simDicts[i]['npart']
 	R = simDicts[i]['radius']
@@ -34,13 +34,14 @@ for i,seedFolders in enumerate(seedFoldersList):
 	#determining excess charge
 	vcs = [order.Vc(frame, R = R) for frame in frames]
 	XS = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
-	
+
 	#Boltzmann inverting XS Charge
 	hbin_edgeXS = np.histogram_bin_edges(XS,bins=int(12*max(XS)+1),range=(-1/24,max(XS)+1/24))
 	hvalXS, hbinXS = np.histogram(XS[simDicts[i]['nsweeps']//(3*simDicts[i]['nsnap']):], bins = hbin_edgeXS)
 	widthsXS = hbin_edgeXS[1:] - hbin_edgeXS[:-1]
 	midsXS = hbin_edgeXS[:-1] + widthsXS/2
-	
+
+	#plotting histogram
 	figboltz, [axhist,axinvert] = plt.subplots(1,2)
 	figboltz.suptitle(rf"N={N}, $\eta_{{eff}}$={eta_eff:.3f}, R/a={Ra:.1f}")
 	axhist.set_title("Histogram of Excess Charge")
@@ -50,7 +51,20 @@ for i,seedFolders in enumerate(seedFoldersList):
 	axhist.set_ylabel("counts")
 	axinvert.set_ylabel("U/kT")
 	axhist.bar(midsXS,hvalXS,width = widthsXS)
+
+
+	#boltzmann inversion and fitting result
 	midsInv, Ukt = BoltzmannInversion(midsXS, widthsXS, hvalXS)
-	axinvert.plot(midsInv, Ukt)
+	from scipy.optimize import curve_fit as cf
+	def para(x,A,x0,y0):
+			return A*(x-x0)**2 + y0
+
+	guess=np.array([20,1,0])
+	fit, pcov = cf(para,midsInv[Ukt!=np.inf],Ukt[Ukt!=np.inf], p0=guess)
+	Ufit= para(midsInv,*fit)
+
+	axinvert.plot(midsInv, Ukt, label="data")
+	axinvert.plot(midsInv, Ufit, label=rf"{fit[0]:.3f}(x-{fit[1]:.3f})$^2$ + {fit[2]:.3f}")
+	axinvert.legend()
 
 	figboltz.savefig(f"Excess Charge Histogram - {lab}.jpg")

@@ -237,12 +237,15 @@ def get_average_computation_time(seedFolders, label = "N_n_R_r_V_v"):
 	times = []
 	for seed in seedFolders:
 		logerr = open(seed+"log.err","r")
+		found = False
 		for line in logerr:
 			for match in re.finditer(pattern,line):
-				minutes = int(str(re.findall(r"\d+m", line))[2:-3])
-				seconds = int(str(re.findall(r"\d+\.", line))[2:-3])
-				millis = int(str(re.findall(r"\d+s", line))[2:-3])
-				times.append(60*minutes+seconds+millis/1000)
+				if not found:
+					minutes = int(str(re.findall(r"\d+m", line))[2:-3])
+					seconds = int(str(re.findall(r"\d+\.", line))[2:-3])
+					millis = int(str(re.findall(r"\d+s", line))[2:-3])
+					times.append(60*minutes+seconds+millis/1000)
+					found = True
 	mean_t = np.mean(times)
 
 	log.write(f"{dt}:: {label} mean computation time: {mean_t}\n\n")

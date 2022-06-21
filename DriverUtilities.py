@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 import os, glob
-import json
+import json, yaml
 from timeit import default_timer as timer
 
 from datetime import datetime
@@ -13,7 +13,7 @@ exe_Jack_Flat = "C:/Users/johne/MolecularMonteCarlo/FlatSourceCode/plane_yukawa_
 
 #Spherical Shell executables
 exe_Marcc_Curved = "~/bin/yukawa_shell"
-exe_Jack_Curved =  "C:/Users/johne/MolecularMonteCarlo/SphericalCapSourceCode/shell_yukawa_field/build/bin/yukawa_shell.exe "
+exe_Jack_Curved =  "C:/Users/johne/MolecularMonteCarlo/MCEngine/shell_yukawa_field/build/bin/yukawa_shell.exe "
 
 #the autocorrelation time tells you how far apart to take your
 #snapshots such that they are statistically independent
@@ -33,19 +33,124 @@ def fixFrequency(simArgument, indSampleTime):
 #code for dumping the relevant dictionaries into files
 def dumpDictionaryJSON(dic, name):
 	file = open(name+".json","w")
-	file.write(json.dumps(dic))
+	file.write(json.dumps(dic,indent=2))
 	file.close()
 
-def dumpDictionaryYAML(dict, name):
-	return None
+def dumpDictionaryYAML(dic, name):
+	file = open(name+".yaml","w")
+	yaml.dump(dic,file,sort_keys=False)
+	file.close()
 
 def getRandomInputFile(dicString):
 	files = glob.glob(dicString)
 	return random.choice(files)
 
+#runs a simulation using Marcc's parallelism
+def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved):
+	pwd = os.getcwd()
+	print("Foldername :", fldr)
+	# Commands to create folder and run jobs
+
+	os.system("mkdir "+fldr)
+
+	os.system("cp sub.sh sub_edit.sh")
+
+	fin = open("sub_edit.sh", "rt")
+	data = fin.read()
+	data = data.replace('xxx',f"{pwd}/{fldr}")
+	data = data.replace('yyy',"time "+exe)
+	fin.close()
+
+	fin = open("sub_edit.sh", "wt")
+	fin.write(data)
+	fin.close()
+
+	#os.system('echo "'+cmd+'" >> sub_edit.sh')
+	os.system("mv sub_edit.sh " + fldr + "/sub.sh")
+
+	os.chdir(fldr)
+
+	dumpDictionaryJSON(config,"configFile")
+
+	os.system("sbatch sub.sh;")
+
+	os.chdir("..")
+
+	return
+
+#runs a simulation using a version of the code compiled on a windows machine
+def runPCSimWithJSON(config, fldr, exe = exe_Jack_Curved):
+	start = timer()
+
+	print("Foldername :", fldr)
+	# Commands to create folder and run jobs
+
+	os.system("mkdir "+ fldr )
+	os.chdir(fldr)
+
+	dumpDictionaryJSON(config,"configFile")
+
+	os.system(exe)
+	end = timer()
+
+	#recording the simulation time in a usable format
+	logerr = open("log.err","w")
+	time = end-start
+	m = int(time//60)
+	s = time%60
+	logerr.write(f"real\t{m}m{s:.3f}s")
+	logerr.close()
+
+	os.chdir("..")
+	#print(f"Simulation length: {end-start} seconds.")
+	return
+
+params = {#solution characteristics
+		'temperature': 298,             # [K]
+		'rel_permittivity': 78,         # unitless
+		'ion_multiplicity': 1,       # unitless
+		'debye_length': 10e-9,          	# [m]
+		#particle characteristics
+		'particle_radius': 1.4e-6,      # [m]
+		'surface_potential': -75e-3,    # [V]
+		'Gamma': 0.0,
+		#'surface_potential': -75e-3,   # [V]
+		'fcm':  -0.2287,                # unitless
+		#field characteristics
+		'vpp': 0.0,                     # [V]
+		'dg': 100e-6,                   # [m]
+		}
+
+interactions = [
+			{"key": "exp",
+			"A": 6050,
+			"p": 0.002,
+			}
+			]
+
+simargument = {#arguments for a simulation
+		'nsweeps': 50000,
+		'nsnap': 50,
+		'npart': 92,
+		'radius': 5.0,            	#[2a]
+		'temp': 1.0,               	#[kT]
+		'rc': 5.0,        			#[2a]
+		'fieldk': 0.0,				#[kT/(2a)^2]
+		'rand_move_frac': 0.0,
+		'datapath': "?",
+		}
+
+config = {
+	'simargument': simargument,
+	'interactions': interactions,
+	'params':params,
+}
+
+""" OLD LYRA-ORIENTED METHODS FOR REFERENCE """
+
 #turns a dictionary of the MC code's lyra keys into a string
 #which the command line can run
-def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
+def getSimcmd(simArgument, exepath, isPC = False):
 	cmd = "time " + exepath
 	if isPC:
 		cmd = exepath
@@ -53,11 +158,6 @@ def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
 	for arg in simArgument:
 		if arg == "a" or arg == "i" or arg == 'k':
 			cmd += f" -{arg} {simArgument[arg]}"
-		elif arg == "start_from_config":
-			if simArgument[arg]:
-				if start_config_path == None:
-					raise Exception("No starting configuration given")
-				cmd+= f" --datapath {start_config_path}"
 		else:
 			cmd += f" --{arg} {simArgument[arg]}"
 
@@ -65,9 +165,9 @@ def getSimcmd(simArgument, exepath, isPC = False, start_config_path = None):
 	return cmd
 
 #runs a simulation using Marcc's parallelism
-def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved, start_config_path = None):
+def runMarccSimWithLyra(simArgument, params, fldr, exe = exe_Marcc_Curved):
 	pwd = os.getcwd()
-	cmd = getSimcmd(simArgument,exe, start_config_path = start_config_path)
+	cmd = getSimcmd(simArgument,exe)
 	print("Foldername :", fldr)
 	# Commands to create folder and run jobs
 
@@ -99,10 +199,10 @@ def runMarccSim(simArgument, params, fldr, exe = exe_Marcc_Curved, start_config_
 	return
 
 #runs a simulation using a version of the code compiled on a windows machine
-def runPCSim(simArgument, params, fldr, exe = exe_Jack_Curved, start_config_path = None):
+def runPCSimWithLyra(simArgument, params, fldr, exe = exe_Jack_Curved):
 	start = timer()
 
-	cmd = getSimcmd(simArgument,exe,isPC=True, start_config_path = start_config_path)
+	cmd = getSimcmd(simArgument,exe,isPC=True)
 
 	print("Foldername :", fldr)
 	# Commands to create folder and run jobs
@@ -153,5 +253,4 @@ example_simArgument = {#arguments for a simulation
 		'fieldk': 1,                   #[kT/(2a)^2]
 		'a': 6000,                      #[kT]
 		'i': 1,						# 1 denotes yukawa interactions in the arclength coordinate
-		'start_from_config': False,
 		}
