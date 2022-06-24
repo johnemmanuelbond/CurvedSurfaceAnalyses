@@ -76,7 +76,8 @@ def getRGB(N):
 	return r, g, b
 
 def atomMovie(simFolder):
-	simArgument = json.load(open(simFolder + "/simArgument.json",'r'))
+	config = json.load(open(simFolder + "/configFile.json",'r'))
+	simArgument = config['simargument']
 	npart = simArgument['npart']
 	R = simArgument['radius']
 	nsnapfreq = simArgument['nsnap']
@@ -150,19 +151,12 @@ if __name__=="__main__":
 	if nargs <= 1:
 		simFolder = os.getcwd()
 
-		if os.path.exists("configFile.json"):
-			config = json.load(open("configFile.json",'r'))
-			util.dumpDictionaryJSON(config['params'],"params")
-			simArgument = config['simargument']
-			inter = config['interactions'][0]
-			simArgument['a'] = inter["A"]
-			simArgument['length_scale'] = inter['p']
-			util.dumpDictionaryJSON(simArgument,"simArgument")
-
 		atomMovie(simFolder)
 
-		simArgument = json.load(open(simFolder+"/simArgument.json",'r'))
-		params = json.load(open(simFolder+"/params.json",'r'))
+		config = json.load(open(simFolder + "/configFile.json",'r'))
+		simArgument = config['simargument']
+		params = config['params']
+		inter = config['interaction'][0]
 		a = params['particle_radius']
 		aeff = units.getAEff(params)
 		R = simArgument['radius']

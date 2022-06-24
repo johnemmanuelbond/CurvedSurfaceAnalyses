@@ -24,6 +24,7 @@ from datetime import datetime
 import UnitConversions as units
 import ForceBalanceTheory as model
 import OrderParameters as order
+import DriverUtilities as util
 
 """Reads xyz coordinates from a .xyz file. Expected format:
 number of particles
@@ -171,8 +172,8 @@ def categorize_batch():
 			util.dumpDictionaryJSON(config['params'],"params")
 			simArgument = config['simargument']
 			inter = config['interactions'][0]
-			simArgument['a'] = config["A"]
-			simArgument['length_scale'] = config['p']
+			simArgument['a'] = inter["A"]
+			simArgument['length_scale'] = inter['p']
 			util.dumpDictionaryJSON(simArgument,"simArgument")
 
 	
