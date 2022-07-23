@@ -99,3 +99,6 @@ def getAEff(params):
 	end = timer()
 	#print(end-start)
 	return aeff
+
+def R_for_etaeff(pnum, eta_eff, aeff_a_ratio):
+    return (1/4)*np.sqrt(pnum/eta_eff)*aeff_a_ratio

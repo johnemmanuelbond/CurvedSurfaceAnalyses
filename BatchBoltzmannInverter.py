@@ -10,7 +10,7 @@ energy in some coordinate
 import MCBatchAnalyzer
 from MCBatchAnalyzer import *
 
-simDicts, paramDicts, seedFoldersList = categorize_batch()
+configs, seedFoldersList = categorize_batch()
 
 Ns = []
 XSs = []
@@ -21,10 +21,10 @@ ps = []
 for i,seedFolders in enumerate(seedFoldersList):
 
 	#label generation
-	config = json.load(open(seedFolders[0]+"configFile.json"))
-	key = config['interaction'][0]['key']
-	mag = config['interaction'][0]['A']
-	par = config['interaction'][0]['p']
+	config = configs[i]#json.load(open(seedFolders[0]+"configFile.json"))
+	key = config['interactions'][0]['key']
+	mag = config['interactions'][0]['A']
+	par = config['interactions'][0]['p']
 	N = config['simargument']['npart']
 	R = config['simargument']['radius']
 	a = config['params']["particle_radius"]
@@ -45,7 +45,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	C6s_0, meanC6_0,_,_ = order.C6(initFrame)
 
 	#reading data
-	frames = np.array(sample_frames(seedFolders,label=lab,reset=True))
+	frames = np.array(sample_frames(seedFolders,label=lab))
 
 	#determining excess charge
 	vcs = [order.Vc(frame, R = R) for frame in frames]
@@ -59,7 +59,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 
 	#plotting XS Charge histogram
 	figboltz, [axhist,axinvert] = plt.subplots(1,2)
-	figboltz.suptitle(rf"N={N}, {key};{mag:.3f},{par:.3f}")
+	figboltz.suptitle(rf"N={N}, {key}; {mag:.3f}, {par:.3f}")
 	axhist.set_title("Histogram of Excess Charge")
 	axinvert.set_title("Boltzmann Inversion")
 	axhist.set_xlabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
@@ -75,7 +75,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	def para(x,A,x0,y0):
 			return A*(x-x0)**2 + y0
 
-	guess=np.array([20,1,0])
+	guess=np.array([200,1,0])
 	fit, pcov = cf(para,midsInv[Ukt!=np.inf],Ukt[Ukt!=np.inf], p0=guess)
 	Ufit= para(midsInv,*fit)
 
@@ -84,6 +84,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	axinvert.legend()
 
 	figboltz.savefig(f"Excess Charge Histogram - {lab}.jpg")
+	plt.close()
 
 	XSs.append(fit[1])
 
@@ -102,7 +103,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 
 	#plotting C6 Charge histogram
 	figboltz, [axhist,axinvert] = plt.subplots(1,2)
-	figboltz.suptitle(rf"N={N}, {key};{mag:.3f},{par:.3f}")
+	figboltz.suptitle(rf"N={N}, {key}; {mag:.3f}, {par:.3f}")
 	axhist.set_title("Histogram of Average C6 Differences")
 	axinvert.set_title("Boltzmann Inversion")
 	axhist.set_xlabel(r"$<C6>-<C6>_0$")
@@ -113,11 +114,10 @@ for i,seedFolders in enumerate(seedFoldersList):
 
 	#boltzmann inversion and fitting result
 	midsInv, Ukt = BoltzmannInversion(midsC6, widthsC6, hvalC6)
-	from scipy.optimize import curve_fit as cf
 	def para(x,A,x0,y0):
 			return A*(x-x0)**2 + y0
 
-	guess=np.array([20,1,0])
+	guess=np.array([500,-0.1,-2.0])
 	fit, pcov = cf(para,midsInv[Ukt!=np.inf],Ukt[Ukt!=np.inf], p0=guess)
 	Ufit= para(midsInv,*fit)
 
@@ -126,6 +126,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	axinvert.legend()
 
 	figboltz.savefig(f"Mean C6 Histogram - {lab}.jpg")
+	plt.close()
 
 	delC6s.append(fit[1])
 
@@ -139,22 +140,24 @@ figtrends, axtrends = plt.subplots()
 axtrends.set_title("Most Probable XS Charge vs System Size")
 axtrends.set_ylabel(r"$\frac{{1}}{{2}}(\frac{{\sum|q_{{i}}|}}{{12}}-1)$")
 axtrends.set_xlabel("N")
-for p in p.unique():
+for p in np.unique(ps):
 	xs = Ns[ps == p]
 	ind = np.argsort(xs)
-	ys = Xss[ps == p]
+	ys = XSs[ps == p]
 	key = keys[ps==p][0]
-	axtrends.plot(xs[ind],ys[ind], label = f"{key}, {p}")
+	axtrends.plot(xs[ind],ys[ind], label = f"{key}, {p:.4f}")
+axtrends.legend()
 figtrends.savefig("XS Charge Trends")
 
 figtrends, axtrends = plt.subplots()
 axtrends.set_title("Most Probable C6 Difference vs System Size")
 axtrends.set_ylabel(r"$<C6>-<C6>_0$")
 axtrends.set_xlabel("N")
-for p in p.unique():
+for p in np.unique(ps):
 	xs = Ns[ps == p]
 	ind = np.argsort(xs)
 	ys = delC6s[ps == p]
 	key = keys[ps==p][0]
-	axtrends.plot(xs[ind],ys[ind], label = f"{key}, {p}")
-figtrends.savefig("XS Charge Trends")
+	axtrends.plot(xs[ind],ys[ind], label = f"{key}, {p:.4f}")
+axtrends.legend()
+figtrends.savefig("C6 diff Trends")

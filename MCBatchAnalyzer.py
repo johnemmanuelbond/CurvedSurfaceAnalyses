@@ -167,17 +167,60 @@ def categorize_batch():
 	sims = np.array(glob.glob("*snapshots*/"))
 	configs = []
 	for sim in sims:
-		if os.path.exists("configFile.json"):
-			config = json.load(open(sim + "configFile.json",'r'))
-			util.dumpDictionaryJSON(config['params'],"params")
-			simArgument = config['simargument']
-			inter = config['interactions'][0]
-			simArgument['a'] = inter["A"]
-			simArgument['length_scale'] = inter['p']
-			util.dumpDictionaryJSON(simArgument,"simArgument")
+		# if(os.path.exists(sim + "simArgument.json")):
+		# 	simarg = json.load(open(sim + "simArgument.json",'r'))
+		# 	params = json.load(open(sim + "params.json",'r'))
+		# 	inter = {"key": "yukawa",}
+		# 	inter["A"] = simarg.pop("a")
+		# 	inter["p"] = simarg.pop("length_scale")
+		# 	config = {"simargument": simarg, "interactions": [inter], "params": params,}
+		# else:
+		config = json.load(open(sim + "configFile.json",'r'))
+		configs.append(config)
 
+	#if the simArgument dictionary is the same accross two sims, they are considered
+	#two "seeds" of the same simulation and can be grouped
+	start = timer()
+	isSame = np.zeros((len(configs),len(configs)))
+	for i, c1 in enumerate(configs):
+		for j, c2 in enumerate(configs):
+			if j < i:
+				pass
+			same = 1
+			d1,d2 = c1['simargument'],c2['simargument']
+			for arg in d1:
+				if arg!="i" and arg!="a" and arg!="length_scale":
+					if d1[arg] != d2[arg]:
+						same = 0
+			d1,d2 = c1['interactions'][0],c2['interactions'][0]
+			for arg in d1:
+				if d1[arg] != d2[arg]:
+					same = 0
+			isSame[i,j] = same
+			isSame[j,i] = same
+	nseeds = int(np.sum(isSame,axis=0)[0])
+	ndiff = isSame[0].size//nseeds
+	end = timer()
+	pairs = np.array(np.unique(isSame,axis=0))
+	log.write(f"{dt}:: simArgument Dictionary Comparison Time: {end-start}s\n")
+
+
+	#once we've determined the grouping in the isSame array, we simply assign a
+	#simArgument dictionary from the seeds, slightly modify the experimetal parameter
+	#dictionary to reflect the changing conditions, and select the appropriate folder
+	#names from the list we globbed
+	start = timer()
+	seedFolders = []
+	configs_2 = []
+	for i,l in enumerate(pairs):
+		seedFolders.append(sims[l==1])
+		configs_2.append(configs[np.where(l==1)[0][0]])
+	end = timer()
+	log.write(f"{dt}:: simArgument dictionary, params dictionary, and seed directory list organization time: {end-start}s\n")
 	
-	return categorize_batch_old()
+	log.write("\n")
+	log.close()
+	return configs_2, seedFolders
 
 
 """
@@ -202,6 +245,9 @@ def categorize_batch_old():
 	simDicts = []
 	for sim in sims:
 		simArgument = json.load(open(sim + "simArgument.json",'r'))
+		simArgument['old'] = True
+		if(os.path.exists(sim + "configFile.json")):
+			simArgument['old'] = False
 		simDicts.append(simArgument)
 
 	#if the simArgument dictionary is the same accross two sims, they are considered
@@ -214,8 +260,9 @@ def categorize_batch_old():
 				pass
 			same = 1
 			for arg in d1:
-				if d1[arg] != d2[arg]:
-					same = 0
+				if arg!="i":
+					if d1[arg] != d2[arg]:
+						same = 0
 			isSame[i,j] = same
 			isSame[j,i] = same
 	nseeds = int(np.sum(isSame,axis=0)[0])
@@ -331,7 +378,7 @@ one for the simulation argument--this method will return binned density and area
 as a function of arclength. Additionally it will use the osmotic force balance theory
 to predict the density profile that the experimental parameters would produce.
 """
-def compute_SI_density_profile(seedFolders, params, simArgument, label = "N_n_R_r_V_v", bs=1):
+def compute_SI_density_profile(seedFolders, config, label = "N_n_R_r_V_v", bs=1):
 	#we want to log any time we read a file
 	log = open("log.txt", "a")
 	now = datetime.now()
@@ -340,12 +387,16 @@ def compute_SI_density_profile(seedFolders, params, simArgument, label = "N_n_R_
 	start = timer()
 	frames = np.array(sample_frames(seedFolders,label=label))
 
+	simarg = config['simargument']
+	params = config['params']
+	inter = config['interactions'][0]
+
 	#relevant lengths in relevant units
 	a = params['particle_radius']*1e6 #microns
 	aeff = units.getAEff(params)*1e6 #microns
-	R = simArgument['radius'] #2a
+	R = simarg['radius'] #2a
 
-	N = simArgument['npart']
+	N = simarg['npart']
 
 	#get theoretical area fraction
 	eta_th, rs, guess_N = model.profileFromFieldStrength(params,N, shellRadius = R, tol_e=-3)
@@ -418,7 +469,7 @@ def spherical_charge_hist(frames, charges, shellRadius, furthest=None, bin_width
 Given a batch of seeds and the respective dictionaries--one for the experimental parameters,
 one for the simulation argument--this method will return binned charge as a function of arclength.
 """
-def compute_topological_charge_profile(seedFolders, params, simArgument, label = "N_n_R_r_V_v", bs=1):
+def compute_topological_charge_profile(seedFolders, config, label = "N_n_R_r_V_v", bs=1):
 	#we want to log any time we read a file
 	log = open("log.txt", "a")
 	now = datetime.now()
@@ -427,12 +478,16 @@ def compute_topological_charge_profile(seedFolders, params, simArgument, label =
 	start = timer()
 	frames = np.array(sample_frames(seedFolders,label=label))
 
+	simarg = config['simargument']
+	params = config['params']
+	inter = config['interactions'][0]
+
 	#relevant lengths in relevant units
 	a = params['particle_radius']*1e6 #microns
 	aeff = units.getAEff(params)*1e6 #microns
-	R = simArgument['radius'] #2a
+	R = simarg['radius'] #2a
 
-	N = simArgument['npart']
+	N = simarg['npart']
 
 	charges = [];
 	for frame in frames:
@@ -595,7 +650,7 @@ def scar_correlation(frame, shellRadius, bin_width=2):
 
 	return mids, hval, scars, meanscarpositions
 
-def compute_average_scar_correlation(seedFolders, simArgument, label = "N_n_R_r_V_v", bs = np.pi/40):
+def compute_average_scar_correlation(seedFolders, config, label = "N_n_R_r_V_v", bs = np.pi/40):
 	#we want to log any time we read a file
 	log = open("log.txt", "a")
 	now = datetime.now()
@@ -605,7 +660,7 @@ def compute_average_scar_correlation(seedFolders, simArgument, label = "N_n_R_r_
 	frames = np.array(sample_frames(seedFolders,label=label,last_section=-1))
 
 	#relevant lengths in relevant units
-	R = simArgument['radius'] #2a
+	R = config['simargument']['radius'] #2a
 	scarCount=[]
 	hvals = []
 	midss = []

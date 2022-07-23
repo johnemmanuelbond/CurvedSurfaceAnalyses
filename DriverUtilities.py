@@ -7,6 +7,13 @@ from timeit import default_timer as timer
 
 from datetime import datetime
 
+import FileHandling as handle
+
+
+
+
+""" FOR RUNNING MONTE CARLO SIMS """
+
 #Flat-Case executables
 exe_Marcc_Flat = "~/bin/plane_yukawa_shell"
 exe_Jack_Flat = "C:/Users/johne/MolecularMonteCarlo/FlatSourceCode/plane_yukawa_field/build/bin/plane_yukawa_shell.exe"
@@ -29,17 +36,6 @@ def fixFrequency(simArgument, indSampleTime):
 	nsnapfreq = int(simArgument['nsweeps']//nsamples)
 	simArgument['nsnap'] = nsnapfreq
 	return simArgument
-
-#code for dumping the relevant dictionaries into files
-def dumpDictionaryJSON(dic, name):
-	file = open(name+".json","w")
-	file.write(json.dumps(dic,indent=2))
-	file.close()
-
-def dumpDictionaryYAML(dic, name):
-	file = open(name+".yaml","w")
-	yaml.dump(dic,file,sort_keys=False)
-	file.close()
 
 def getRandomInputFile(dicString):
 	files = glob.glob(dicString)
@@ -70,7 +66,7 @@ def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved):
 
 	os.chdir(fldr)
 
-	dumpDictionaryJSON(config,"configFile")
+	handle. dumpDictionaryJSON(config,"configFile")
 
 	os.system("sbatch sub.sh;")
 
@@ -88,7 +84,7 @@ def runPCSimWithJSON(config, fldr, exe = exe_Jack_Curved):
 	os.system("mkdir "+ fldr )
 	os.chdir(fldr)
 
-	dumpDictionaryJSON(config,"configFile")
+	handle.dumpDictionaryJSON(config,"configFile")
 
 	os.system(exe)
 	end = timer()
@@ -104,6 +100,33 @@ def runPCSimWithJSON(config, fldr, exe = exe_Jack_Curved):
 	os.chdir("..")
 	#print(f"Simulation length: {end-start} seconds.")
 	return
+
+"""
+sub.sh
+	
+	#!/bin/bash
+
+	#SBATCH --job-name=ss_shell
+	#SBATCH --time=72:0:0
+	#SBATCH --partition=defq
+	#SBATCH --chdir=xxx
+	#SBATCH --error=log.err
+	#SBATCH --account=mbevan4
+
+	#### load and unload modules you may need
+	module load gcc
+	module load armadillo
+	module load openblas
+	module load anaconda
+	module load hdf5
+	module list
+
+	echo "Job $SLURM_JOBID initiated"
+
+	yyy;
+
+	time python ~/code/CurvedSurfaceAnalyses/visualize.py
+"""
 
 params = {#solution characteristics
 		'temperature': 298,             # [K]
@@ -145,6 +168,9 @@ config = {
 	'interactions': interactions,
 	'params':params,
 }
+
+
+
 
 """ OLD LYRA-ORIENTED METHODS FOR REFERENCE """
 
@@ -191,8 +217,8 @@ def runMarccSimWithLyra(simArgument, params, fldr, exe = exe_Marcc_Curved):
 	os.chdir(fldr)
 	os.system("sbatch sub.sh;")
 
-	dumpDictionaryJSON(simArgument,"simArgument")
-	dumpDictionaryJSON(params,"params")
+	handle.dumpDictionaryJSON(simArgument,"simArgument")
+	handle.dumpDictionaryJSON(params,"params")
 
 	os.chdir("..")
 
@@ -220,8 +246,8 @@ def runPCSimWithLyra(simArgument, params, fldr, exe = exe_Jack_Curved):
 	logerr.write(f"real\t{m}m{s:.3f}s")
 	logerr.close()
 	
-	dumpDictionaryJSON(simArgument,"simArgument")
-	dumpDictionaryJSON(params,"params")
+	handle.dumpDictionaryJSON(simArgument,"simArgument")
+	handle.dumpDictionaryJSON(params,"params")
 
 	os.chdir("..")
 	#print(f"Simulation length: {end-start} seconds.")
@@ -254,3 +280,56 @@ example_simArgument = {#arguments for a simulation
 		'a': 6000,                      #[kT]
 		'i': 1,						# 1 denotes yukawa interactions in the arclength coordinate
 		}
+
+
+
+
+""" FOR RUNNING LAMMPS SIMS """
+
+def runLammpsSimMarcc(config, fldr, inputStructPath, inFile = 'diff_field.in'):
+	os.system("mkdir "+fldr)
+            
+    os.system(f"cp {inFile} edit.in")
+    for key in config:
+    	os.system(f"sed -i 's/{key}/{config[key]:0.5f}/' edit.in")
+    os.system(f"mv edit.in {fldr}/{inFile}")
+    os.system(f"cp {inputStructPath} {fldr}/input.data")
+
+    os.chdir(fldr)
+    os.system("sbatch ~/bin/subLAMMPS.sh")
+    os.chdir("..")
+
+#example of the kinds of keys and values that could appear in diff_field.in
+config = {#Arguments for running a lammps sim
+	'xxxradiusxxx': 8.0, #[2a]
+	'xxxnsnapxxx': 2000,
+	'xxxmassxxx': 1.0,
+	'xxxdampxxx': 1.0, #[tau]
+	'xxxtimestepxxx': 1e-4, #[s]
+	'xxxnstepxxx': 90000000,
+	'xxxtempxxx': 1.0, #[kT]
+}
+
+"""
+must have lammps compiled with the manifold package and this bash script in your bin
+
+subLammps.sh
+
+	#!/bin/bash
+
+	#SBATCH --job-name=lmp_coll
+	#SBATCH --time=72:00:00
+	#SBATCH --error=log.err
+	#SBATCH --partition=defq
+	#SBATCH --account=mbevan4
+
+
+	#### load and unload modules you may need
+	module list
+
+	echo "Job $SLURM_JOBID initiated"
+
+	lmp -in *.in;
+	python ~/bin/general_analysis.py
+
+"""

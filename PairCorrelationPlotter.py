@@ -12,7 +12,7 @@ of mass
 import MCBatchAnalyzer
 from MCBatchAnalyzer import *
 
-simDicts, paramDicts, seedFoldersList = categorize_batch()
+configs, seedFoldersList = categorize_batch()
 
 #print(get_average_computation_time(seedFoldersList[0])[0])
 
@@ -62,10 +62,13 @@ axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",
 axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
 for i,seedFolders in enumerate(seedFoldersList):
-	N = simDicts[i]['npart']
-	R = simDicts[i]['radius']
-	a = paramDicts[i]["particle_radius"]
-	aeff = units.getAEff(paramDicts[i])
+	simarg = configs[i]['simargument']
+	params = configs[i]['params']
+	inter = configs[i]['interactions'][0]
+	N = simarg['npart']
+	R = simarg['radius']
+	a = params["particle_radius"]
+	aeff = units.getAEff(params)
 	eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
 	initFrame = read_xyz_frame(seedFolders[0]+"output_0.xyz")
@@ -84,7 +87,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	cond = True;
 
 	if(cond):
-		mids55, g55, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,simDicts[i],label=lab)
+		mids55, g55, Qs = compute_average_pair_charge_correlation(1,1,seedFolders,configs[i],label=lab)
 		# mids57, g57, Qs = compute_average_pair_charge_correlation(1,-1,seedFolders,simDicts[i],label=lab)
 		# mids77, g77, Qs = compute_average_pair_charge_correlation(-1,-1,seedFolders,simDicts[i],label=lab)
 
@@ -95,7 +98,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 		# ax3.plot(mids77/np.pi, g77, label=pltlab,lw = 0.5)
 		ax55.plot(mids55/np.pi, g55, label=pltlab,lw = 0.5)
 
-		midsScar, gScar, scarCount = compute_average_scar_correlation(seedFolders, simDicts[i], label=lab)
+		midsScar, gScar, scarCount = compute_average_scar_correlation(seedFolders, configs[i], label=lab)
 		axScar.plot(midsScar/np.pi,gScar,label=pltlab,lw=0.5)
 
 #ax1.legend();ax2.legend();ax3.legend();

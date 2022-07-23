@@ -13,19 +13,21 @@ arclength
 import MCBatchAnalyzer
 from MCBatchAnalyzer import *
 
-simDicts, paramDicts, seedFoldersList, = categorize_batch()
+configs, seedFoldersList = categorize_batch()
 
 #print(get_average_computation_time(seedFoldersList[0])[0])
 
 #experimental conditions/assumptions
 eta_c = 0.85
 
-Rs = np.array([d['radius'] for d in simDicts])
-vs = np.array([p['vpp'] for p in paramDicts])
+
+
+Rs = np.array([c['simargument']['radius'] for c in configs])
+vs = np.array([c['params']['vpp'] for c in configs])
 print(Rs,vs)
 
-a = paramDicts[0]['particle_radius']*1e6 #microns
-aeff = units.getAEff(paramDicts[0])*1e6 #microns
+a = configs[0]['params']['particle_radius']*1e6 #microns
+aeff = units.getAEff(configs[0]['params'])*1e6 #microns
 
 #setting up density visualization
 fig, ax = plt.subplots()

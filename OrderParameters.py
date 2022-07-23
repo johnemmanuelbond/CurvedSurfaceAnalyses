@@ -1,6 +1,6 @@
 import UnitConversions as units
 #from visualize import getRGB
-#from MCBatchAnalyzer import read_xyz_frame
+from FileHandling import read_xyz_frame
 
 import numpy as np
 import scipy as sp
@@ -14,24 +14,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from timeit import default_timer as timer
-
-def read_xyz_frame(filename):
-	frame = []
-	with open(filename, 'r') as xyzfile:
-		pnum = None
-		for i, line in enumerate(xyzfile):
-			if i == 0:
-				pnum = float(line.strip())
-			elif i == 1:
-				pass  #throw away comment
-			elif i <= pnum+1:
-				# assumes format as below for particle coordinates
-				# index xcomp ycomp zcomp ... (unspecified afterwards)
-				coordinates = line.split()[1:4]
-				frame.append([float(coord) for coord in coordinates])
-			else:
-				print("extra: " + line)
-	return np.array(frame)
 
 """from a a spherical cap in 3D coordinates, returns a 2D projection
 in polar coordinates where the radius is the arclength from the pole and
