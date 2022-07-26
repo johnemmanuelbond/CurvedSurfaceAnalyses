@@ -130,6 +130,20 @@ def format_boxes(xbox, ybox, zbox):
            " ".join([str(i) for i in zbox]) + " zlo zhi\n")
     return out
 
+
+"""
+returns the total runtime of the lamps sim?
+source: general_analysis, 7/26/22
+author: Alex Yeh
+"""
+def get_thermo_time(filename):
+    with open(filename) as logfile:
+        for line in logfile:
+            if line.startswith('Total wall time:'):
+                return line.split()[-1]
+    # if no wall time, job was ended before calculation completed
+    return 'overtime'
+
 """
 Gets the thermodynamic quantites from a log.lammps file. Quantites like
 the energy, temperature, and cartesian msds per coordinate and as a whole
