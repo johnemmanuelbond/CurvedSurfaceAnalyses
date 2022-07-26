@@ -8,9 +8,18 @@ of mass
 
 @author: Jack Bond
 """
+import numpy as np
 
-import MCBatchAnalyzer
-from MCBatchAnalyzer import *
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+from FileHandling import read_xyz_frame
+from UnitConversions import getAEff
+from OrderParameters import radialDistributionFunction
+
+from MCBatchAnalyzer import categorize_batch, sample_frames
+from MCBatchAnalyzer import firstCoordinationShell
+from MCBatchAnalyzer import compute_average_scar_correlation, compute_average_pair_charge_correlation
 
 configs, seedFoldersList = categorize_batch()
 
@@ -68,11 +77,11 @@ for i,seedFolders in enumerate(seedFoldersList):
 	N = simarg['npart']
 	R = simarg['radius']
 	a = params["particle_radius"]
-	aeff = units.getAEff(params)
+	aeff = getAEff(params)
 	eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
 	initFrame = read_xyz_frame(seedFolders[0]+"output_0.xyz")
-	_,info = order.radialDistributionFunction(initFrame)
+	_,info = radialDistributionFunction(initFrame)
 	spacing = info['particle_spacing']
 
 	lab = f"eta_eff={eta_eff:.3f},R={R:.1f}"

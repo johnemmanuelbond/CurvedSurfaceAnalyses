@@ -9,9 +9,13 @@ arclength
 
 @author: Jack Bond
 """
+import numpy as np
 
-import MCBatchAnalyzer
-from MCBatchAnalyzer import *
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+from MCBatchAnalyzer import categorize_batch
+from UnitConversions import getAEff
 
 configs, seedFoldersList = categorize_batch()
 
@@ -27,7 +31,7 @@ vs = np.array([c['params']['vpp'] for c in configs])
 print(Rs,vs)
 
 a = configs[0]['params']['particle_radius']*1e6 #microns
-aeff = units.getAEff(configs[0]['params'])*1e6 #microns
+aeff = getAEff(configs[0]['params'])*1e6 #microns
 
 #setting up density visualization
 fig, ax = plt.subplots()
@@ -42,15 +46,14 @@ ax2.set_ylabel(r"$\eta_{eff}$")
 ax2.set_ylim([0,1])
 
 for i,seedFolders in enumerate(seedFoldersList):
-	if simDicts[i]['start_from_config'] == False:
-		lab = f"R_{Rs[i]:.2f}"
-		if simDicts[i]['start_from_config']==False:
-			lab+="_random"
-		mids, charge, avg_charge = compute_topological_charge_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
-		mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,paramDicts[i],simDicts[i],label=lab)
-		ax2.plot(rs, eta_th,ls='--')
-		ax.scatter(mids, charge, label=lab)
-		ax2.scatter(mids, eta, label=lab)
+	lab = f"R{Rs[i]:.2f}_V{vs[i]:.2f}"
+	if(configs[i]['simargument']['datapath']=='?'):
+		lab+="_rand"
+	mids, charge, avg_charge = compute_topological_charge_profile(seedFolders,configs[i],label=lab)
+	mids, rho, eta, rs, eta_th = compute_SI_density_profile(seedFolders,configs[i],label=lab)
+	ax2.plot(rs, eta_th,ls='--')
+	ax.scatter(mids, charge, label=lab)
+	ax2.scatter(mids, eta, label=lab)
 
 ax.legend(bbox_to_anchor=(1.5,1))
 ax2.legend()#bbox_to_anchor=(1.5,1))

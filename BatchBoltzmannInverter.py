@@ -7,8 +7,16 @@ energy in some coordinate
 
 @author: Jack Bond
 """
-import MCBatchAnalyzer
-from MCBatchAnalyzer import *
+import numpy as np
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+from FileHandling import read_xyz_frame
+from OrderParameters import radialDistributionFunction
+from OrderParameters import C6, Vc
+from MCBatchAnalyzer import categorize_batch, sample_frames
+from MCBatchAnalyzer import BoltzmannInversion
 
 configs, seedFoldersList = categorize_batch()
 
@@ -32,7 +40,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	#eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
 	initFrame = read_xyz_frame(seedFolders[0]+"output_0.xyz")
-	_,info = order.radialDistributionFunction(initFrame)
+	_,info = radialDistributionFunction(initFrame)
 	spacing = info['particle_spacing']
 
 	lab = f"{N},{R:.3f}-{key};{mag:.3f},{par:.3f}"
@@ -42,13 +50,13 @@ for i,seedFolders in enumerate(seedFoldersList):
 	ps.append(par)
 	keys.append(key)
 
-	C6s_0, meanC6_0,_,_ = order.C6(initFrame)
+	C6s_0, meanC6_0,_,_ = C6(initFrame)
 
 	#reading data
 	frames = np.array(sample_frames(seedFolders,label=lab))
 
 	#determining excess charge
-	vcs = [order.Vc(frame, R = R) for frame in frames]
+	vcs = [Vc(frame, R = R) for frame in frames]
 	XS = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
 
 	#Boltzmann inverting XS Charge
@@ -91,7 +99,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	#determining average C6
 	meanC6s = []
 	for frame in frames:
-		C6, meanC6, _, _ = order.C6(frame)
+		C6, meanC6, _, _ = C6(frame)
 		meanC6s.append(meanC6)
 	meanC6s = np.array(meanC6s)
 
