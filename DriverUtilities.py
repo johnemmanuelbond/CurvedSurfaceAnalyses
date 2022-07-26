@@ -292,7 +292,7 @@ def runLammpsSimMarcc(config, fldr, inputStructPath, inFile = 'diff_field.in', r
 	os.system(f"cp {inFile} edit.in")
 	
 	for key in config:
-		os.system(f"sed -i 's/{key}/{config[key]:0.5f}/' edit.in")
+		os.system(f"sed -i -r 's/{key}/{config[key]}/g' edit.in")
 	
 	os.system(f"mv edit.in {fldr}/inFile.in")
 	os.system(f"cp {inputStructPath} {fldr}/input.data")
