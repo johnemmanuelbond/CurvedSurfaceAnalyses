@@ -290,30 +290,30 @@ def runLammpsSimMarcc(config, fldr, inputStructPath, inFile = 'diff_field.in', r
 	os.system("mkdir "+fldr)
 	
 	os.system(f"cp {inFile} edit.in")
-    
-    for key in config:
-    	os.system(f"sed -i 's/{key}/{config[key]:0.5f}/' edit.in")
-    
-    os.system(f"mv edit.in {fldr}/inFile.in")
-    os.system(f"cp {inputStructPath} {fldr}/input.data")
+	
+	for key in config:
+		os.system(f"sed -i 's/{key}/{config[key]:0.5f}/' edit.in")
+	
+	os.system(f"mv edit.in {fldr}/inFile.in")
+	os.system(f"cp {inputStructPath} {fldr}/input.data")
 
-    os.chdir(fldr)
-    if run:
-    	os.system("sbatch ~/bin/subLAMMPS.sh")
-    else:
-    	print("here's where you would run a batch job")
-    os.chdir("..")
+	os.chdir(fldr)
+	if run:
+		os.system("sbatch ~/bin/subLAMMPS.sh")
+	else:
+		print("here's where you would run a batch job")
+	os.chdir("..")
 
 #example of the kinds of keys and values that could appear in diff_field.in
 inConfig = {
-                'xxxdampxxx': 1.0,              # [tau]
-                'xxxtempxxx': 1.0,              # [kT]
-                'xxxradiusxxx': 10.0,           # [2a]
-                'xxxnsnapxxx:': 2000,           # [dt]
-                'xxxnstepxxx': 900000000,       # [dt]
-                'xxxtimestepxxx': 1e-5,         # [tau]
-                'xxxmassxxx':1.0,               # [?]
-                }
+				'xxxdampxxx': 1.0,              # [tau]
+				'xxxtempxxx': 1.0,              # [kT]
+				'xxxradiusxxx': 10.0,           # [2a]
+				'xxxnsnapxxx:': 2000,           # [dt]
+				'xxxnstepxxx': 900000000,       # [dt]
+				'xxxtimestepxxx': 1e-5,         # [tau]
+				'xxxmassxxx':1.0,               # [?]
+				}
 
 """
 must have lammps compiled with the manifold package and this bash script in your bin
