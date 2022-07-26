@@ -25,56 +25,15 @@ import UnitConversions as units
 import ForceBalanceTheory as model
 import OrderParameters as order
 import DriverUtilities as util
+import FileHandling as handle
 
-"""Reads xyz coordinates from a .xyz file. Expected format:
-number of particles
-comment line (should have units)
-type x-coord y-coord z-coord
-type x-coord y-coord z-coord
-
-Returns a triply nested numpy array, with format:
-[ # first frame
- [-10.34, -10.8, 37.1], #coordinates of particle
- [-14.48, 5.69, 36.85],
- [-7.47, -16.2, 35.8],
 """
-def read_xyz_frame(filename):
-	frame = []
-	with open(filename, 'r') as xyzfile:
-		pnum = None
-		for i, line in enumerate(xyzfile):
-			if i == 0:
-				pnum = float(line.strip())
-			elif i == 1:
-				pass  #throw away comment
-			elif i <= pnum+1:
-				# assumes format as below for particle coordinates
-				# index xcomp ycomp zcomp ... (unspecified afterwards)
-				coordinates = line.split()[1:4]
-				frame.append([float(coord) for coord in coordinates])
-			else:
-				print("extra: " + line)
-	return np.array(frame)
-
-"""Given a frame or set of frames, saves them to filename as xyz file"""
-def save_xyz(coords, filename, comment=None):
-    if comment == None:
-        comment = "idx x(um)   y(um)   z(um)   token\n"
-    if len(coords.shape) == 2:
-        coords = coords[np.newaxis,:] #make single frames correct size
-    print(filename)
-    with open(filename, 'w', newline='') as output:        
-        for i, frame in enumerate(coords):
-            #print number of particles in frame
-            output.write("{}\n".format(frame.shape[0]))
-            output.write(comment)
-            for j, part in enumerate(frame):
-                output.write("C {:.6e} {:.6e} {:.6e} \n".format(
-                             *part))
-
+chops the first N particles (usually also the top N) out from a frame and saves it
+as a new file.
+"""
 def chopCap(frame, newN, name = "N_n_R_r_V_v"):
 	top = frame[np.argsort(frame[:,2])][-newN:]
-	save_xyz(top,f"{os.getcwd()}/{name}.xyz")	
+	handle.save_xyz(top,f"{os.getcwd()}/{name}.xyz")	
 
 """calculates particle number density projected onto xy-plane
 given a N x M x d array"""
@@ -154,6 +113,9 @@ def integrate_histogram(rhos, rho_bin, shellRadius = None):
 	counts = areas * rhos
 	return counts.sum()
 
+"""
+The Monte carlo spits out a configuration file
+"""
 def categorize_batch():
 
 	# we want to log any calculations we do:
@@ -224,6 +186,8 @@ def categorize_batch():
 
 
 """
+Old Versions of the monte carlo used to spit out 
+
 The driver file outputs a json of the simulation argument in each seed folder.
 The driver also outputs a json of the experimental parameters, though they sometimes
 change between sims. Using these jsons we can organize the directory into lists of folders
@@ -357,11 +321,11 @@ def sample_frames(seedFolders, label = "N_n_R_r_V_v", last_section = 1/3, reset 
 		for seed in seedFolders:
 			if (last_section<0):
 				if(last_section%1!=0): raise Exception("Noninteger negative last_section")
-				tmp.append(read_xyz_frame(seed+"output_"+str(int(maxlabel+last_section))+".xyz"))
+				tmp.append(handle.read_xyz_frame(seed+"output_"+str(int(maxlabel+last_section))+".xyz"))
 			else:
 				if(last_section>1): raise Exception("Nonfraction positive last_section")
 				for l in np.arange(int((1-last_section)*maxlabel)+1-hasOutput0,maxlabel):
-					tmp.append(read_xyz_frame(seed+"output_"+str(int(l))+".xyz"))
+					tmp.append(handle.read_xyz_frame(seed+"output_"+str(int(l))+".xyz"))
 		multiple = np.stack(tmp).squeeze()
 		np.save(f"{label}_traj_xyz.npy", multiple)
 
@@ -737,7 +701,7 @@ if __name__=="__main__":
 		aeff = units.getAEff(paramDicts[i])
 		eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
-		initFrame = read_xyz_frame(seedFolders[0]+"output_0.xyz")
+		initFrame = handle.read_xyz_frame(seedFolders[0]+"output_0.xyz")
 		_,info = order.radialDistributionFunction(initFrame)
 		spacing = info['particle_spacing']
 

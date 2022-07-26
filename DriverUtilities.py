@@ -286,17 +286,20 @@ example_simArgument = {#arguments for a simulation
 
 """ FOR RUNNING LAMMPS SIMS """
 
-def runLammpsSimMarcc(config, fldr, inputStructPath, inFile = 'diff_field.in'):
+def runLammpsSimMarcc(config, fldr, inputStructPath, inFile = 'diff_field.in', run=True):
 	os.system("mkdir "+fldr)
             
     os.system(f"cp {inFile} edit.in")
     for key in config:
     	os.system(f"sed -i 's/{key}/{config[key]:0.5f}/' edit.in")
-    os.system(f"mv edit.in {fldr}/{inFile}")
+    os.system(f"mv edit.in {fldr}/inFile.in")
     os.system(f"cp {inputStructPath} {fldr}/input.data")
 
     os.chdir(fldr)
-    os.system("sbatch ~/bin/subLAMMPS.sh")
+    if run:
+    	os.system("sbatch ~/bin/subLAMMPS.sh")
+    else:
+    	print("here's where you would run a batch job")
     os.chdir("..")
 
 #example of the kinds of keys and values that could appear in diff_field.in
