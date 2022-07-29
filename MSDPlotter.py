@@ -36,7 +36,7 @@ def mto_msd(coords, max_lag, skips=None):
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
     msd = np.zeros((max_lag, 3))
-    msd_w = 
+    msd_w = np.zeros((max_lag, 3))
     
     for t in range(max_lag):
         for tstart in range(0, orig_num*skips, skips):
@@ -218,13 +218,13 @@ config = json.load(open('config.json', 'r'))
 
 output = {
 			'D_0': diff_coef[0],
-			'm': config['arg']['xxxmassxxx']
-			'damp': config['arg']['xxxdampxxx']
-			'R': config['arg']['xxxradiusxxx']
-			'T': config['arg']['xxxtempxxx']
+			'm': config['arg']['xxxmassxxx'],
+			'damp': config['arg']['xxxdampxxx'],
+			'R': config['arg']['xxxradiusxxx'],
+			'T': config['arg']['xxxtempxxx'],
 }
 
-dumpDictionaryJSON(output, 'output.json')
+dumpDictionaryJSON(output, 'output')
 
 allend = timer()
 print(f"full runtime {allend-allstart:.2f}s")
