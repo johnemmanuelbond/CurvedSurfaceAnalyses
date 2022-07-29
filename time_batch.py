@@ -6,8 +6,12 @@ uses MCBatchAnalyzer to plot computation cost of various sims.
 
 @author: Jack Bond
 """
-import MCBatchAnalyzer
-from MCBatchAnalyzer import *
+import numpy as np
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+from MCBatchAnalyzer import categorize_batch_old,get_average_computation_time
 
 simDicts, paramDicts, seedFoldersList = categorize_batch_old()
 

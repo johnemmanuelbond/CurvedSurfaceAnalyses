@@ -114,7 +114,13 @@ def integrate_histogram(rhos, rho_bin, shellRadius = None):
 	return counts.sum()
 
 """
-The Monte carlo spits out a configuration file
+The Monte carlo spits out a configuration file which has 3 parts:
+simargument: contains parameters in simulation units necessary to run a sim
+interactions: contains a list of interparticle potentials with energy scales in kT units
+params: contains SI parameters necessary for translating simulation results to experimnental results
+By reading these config files we can group simulation folders into groups
+to which we can apply the exact same analysis, or otherwise match up these
+lists of parameters to the appropriate simulation folders.
 """
 def categorize_batch():
 
@@ -125,7 +131,7 @@ def categorize_batch():
 	dt = now.strftime("%d/%m/%Y %H:%M:%S")
 
 	#simulation output files are always in folders including the word "snapshots",
-	#so we locate all these folders and get the jsons from each
+	#so we locate all these folders and get the config jsons
 	sims = np.array(glob.glob("*snapshots*/"))
 	configs = []
 	for sim in sims:
@@ -140,8 +146,9 @@ def categorize_batch():
 		config = json.load(open(sim + "configFile.json",'r'))
 		configs.append(config)
 
-	#if the simArgument dictionary is the same accross two sims, they are considered
-	#two "seeds" of the same simulation and can be grouped
+	#if the sim argument and interactions are the same
+	#accross two sims, they are considered two "seeds" of the
+	#same simulation and can be grouped
 	start = timer()
 	isSame = np.zeros((len(configs),len(configs)))
 	for i, c1 in enumerate(configs):
@@ -164,12 +171,11 @@ def categorize_batch():
 	ndiff = isSame[0].size//nseeds
 	end = timer()
 	pairs = np.array(np.unique(isSame,axis=0))
-	log.write(f"{dt}:: simArgument Dictionary Comparison Time: {end-start}s\n")
+	log.write(f"{dt}:: config Dictionary Comparison Time: {end-start}s\n")
 
 
-	#once we've determined the grouping in the isSame array, we simply assign a
-	#simArgument dictionary from the seeds, slightly modify the experimetal parameter
-	#dictionary to reflect the changing conditions, and select the appropriate folder
+	#once we've determined the grouping in the isSame array, we simply assign
+	#a config dictionary from the seeds and select the appropriate folder
 	#names from the list we globbed
 	start = timer()
 	seedFolders = []
@@ -186,6 +192,7 @@ def categorize_batch():
 
 
 """
+SOON TO BE DEPRECATED
 Old Versions of the monte carlo used to spit out 
 
 The driver file outputs a json of the simulation argument in each seed folder.
@@ -665,7 +672,7 @@ if __name__=="__main__":
 
 	start = timer()
 
-	simDicts, paramDicts, seedFoldersList = categorize_batch()
+	configs, seedFoldersList = categorize_batch()
 
 #Radial Distribution Function
 	figRad, axRad = plt.subplots()
@@ -695,10 +702,12 @@ if __name__=="__main__":
 	etas = []
 
 	for i,seedFolders in enumerate(seedFoldersList):
-		N = simDicts[i]['npart']
-		R = simDicts[i]['radius']
-		a = paramDicts[i]["particle_radius"]
-		aeff = units.getAEff(paramDicts[i])
+		simarg = configs[i]['simargument']
+		params = configs[i]['params']
+		N = simarg['npart']
+		R = simarg['radius']
+		a = params["particle_radius"]
+		aeff = units.getAEff(params)
 		eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
 		initFrame = handle.read_xyz_frame(seedFolders[0]+"output_0.xyz")
@@ -724,7 +733,7 @@ if __name__=="__main__":
 		cond = True
 
 		#use to decide which seed we will plot against sweeps
-		numSim=0
+		numSim=40
 
 		if(cond):
 
@@ -732,7 +741,7 @@ if __name__=="__main__":
 			axRad.plot(midsRad,hval, label = pltlab, lw=0.6)
 			sim = np.array(sample_frames(seedFolders[numSim:numSim+1], label = lab+f"_{numSim}th_seed", last_section = 1.0))
 			
-			sweeps = simDicts[i]['nsnap']*(1+np.arange(sim.shape[0]))
+			sweeps = simarg['nsnap']*(1+np.arange(sim.shape[0]))
 			#ncs = [order.Nc(frame, shellradius=coordinationShell) for frame in sim]
 			vcs = [order.Vc(frame) for frame in sim]
 
@@ -767,7 +776,8 @@ if __name__=="__main__":
 	axCharge.legend()
 	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep.png")
 
-	axCharge.set_xlim([simDicts[0]['nsweeps']/2,simDicts[0]['nsweeps']])
+	sweeps = configs[0]['simargument']['nsweeps']
+	axCharge.set_xlim([sweeps/2,sweeps])
 	axCharge.set_ylim([0,10])
 	figCharge.savefig(f"{numSim}th seed -- Excess Charge per Sweep (last half).png")
 
