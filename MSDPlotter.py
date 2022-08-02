@@ -35,19 +35,21 @@ def mto_msd(coords, max_lag, skips=None):
     
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
-    msd = np.zeros((max_lag, 3))
-    msd_w = np.zeros((max_lag, 3))
+    msd_comp = np.zeros((max_lag, 3))
+    msd_w = np.zeros((max_lag, 1))
     
     for t in range(max_lag):
         for tstart in range(0, orig_num*skips, skips):
             tend = tstart + t
-            msd3D = np.sum((coords[tend] - coords[tstart])**2, axis=0)
-            msd[t] += msd3D
-            arg = np.sqrt(msd3D)/(2*shell_radius)
+            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
+
+            msd_comp[t] += np.sum(allmsd,axis=0) #3
+
+            arg = np.sqrt(allmsd.sum(axis=-1))/(2*shell_radius) #N
             arg[arg>1] = 1
-            msd_w[t] += (2*shell_radius*np.arcsin(arg))**2
+            msd_w[t] += np.sum((2*shell_radius*np.arcsin(arg))**2) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd/(pnum*orig_num), msd_w/(pnum*orig_num)
+    return msd_comp/(pnum*orig_num), msd_w/(pnum*orig_num)
 
 def mto_msd_part(coords, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
@@ -173,7 +175,7 @@ totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
     
 #%% calculate msd
 msd_time_scale = 750
-msd_comp, msd_comp_arclength = mto_msd(multiple, msd_time_scale)
+msd_comp, msd_w = mto_msd(multiple, msd_time_scale)
 msd_part = mto_msd_part(multiple, msd_time_scale)
 msd = msd_comp.sum(axis=-1)
 msd_times = times[:msd_time_scale]
@@ -192,19 +194,25 @@ theo = sphere_msd(msd_times, damp, shell_radius)
 
 fig, ax = plt.subplots(figsize=(5,5))
 ax.plot(msd_times, msd, label='mto msd')
-ax.plot(msd_times, msd_comp_arclength.sum(axis=-1), label='mto msd arclength')
+ax.plot(msd_times, msd_w, label='mto msd arclength')
 ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
                 alpha=0.3, label='95% bootstrap ci')
 ax.plot(msd_times, theo, color='k', ls=':', label=f'D={damp:0.1e}')
 ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
         color='C0', ls='-.',
         label=f'D={diff_coef[0]:0.3f} (fit)')
-ax.legend()
+
 ax.set_xlabel("[$\\tau$]", fontsize=12)
 ax.set_xlim([0, msd_times[-1]])
 ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-ax.set_ylim([0, 1.1*msd_func(msd_times[-1], damp)])
+ax.set_ylim([0, 4*shell_radius**2])#1.1*msd_func(msd_times[-1], damp)])
+
+ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
+ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
+
 ax.set_title(title)
+
+ax.legend()
 fig.savefig(path+"msd.jpg", bbox_inches='tight')
 # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
 # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
