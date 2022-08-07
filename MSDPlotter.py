@@ -127,14 +127,27 @@ else:
     np.save(path+'datapts.npy',multiple)
     np.save(path+'times.npy',ts)
 
-mass = 2.53e-14
-a_hc = 1.4
-kT = 4.1124e-21
-tau = np.sqrt(kT/(mass*(2*a_hc*1e-6)**2))
+import json
+config = json.load(open('config.json','r'))
+params = config['params']
+
+from UnitConversions import kb
+a_hc = params['particle_radius']
+kT = params['temperature']*kb
+visc = params['viscosity']
+D_SI = kT/(6*np.pi*visc*a_hc)
+
 pnum = multiple.shape[1]
 # dt = lammps_params['timestep']*tau # [s]
 
 damp = lammps_params['damp']
+mass = config['arg']['xxxmassxxx']
+temp = config['arg']['xxxtempxxx']
+D0 = temp*damp/mass
+
+tau_D = 1/(4*D0)
+tau_D_SI = (a_hc**2)/D_SI
+
 #kappa = lammps_params['kappa_2a']/(2*a_hc)
 #bpp = lammps_params['bpp']
 dt = lammps_params['timestep']
@@ -167,9 +180,9 @@ print(f"read and process files {interval:.2f}s")
 start = timer()
 taus = thermo[:,0]-thermo[:,0].min()
 all_taus = np.linspace(0, thermo[:,0].max(), num=150)
-theo = sphere_msd(all_taus, damp, shell_radius)
+theo = sphere_msd(all_taus, D0, shell_radius)
 
-msd_func = lambda x, damp: sphere_msd(x, damp, shell_radius=shell_radius)
+msd_func = lambda x, D0: sphere_msd(x, D0, shell_radius=shell_radius)
     
 totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
     
@@ -190,14 +203,14 @@ rng = default_rng()
 msd_ci = bootstrap_mto_msd(msd_part, trials, rng=rng)
 
 diff_coef, diff_cov = curve_fit(msd_func, msd_times, msd, p0=[1e-1])
-theo = sphere_msd(msd_times, damp, shell_radius)
+theo = sphere_msd(msd_times, D0, shell_radius)
 
 fig, ax = plt.subplots(figsize=(5,5))
 ax.plot(msd_times, msd, label='mto msd')
-ax.plot(msd_times, msd_w, label='mto msd arclength')
+#ax.plot(msd_times, msd_w, label='mto msd arclength')
 ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
                 alpha=0.3, label='95% bootstrap ci')
-ax.plot(msd_times, theo, color='k', ls=':', label=f'D={damp:0.1e}')
+ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
 ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
         color='C0', ls='-.',
         label=f'D={diff_coef[0]:0.3f} (fit)')
@@ -208,7 +221,7 @@ ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
 ax.set_ylim([0, 4*shell_radius**2])#1.1*msd_func(msd_times[-1], damp)])
 
 ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
-ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
+#ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
 
 ax.set_title(title)
 
@@ -225,11 +238,12 @@ from FileHandling import dumpDictionaryJSON
 config = json.load(open('config.json', 'r'))
 
 output = {
-			'D_0': diff_coef[0],
-			'm': config['arg']['xxxmassxxx'],
-			'damp': config['arg']['xxxdampxxx'],
-			'R': config['arg']['xxxradiusxxx'],
-			'T': config['arg']['xxxtempxxx'],
+			'D_0_fit': diff_coef[0],
+                        'D_0': D0,
+			'D_SI': D_SI,
+                        'a_hc_SI': a_hc,
+                        'tau_SI': tau_D_SI/tau_D,
+                        'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
 }
 
 dumpDictionaryJSON(output, 'output')
