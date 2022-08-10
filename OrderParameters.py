@@ -114,6 +114,19 @@ def Vc(frame,excludeborder=False,R=None):
 					#Vc[i]=-1
 	return Vc
 
+#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
+def voronoi_colors(frame):
+    v = Vc(frame, excludeborder=False)
+    #print(np.sum(6-v))
+    #print(np.sum(np.abs(6-v)))
+    colors = np.array([[0.6,0.6,0.6] for _ in v])
+    greens = np.array([[0,0.5*vi/6,0.2] for vi in v])
+    reds = np.array([[1-0.5*vi/6,0,0.2+0] for vi in v])
+    colors[v>6] = greens[v>6]
+    colors[v<6] = reds[v<6]
+    return colors
+
+
 def shareVoronoiVertex(sv, i, j):
 	vertices_i = sv.regions[i]
 	vertices_j = sv.regions[j]

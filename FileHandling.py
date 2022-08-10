@@ -81,6 +81,30 @@ def save_xyz(coords, filename, comment=None):
                              *part))
 
 """
+given a Nx3 frame and an Nx3 array of rgb colors, outputs a pretty visualization for your viewing pleasure in Ovito.
+See OrderParameters.voronoi_colors for an example coloring.
+source: some driver, 8/10/22
+author: Jack Bond
+"""
+def save_vis_xyz(frame, colors, filename="visual", comment="A colored visualization"):
+    N = frame.shape[0]
+    R=np.linalg.norm(frame,axis=-1).mean()
+
+    vFile = open(filename, "w")
+    vFile.write(f"{N+1} \n")
+    vFile.write(f"{N} real particles {comment} \n")
+    vFile.write(f"{R-0.5} 0.0 0.0 0.0 0.8, 0.8, 0.9 \n")
+    for i in range(N):
+        vFile.write("0.5 ")
+        for c in frame[i]:
+            vFile.write(f"{c} ")
+        for c in colors[i]:
+            vFile.write(f"{c} ")
+        vFile.write("\n")
+    vFile.close()
+
+                
+"""
 outputs dump file in format to be used by OVITO for visualization
 source: general_analysis, 7/23/22
 author: Alex Yeh, Jack Bond
