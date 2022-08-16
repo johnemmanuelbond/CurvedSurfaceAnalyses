@@ -78,6 +78,38 @@ def radialDistributionFunction(frame, info=None):
 
 	return hist, info
 
+"""
+Given a frame or set of frames, computed the average radial distribution function
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
+def g_r(coords, shell_radius=None, bin_width=0.1):
+    """calculates the pair distribution function from the given coordinates"""
+    if shell_radius is None:
+        # get mean radius over run
+        shell_radius = np.linalg.norm(coords, axis=-1).mean()
+        
+    fnum, pnum, _ = coords.shape
+    
+    allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
+    for t, frame in enumerate(coords):
+        for i, p1 in enumerate(frame):
+            for j in range(i+1, pnum):
+                flat_idx = pnum*i - i*(i+1)//2 + j - i - 1
+                cos_dist = np.dot(frame[i], frame[j])/(shell_radius**2)
+                allrs[t, flat_idx] = shell_radius*np.arccos(cos_dist)
+    bins = np.histogram_bin_edges(allrs[0],
+                                  bins = int(np.pi*shell_radius/bin_width),
+                                  range = (0, np.pi*shell_radius))
+    angle_bins = bins/shell_radius
+    width = bins[1] - bins[0]
+    mids = bins[:-1] + width/2
+    hval = np.zeros_like(mids)
+    
+    counts, _ = np.histogram(allrs, bins=bins)
+    vals = counts/(fnum*allrs.shape[1]) * 2/(np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))
+    return vals, mids, bins
+
 def firstCoordinationShell(frame, info=None):
 	if(info == None):
 		_, info = radialDistributionFunction(frame, info)

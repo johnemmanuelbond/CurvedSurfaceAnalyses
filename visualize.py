@@ -42,7 +42,7 @@ if __name__=="__main__":
 	ax.set_ylabel(r"$g$")
 	#ax.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
 	#ax.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-        
+		
 	fig55,ax55 = plt.subplots()
 	ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
 	ax55.set_ylim([0,2])
@@ -79,9 +79,9 @@ if __name__=="__main__":
 
 		eta_eff = np.round(N*(aeff/(2*a))**2/(4*R**2),3)
 
-                sim = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1.0,reset=True)
+				sim = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1.0,reset=True)
 
-                handle.output_vis("movie_voronoi.atom",sim,colors=order.voronoi_colors(sim))
+				handle.output_vis("movie_voronoi.atom",sim,colors=order.voronoi_colors(sim))
 
 		frames = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1/2,reset=True)
 		initFrame = handle.read_xyz_frame("output_0.xyz")
@@ -128,7 +128,7 @@ if __name__=="__main__":
 		excessVC = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
 		axCharge.plot(sweeps,excessVC,lw=0.6)
 
-                
+				
 
 		figCharge.savefig("Excess Charge per Sweep")
 
@@ -163,7 +163,7 @@ if __name__=="__main__":
 		for i,scar in enumerate(scars):
 			scarindex[scar] = cm.hsv(i/len(scars))
 			# if(scarCharges[i]==0):
-			# 	scarindex[scar] = np.array([2,0,0,0])
+			#   scarindex[scar] = np.array([2,0,0,0])
 
 		vFile = open("visual.xyz", "w")
 		vFile.write(f"{orderParameter[relevant].size+1}\n")
