@@ -70,10 +70,10 @@ def save_xyz(coords, filename, comment=None):
     if len(coords.shape) == 2:
         coords = coords[np.newaxis,:] #make single frames correct size
     print(filename)
-    with open(filename, 'w') as output:        
+    with open(filename, 'w', newline='') as output:        
         for i, frame in enumerate(coords):
             #print number of particles in frame
-            output.write("    {}\n".format(frame.shape[0]))
+            output.write("{}\n".format(frame.shape[0]))
             output.write(comment)
             for j, part in enumerate(frame):
                 output.write("{}\t{:.8f}\t{:.8f}\t{:.8f}\n".format(
@@ -133,8 +133,8 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None):
             outfile.write(f"ITEM: TIMESTEP\n{ts[i]}\n")
             outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+1}\n") #add in sphere
             outfile.write(f"ITEM: BOX BOUNDS ff ff ff" + box)
-            outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color ColorAlpha\n")
-            outfile.write(f"0 {radii[i]:0.5f} 0 0 0 1.0 1.0 1.0 1.0\n")
+            outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color\n")
+            outfile.write(f"0 {radii[i]:0.5f} 0 0 0 1.0 1.0 1.0\n")
             for p, part in enumerate(frame):
                 line = f"{p+1} 0.5 "
                 coords = " ".join([f"{val:0.5f}" for val in part]) + " "
