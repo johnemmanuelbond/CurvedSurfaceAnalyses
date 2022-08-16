@@ -79,11 +79,11 @@ if __name__=="__main__":
 
 		eta_eff = np.round(N*(aeff/(2*a))**2/(4*R**2),3)
 
-				sim = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1.0,reset=True)
+		sim = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1.0,reset=True)
 
-				handle.output_vis("movie_voronoi.atom",sim,colors=order.voronoi_colors(sim))
+		handle.output_vis("movie_voronoi.atom",sim,colors=order.voronoi_colors(sim))
 
-		frames = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1/2,reset=True)
+		frames = sample_frames([simFolder+"/"],label="samples",last_section=1/2,reset=True)
 		initFrame = handle.read_xyz_frame("output_0.xyz")
 		_, info = order.radialDistributionFunction(initFrame)
 		spacing = info['particle_spacing']
