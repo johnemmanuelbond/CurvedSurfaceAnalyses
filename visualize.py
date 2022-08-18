@@ -36,15 +36,15 @@ if __name__=="__main__":
     theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
 
     fig,ax = plt.subplots()
-    ax.set_xlabel(r"Geodesic Distance [2a]$")
-    ax.set_ylim([0,2])
+    ax.set_xlabel(r"Geodesic Distance $[2a]$")
+    #ax.set_ylim([0,2])
     ax.set_xlim([0,5])
     ax.set_ylabel(r"$g(r)$")
     #ax.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
     #ax.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
     fig55,ax55 = plt.subplots()
-    ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+    ax55.set_xlabel(r"Geodesic Distance $[rad/$\pi]$")
     ax55.set_ylim([0,2])
     ax55.set_xlim([0,1])
     ax55.set_ylabel(r"$g_{{5-5}}$")
@@ -52,7 +52,7 @@ if __name__=="__main__":
     ax55.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
     
     figScar,axScar = plt.subplots()
-    axScar.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+    axScar.set_xlabel(r"Geodesic Distance $[rad/$\pi]$")
     axScar.set_ylim([0,2])
     axScar.set_xlim([0,1])
     axScar.set_ylabel(r"$g_{{scar-scar}}$")
@@ -86,16 +86,36 @@ if __name__=="__main__":
         handle.output_vis("movie_density.atom",sim,colors=col)
 
         frames = sample_frames([simFolder+"/"],label="samples",last_section=1/2,reset=True)
-        initFrame = handle.read_xyz_frame("output_0.xyz")
-        _, info = order.radialDistributionFunction(initFrame)
-        spacing = info['particle_spacing']
-        print(spacing)
+        # initFrame = handle.read_xyz_frame("output_0.xyz")
+        # _, info = order.radialDistributionFunction(initFrame)
+        # spacing = info['particle_spacing']
 
-
-        vals, mids, bins = order.g_r(frames,shell_radius=R,bin_width=0.2)
+        vals, mids, bins = order.g_r(frames,shell_radius=R,bin_width=0.01)
         ax.plot(mids,vals,lw=0.5)
+
+        max_gr_idx = np.argmax(vals[mids<1.5])
+        spacing = mids[max_gr_idx]
+        ax.set_ylim([0,1.1*vals[max_gr_idx]])
         fig.savefig("g(r).jpg")
 
+        vcs = np.array([order.Vc(frame, R = R) for frame in frames])
+        rhos = np.array([order.rho_voronoi(frame, R = R) for frame in frames])
+        excessVC = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
+
+        output = {
+                "R": R,
+                "a_gr": spacing,
+                "aeff": aeff/a,
+                "N": N,
+                "qXS_bar": excessVC.mean(axis=-1),
+                "qXS_std": np.std(excessVC),
+                "rho_bar": rhos.mean(),
+                "rho_std": np.std(rhos),
+                "eta_eff": eta_eff,
+                "eta_bar": (np.pi*(aeff/(2*a))**2)*rhos.mean(),#((1/rhos).mean())**-1,
+        }
+
+        handle.dumpDictionaryJSON(output, "./values")
 
         ax55.set_title(rf"$\eta_{{eff}}$ = {eta_eff}, R/a = {R/spacing:.2f}")
         axScar.set_title(rf"$\eta_{{eff}}$ = {eta_eff}, R/a = {R/spacing:.2f}")
@@ -136,8 +156,6 @@ if __name__=="__main__":
 
         excessVC = 0.5*(np.array([np.sum(np.abs(6-vc)) for vc in vcs])/12-1)
         axCharge.plot(sweeps,excessVC,lw=0.6)
-
-                
 
         figCharge.savefig("Excess Charge per Sweep")
 

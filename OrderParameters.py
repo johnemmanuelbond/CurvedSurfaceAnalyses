@@ -97,6 +97,8 @@ def g_r(coords, shell_radius=None, bin_width=0.1):
             for j in range(i+1, pnum):
                 flat_idx = pnum*i - i*(i+1)//2 + j - i - 1
                 cos_dist = np.dot(frame[i], frame[j])/(shell_radius**2)
+                if cos_dist>1: cos_dist=1
+                if cos_dist<-1: cos_dist=-1
                 allrs[t, flat_idx] = shell_radius*np.arccos(cos_dist)
     bins = np.histogram_bin_edges(allrs[0],
                                   bins = int(np.pi*shell_radius/bin_width),
@@ -169,7 +171,7 @@ def rho_voronoi(frame,excludeborder=False,R=None):
 	sv = SphericalVoronoi(frame, radius = radius)
 	V_rho = np.zeros(frame.shape[0])
 	for i, area in enumerate(sv.calculate_areas()):
-		V_rho[i] = area
+		V_rho[i] = 1/area
 	return V_rho
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
