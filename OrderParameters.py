@@ -158,6 +158,33 @@ def voronoi_colors(frame):
     colors[v<6] = reds[v<6]
     return colors
 
+#point-density based on the are of voronoi polygons on a frame
+def V_rho(frame,excludeborder=False,R=None):
+	minZ = min(frame[:,2])
+	
+	if R == None:
+		radius = np.mean(np.linalg.norm(frame,axis=1))
+	else:
+		radius = R
+	sv = SphericalVoronoi(frame, radius = radius)
+	V_rho = np.zeros(frame.shape[0])
+	for i, area in enumerate(sv.calculate_areas()):
+		Vc[i] = area
+	return Vrho
+
+#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
+def density_colors(frame,a_eff = 0.5):
+    v = V_rho(frame, excludeborder=False)
+    #print(np.sum(6-v))
+    #print(np.sum(np.abs(6-v)))
+    rho_cp = 0.9067/(np.pi*aeff**2)
+    colors = np.array([[0.3,0.3+0.7(v/0.9067-1),0.3] for v in v])
+    # greens = np.array([[0.3,0.3*(v/0.906),0.3] for vi in v])
+    # reds = np.array([[1-0.5*vi/6,0,0.2+0] for vi in v])
+    # colors[v>6] = greens[v>6]
+    # colors[v<6] = reds[v<6]
+    return colors
+
 
 def shareVoronoiVertex(sv, i, j):
 	vertices_i = sv.regions[i]

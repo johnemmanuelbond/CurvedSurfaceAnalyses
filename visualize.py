@@ -39,10 +39,10 @@ if __name__=="__main__":
     ax.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
     ax.set_ylim([0,2])
     ax.set_xlim([0,1])
-    ax.set_ylabel(r"$g$")
+    ax.set_ylabel(r"$g(r)$")
     #ax.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--')
     #ax.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-        
+
     fig55,ax55 = plt.subplots()
     ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
     ax55.set_ylim([0,2])
@@ -81,13 +81,21 @@ if __name__=="__main__":
 
         sim = sample_frames([simFolder+"/"],label="movie_voronoi",last_section=1.0,reset=True)
         col = np.array([order.voronoi_colors(frame) for frame in sim])
-
         handle.output_vis("movie_voronoi.atom",sim,colors=col)
+        col = np.array([order.density_colors(frame) for frame in sim])
+        handle.output_vis("movie_density.atom",sim,colors=col)
+
         frames = sample_frames([simFolder+"/"],label="samples",last_section=1/2,reset=True)
         initFrame = handle.read_xyz_frame("output_0.xyz")
         _, info = order.radialDistributionFunction(initFrame)
         spacing = info['particle_spacing']
         print(spacing)
+
+
+        vals, mids, bins = order.g_r(frames,shell_radius=R,bin_width=R*np.pi/40)
+        ax.plot(mids,vals,lw=0.5)
+        fig.savefig("radialDistributionFunction.jpg")
+
 
         ax55.set_title(rf"$\eta_{{eff}}$ = {eta_eff}, R/a = {R/spacing:.2f}")
         axScar.set_title(rf"$\eta_{{eff}}$ = {eta_eff}, R/a = {R/spacing:.2f}")
@@ -112,6 +120,7 @@ if __name__=="__main__":
         g55 = np.mean(np.array(gs55),axis=0)
         midsScar = np.mean(np.array(midssScar),axis=0)
         gScar = np.mean(np.array(gsScar),axis=0)
+
 
 
         ax55.plot(mids55, g55,lw = 0.5)
