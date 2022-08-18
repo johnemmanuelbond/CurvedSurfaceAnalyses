@@ -159,7 +159,7 @@ def voronoi_colors(frame):
     return colors
 
 #point-density based on the are of voronoi polygons on a frame
-def V_rho(frame,excludeborder=False,R=None):
+def rho_voronoi(frame,excludeborder=False,R=None):
 	minZ = min(frame[:,2])
 	
 	if R == None:
@@ -169,20 +169,19 @@ def V_rho(frame,excludeborder=False,R=None):
 	sv = SphericalVoronoi(frame, radius = radius)
 	V_rho = np.zeros(frame.shape[0])
 	for i, area in enumerate(sv.calculate_areas()):
-		Vc[i] = area
-	return Vrho
+		V_rho[i] = area
+	return V_rho
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def density_colors(frame,a_eff = 0.5):
-    v = V_rho(frame, excludeborder=False)
+def density_colors(frame,aeff = 0.5):
+    rhos = rho_voronoi(frame, excludeborder=False)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     rho_cp = 0.9067/(np.pi*aeff**2)
-    colors = np.array([[0.3,0.3+0.7(v/0.9067-1),0.3] for v in v])
-    # greens = np.array([[0.3,0.3*(v/0.906),0.3] for vi in v])
-    # reds = np.array([[1-0.5*vi/6,0,0.2+0] for vi in v])
-    # colors[v>6] = greens[v>6]
-    # colors[v<6] = reds[v<6]
+    rho_fl = 0.69/(np.pi*aeff**2)
+    rho_mean = rhos.mean()
+    scale = (rhos-rho_mean)/(rho_cp-rho_fl)
+    colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
     return colors
 
 
