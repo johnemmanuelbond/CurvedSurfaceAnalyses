@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from FileHandling import read_xyz_frame
+from UnitConversions import getAEff
 #from OrderParameters import radialDistributionFunction
 from OrderParameters import Vc, rho_voronoi
 from MCBatchAnalyzer import categorize_batch, sample_frames
@@ -30,7 +30,7 @@ for i,seedFolders in enumerate(seedFoldersList):
 	N = simarg['npart']
 	R = simarg['radius']
 	a = params["particle_radius"]
-	aeff = units.getAEff(params)
+	aeff = getAEff(params)
 	eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
 	lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
@@ -57,4 +57,5 @@ for i,seedFolders in enumerate(seedFoldersList):
 	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
 
 ax.legend(loc = 5)
+fig.savefig("DensityChargeCorrelation.jpg")
 
