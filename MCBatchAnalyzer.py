@@ -130,7 +130,7 @@ def categorize_batch():
 	now = datetime.now()
 	dt = now.strftime("%d/%m/%Y %H:%M:%S")
 
-	#MonteCarloOutputFiles always contain a dictionary called configFile.json
+	#Monte Carlo Outputs always contain a dictionary called configFile.json
 	#We can use this file to find all the folders which contain MC data
 	sims = np.array(glob.glob("*/configFile.json"))
 	configs = []
