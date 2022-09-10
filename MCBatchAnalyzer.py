@@ -132,18 +132,11 @@ def categorize_batch():
 
 	#simulation output files are always in folders including the word "snapshots",
 	#so we locate all these folders and get the config jsons
-	sims = np.array(glob.glob("*snapshots*/"))
+	sims = np.array(glob.glob("*/configFile.json"))
 	configs = []
-	for sim in sims:
-		# if(os.path.exists(sim + "simArgument.json")):
-		# 	simarg = json.load(open(sim + "simArgument.json",'r'))
-		# 	params = json.load(open(sim + "params.json",'r'))
-		# 	inter = {"key": "yukawa",}
-		# 	inter["A"] = simarg.pop("a")
-		# 	inter["p"] = simarg.pop("length_scale")
-		# 	config = {"simargument": simarg, "interactions": [inter], "params": params,}
-		# else:
-		config = json.load(open(sim + "configFile.json",'r'))
+	for i,sim in enumerate(sims):
+		config = json.load(open(sim,'r'))
+		sims[i] = sim[:-16]
 		configs.append(config)
 
 	#if the sim argument and interactions are the same
