@@ -130,13 +130,13 @@ def categorize_batch():
 	now = datetime.now()
 	dt = now.strftime("%d/%m/%Y %H:%M:%S")
 
-	#simulation output files are always in folders including the word "snapshots",
-	#so we locate all these folders and get the config jsons
+	#MonteCarloOutputFiles always contain a dictionary called configFile.json
+	#We can use this file to find all the folders which contain MC data
 	sims = np.array(glob.glob("*/configFile.json"))
 	configs = []
 	for i,sim in enumerate(sims):
 		config = json.load(open(sim,'r'))
-		sims[i] = sim[:-16]
+		sims[i] = sim[:-15]
 		configs.append(config)
 
 	#if the sim argument and interactions are the same
