@@ -23,77 +23,78 @@ ax.set_title("")
 ax.set_xlabel("Topological Charge")
 ax.set_ylabel(r"Local Density [$(2a)^{-2}$]")
 
-single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
-batch = sys.argv[1]=='batch'
+# single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
+# batch = sys.argv[1]=='batch'
 
-if single:
-	simFolder = os.getcwd()
-	config = json.load(open(simFolder + "/configFile.json",'r'))
-	simarg = config['simargument']
-	params = config['params']
-	N = simarg['npart']
-	R = simarg['radius']
-	a = params["particle_radius"]
-	aeff = getAEff(params)
-	eta_eff = N*(aeff/(2*a))**2/(4*R**2)
+# if single:
 
-	lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
-	pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
+simFolder = os.getcwd()
+config = json.load(open(simFolder + "/configFile.json",'r'))
+simarg = config['simargument']
+params = config['params']
+N = simarg['npart']
+R = simarg['radius']
+a = params["particle_radius"]
+aeff = getAEff(params)
+eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
-	frames = np.array(sample_frames([simFolder+"/"],label=lab,reset=True))
+lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
+pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
 
-	qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
-	#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-	rhos = np.rray([rho_voronoi(frame,R=R) for frame in frames]).flatten()
+frames = np.array(sample_frames([simFolder+"/"],label=lab,reset=True))
 
-	pltqs=[]
-	pltrhos=[]
-	pltdrhos=[]
+qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
+#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
+rhos = np.rray([rho_voronoi(frame,R=R) for frame in frames]).flatten()
 
-	for q in np.unique(qs):
-		rho = rhos[qs==q].mean()
-		drho = rhos[qs==q].std()
+pltqs=[]
+pltrhos=[]
+pltdrhos=[]
 
-		pltqs.append(q)
-		pltrhos.append(rho)
-		pltdrhos.append(pltdrhos)
+for q in np.unique(qs):
+	rho = rhos[qs==q].mean()
+	drho = rhos[qs==q].std()
 
-	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
+	pltqs.append(q)
+	pltrhos.append(rho)
+	pltdrhos.append(pltdrhos)
 
-elif batch:
-	configs, seedFoldersList = categorize_batch()
+ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
 
-	for i,seedFolders in enumerate(seedFoldersList):
-		simarg = configs[i]['simargument']
-		params = configs[i]['params']
-		N = simarg['npart']
-		R = simarg['radius']
-		a = params["particle_radius"]
-		aeff = getAEff(params)
-		eta_eff = N*(aeff/(2*a))**2/(4*R**2)
+# elif batch:
+# 	configs, seedFoldersList = categorize_batch()
 
-		lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
-		pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
+# 	for i,seedFolders in enumerate(seedFoldersList):
+# 		simarg = configs[i]['simargument']
+# 		params = configs[i]['params']
+# 		N = simarg['npart']
+# 		R = simarg['radius']
+# 		a = params["particle_radius"]
+# 		aeff = getAEff(params)
+# 		eta_eff = N*(aeff/(2*a))**2/(4*R**2)
 
-		frames = np.array(sample_frames(seedFolders,label=lab,reset=True))
+# 		lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
+# 		pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
 
-		qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
-		#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-		rhos = np.rray([rho_voronoi(frame,R=R) for frame in frames]).flatten()
+# 		frames = np.array(sample_frames(seedFolders,label=lab,reset=True))
 
-		pltqs=[]
-		pltrhos=[]
-		pltdrhos=[]
+# 		qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
+# 		#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
+# 		rhos = np.rray([rho_voronoi(frame,R=R) for frame in frames]).flatten()
 
-		for q in np.unique(qs):
-			rho = rhos[qs==q].mean()
-			drho = rhos[qs==q].std()
+# 		pltqs=[]
+# 		pltrhos=[]
+# 		pltdrhos=[]
 
-			pltqs.append(q)
-			pltrhos.append(rho)
-			pltdrhos.append(pltdrhos)
+# 		for q in np.unique(qs):
+# 			rho = rhos[qs==q].mean()
+# 			drho = rhos[qs==q].std()
 
-		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
+# 			pltqs.append(q)
+# 			pltrhos.append(rho)
+# 			pltdrhos.append(pltdrhos)
+
+# 		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
 
 ax.legend(loc = 5)
 
