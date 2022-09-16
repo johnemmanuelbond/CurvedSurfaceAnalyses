@@ -8,7 +8,7 @@ topological charge (via voronoi vertices)
 @author: Jack Bond
 """
 import numpy as np
-import os,sys
+import os, sys, json
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
