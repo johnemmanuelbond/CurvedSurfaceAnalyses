@@ -52,12 +52,13 @@ pltrhos=[]
 pltdrhos=[]
 
 for q in np.unique(qs):
-	rho = rhos[qs==q].mean()
-	drho = rhos[qs==q].std()
+	if(qs[qs==q].size > 10):
+		rho = rhos[qs==q].mean()
+		drho = rhos[qs==q].std()
 
-	pltqs.append(q)
-	pltrhos.append(rho)
-	pltdrhos.append(pltdrhos)
+		pltqs.append(q)
+		pltrhos.append(rho)
+		pltdrhos.append(pltdrhos)
 
 ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
 
