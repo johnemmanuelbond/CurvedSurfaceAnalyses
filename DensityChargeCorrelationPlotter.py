@@ -45,7 +45,7 @@ frames = np.array(sample_frames([simFolder+"/"],label=lab,reset=True))
 
 qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
 #XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-rhos = np.rray([rho_voronoi(frame,R=R) for frame in frames]).flatten()
+rhos = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()
 
 pltqs=[]
 pltrhos=[]
