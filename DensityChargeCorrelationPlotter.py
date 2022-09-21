@@ -58,7 +58,7 @@ for q in np.unique(qs):
 
 		pltqs.append(q)
 		pltrhos.append(rho)
-		pltdrhos.append(pltdrhos)
+		pltdrhos.append(drho)
 
 ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
 
