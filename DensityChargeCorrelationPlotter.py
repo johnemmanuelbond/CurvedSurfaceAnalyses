@@ -23,10 +23,10 @@ ax.set_title("")
 ax.set_xlabel("Topological Charge")
 ax.set_ylabel(r"Local Density [$(2a)^{-2}$]")
 
-# single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
-# batch = sys.argv[1]=='batch'
+#single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
+#batch = sys.argv[1]=='batch'
 
-# if single:
+#if single:
 
 simFolder = os.getcwd()
 config = json.load(open(simFolder + "/configFile.json",'r'))
@@ -52,15 +52,14 @@ pltrhos=[]
 pltdrhos=[]
 
 for q in np.unique(qs):
-	if(qs[qs==q].size > 10):
-		rho = rhos[qs==q].mean()
-		drho = rhos[qs==q].std()
+	rho = rhos[qs==q].mean()
+	drho = rhos[qs==q].std()
 
-		pltqs.append(q)
-		pltrhos.append(rho)
-		pltdrhos.append(drho)
+	pltqs.append(q)
+	pltrhos.append(rho)
+	pltdrhos.append(drho)
 
-ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
+ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', ms='H', facecolors='none')
 
 # elif batch:
 # 	configs, seedFoldersList = categorize_batch()
