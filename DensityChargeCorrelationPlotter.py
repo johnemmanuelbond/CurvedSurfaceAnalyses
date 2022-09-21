@@ -59,7 +59,7 @@ if single:
 		pltrhos.append(rho)
 		pltdrhos.append(drho)
 
-	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', ms='H', facecolors='none')
+	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', ms='^')
 
 elif batch:
 	configs, seedFoldersList = categorize_batch()
@@ -94,7 +94,7 @@ elif batch:
 			pltrhos.append(rho)
 			pltdrhos.append(drho)
 
-		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab)
+		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', ms='^')
 
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
