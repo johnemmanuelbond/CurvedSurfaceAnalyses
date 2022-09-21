@@ -59,7 +59,7 @@ if single:
 		pltrhos.append(rho)
 		pltdrhos.append(drho)
 
-	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^')
+	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 elif batch:
 	configs, seedFoldersList = categorize_batch()
@@ -94,9 +94,9 @@ elif batch:
 			pltrhos.append(rho)
 			pltdrhos.append(drho)
 
-		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^')
+		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
-fig.savefig("DensityChargeCorrelation.jpg")
+fig.savefig("DensityChargeCorrelation.jpg",bbox_inches='tight')
 
