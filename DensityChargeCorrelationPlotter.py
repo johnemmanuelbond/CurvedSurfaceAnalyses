@@ -56,7 +56,7 @@ if single:
 
 	for q in np.unique(qs):
 		eta = etas[qs==q].mean()
-		counts = etas.size
+		counts = etas[qs==q].size
 		print(f"q:{q}, counts:{counts}")
 		deta = etas[qs==q].std()
 
@@ -98,7 +98,7 @@ elif batch:
 
 		for q in np.unique(qs):
 			eta = etas[qs==q].mean()
-			counts = etas.size
+			counts = etas[qs==q].size
 			print(f"q:{q}, counts:{counts}")
 			deta = etas[qs==q].std()
 
