@@ -21,7 +21,10 @@ from MCBatchAnalyzer import categorize_batch, sample_frames
 fig, ax = plt.subplots()
 ax.set_title("")
 ax.set_xlabel("Topological Charge")
-ax.set_ylabel(r"Local Density [$(2a)^{-2}$]")
+ax.set_ylabel(r"$\eta_{eff}$")
+ax.set_ylim([0,1])
+ax.axhline(y=0.69)
+ax.axhline(y=0.71)
 
 single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
 batch = sys.argv[1]=='batch'
@@ -45,26 +48,33 @@ if single:
 
 	qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
 	#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-	rhos = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()
+	etas = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()*np.pi*(aeff/(2*a))**2
 
 	pltqs=[]
-	pltrhos=[]
-	pltdrhos=[]
+	pltetas=[]
+	pltdetas=[]
 
 	for q in np.unique(qs):
-		rho = rhos[qs==q].mean()
-		drho = rhos[qs==q].std()
+		eta = etas[qs==q].mean()
+		counts = etas.size
+		print(f"q:{q}, counts:{counts}")
+		deta = etas[qs==q].std()
 
 		pltqs.append(q)
-		pltrhos.append(rho)
-		pltdrhos.append(drho)
+		pltetas.append(eta)
+		pltdetas.append(deta)
 
-	ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^',fillstyle='none')
+	ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 elif batch:
 	configs, seedFoldersList = categorize_batch()
 
-	for i,seedFolders in enumerate(seedFoldersList):
+	Rs = np.array([c['simargument']['radius'] for c in configs])
+	idx = np.argsort(Rs)	
+
+
+	for i in idx:
+		seedFolders = seedFoldersList[i]
 		simarg = configs[i]['simargument']
 		params = configs[i]['params']
 		N = simarg['npart']
@@ -80,21 +90,23 @@ elif batch:
 
 		qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
 		#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-		rhos = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()
+		etas = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()*np.pi*(aeff/(2*a))**2
 
 		pltqs=[]
-		pltrhos=[]
-		pltdrhos=[]
+		pltetas=[]
+		pltdetas=[]
 
 		for q in np.unique(qs):
-			rho = rhos[qs==q].mean()
-			drho = rhos[qs==q].std()
+			eta = etas[qs==q].mean()
+			counts = etas.size
+			print(f"q:{q}, counts:{counts}")
+			deta = etas[qs==q].std()
 
 			pltqs.append(q)
-			pltrhos.append(rho)
-			pltdrhos.append(drho)
+			pltetas.append(eta)
+			pltdetas.append(deta)
 
-		ax.errorbar(pltqs,pltrhos,yerr=pltdrhos,label=pltlab, ls='none', marker='^',fillstyle='none')
+		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
