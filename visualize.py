@@ -2,7 +2,7 @@
 """
 Created on Mon, Feb 28, 2022
 
-Preps and opens files for viewing in ovito with colors according to
+Preps and opens Monte Carlo files for viewing in ovito with colors according to
 a specific order parameter.
 
 @author: Jack Bond
