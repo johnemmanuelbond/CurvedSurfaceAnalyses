@@ -18,6 +18,16 @@ import FileHandling as handle
 
 from FileHandling import read_infile, get_thermo_time
 
+def int_a_eff(radius, Bpp, kappa):
+    integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
+    
+    debye_points = np.arange(5)/(kappa)
+        
+    first, fErr = integrate.quad(integrand, 0, 1000/kappa, points=debye_points)
+    second, sErr = integrate.quad(integrand, 1000/kappa, np.inf)
+        
+    return radius + 1/2*(first+second)
+
 def coord_colors():
     """returns dictionary with colormap for coordination number coloring"""
     colmap = defaultdict(lambda: (1., 1., 0.42745098, 1)) #defaults to yellow

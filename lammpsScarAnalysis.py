@@ -79,11 +79,11 @@ for i in idx:
 	frame = multiple[i]
 	q = 6-coordination[i]
 	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40)
-    midssScar.append(midsScar/(np.pi*R))
-    gsScar.append(gScar)
-    [scarSizes.append(s.size) for s in scars]
-    [scarNetCharges.append(np.sum(q[s])) for s in scars]
-    [scarTotalCharges.append(np.sum(np.abs(q[s]))) for s in scars]
+	midssScar.append(midsScar/(np.pi*R))
+	gsScar.append(gScar)
+	[scarSizes.append(s.size) for s in scars]
+	[scarNetCharges.append(np.sum(q[s])) for s in scars]
+	[scarTotalCharges.append(np.sum(np.abs(q[s]))) for s in scars]
 
 midsScar = np.mean(np.array(midssScar),axis=0)
 gScar = np.mean(np.array(gsScar),axis=0)
