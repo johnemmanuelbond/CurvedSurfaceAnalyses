@@ -45,6 +45,8 @@ print(path)
 infile = glob.glob(path+'*.in')
 assert len(infile) == 1, "need to have one specified input file"
 
+a_hc = 1.4
+
 lammps_params = handle.read_infile(infile[0])
 time_str = handle.get_thermo_time(path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
@@ -61,7 +63,6 @@ dt = lammps_params['timestep']
 
 times = ts*dt
 
-a_hc = 1.4
 shell_radius = lammps_params['rad']
 a_eff = int_a_eff(a_hc, bpp, kappa)
 eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radius**2)
