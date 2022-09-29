@@ -10,6 +10,7 @@ Mostly copied from a version of Alex's 'visualizing.py' circa 8/25/22
 
 import glob, os
 import numpy as np
+from collections import defaultdict
 from timeit import default_timer as timer
 
 import UnitConversions as units
