@@ -73,7 +73,9 @@ scarTotalCharges = []
 #loop through equilibrated frames to gather information about charged clusters. We don't want to excessively calculate cluster positions, and we only want to sample independent frames, so I've created an array of index positions to control which frames we actually perform calculations on.
 last_section = 1/3
 desired_samples = 100
-idx = np.arange(int((1-last_section)*fnum),fnum,(last_section*fnum)/desired_samples)
+idx = np.arange(int((1-last_section)*fnum),fnum,int((last_section*fnum)/desired_samples))
+print(idx)
+
 
 for i in idx:
 	frame = multiple[i]
