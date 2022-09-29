@@ -29,7 +29,7 @@ axScar.set_ylabel(r"$g_{{scar-scar}}$")
 axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--',")
 axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
-figHist,[ax1,ax2,ax3] = plt.subplots(0,3)
+figHist,(ax1,ax2,ax3) = plt.subplots(1,3)
 ax1.set_ylabel("Counts")
 ax1.set_xlabel("Cluster Size")
 ax2.set_xlabel("Cluster Net Charge")

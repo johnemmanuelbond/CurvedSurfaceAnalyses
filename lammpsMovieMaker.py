@@ -82,6 +82,6 @@ title = (f"N: {pnum}, "
          +r"[2a], $\eta_{eff}$:" 
          + f"{eta_eff:0.3f}")
 
-output_vis(path+"movie_voronoi.atom", 
+handle.output_vis(path+"movie_voronoi.atom", 
            multiple, ts=ts,
            colors=vor_col)
