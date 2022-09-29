@@ -61,6 +61,7 @@ dt = lammps_params['timestep']
 
 times = ts*dt
 
+a_hc = 1.4
 shell_radius = lammps_params['rad']
 a_eff = int_a_eff(a_hc, bpp, kappa)
 eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radius**2)

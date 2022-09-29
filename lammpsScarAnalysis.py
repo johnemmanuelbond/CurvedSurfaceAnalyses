@@ -29,7 +29,11 @@ axScar.set_ylabel(r"$g_{{scar-scar}}$")
 axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--',")
 axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
-
+figHist,[ax1,ax2,ax3] = plt.subplots(0,3)
+ax1.set_ylabel("Counts")
+ax1.set_xlabel("Cluster Size")
+ax2.set_xlabel("Cluster Net Charge")
+ax3.set_xlabel("Cluster Total Charge")
 
 # load data
 start = timer()
@@ -39,13 +43,14 @@ print(path)
 infile = glob.glob(path+'*.in')
 assert len(infile) == 1, "need to have one specified input file"
 
+a_hc = 1.4
+
 lammps_params = handle.read_infile(infile[0])
 time_str = handle.get_thermo_time(path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
 ts = np.load(path+'times.npy')
 fnum = multiple.shape[0]
 pnum = multiple.shape[1]
-R = np.linalg.norm(multiple,axis=-1).mean()
 coordination = np.load(path+'vor_coord.npy')
 # dt = lammps_params['timestep']*tau # [s]
 
@@ -53,6 +58,7 @@ damp = lammps_params['damp']
 kappa = lammps_params['kappa_2a']/(2*a_hc)
 bpp = lammps_params['bpp']
 dt = lammps_params['timestep']
+R = lammps_params['rad']
 
 times = ts*dt
 
@@ -85,4 +91,10 @@ axScar.plot(midsScar, gScar,lw = 0.5)
 figScar.savefig("Scar-Scar Pair Correlation.jpg", bbox_inches='tight')
 
 scarSizes = np.array(scarSizes)
-scarCharges = np.array(scarCharges)
+scarNetCharges = np.array(scarNetCharges)
+scarTotalCharges = np.array(scarTotalCharges)
+
+ax1.hist(scarSizes)
+ax2.hist(scarNetCharges)
+ax3.hist(scarTotalCharges)
+figHist.savefig("Cluster Histrograms.jpg")
