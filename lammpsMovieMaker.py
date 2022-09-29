@@ -12,6 +12,7 @@ import glob, os
 import numpy as np
 from collections import defaultdict
 from timeit import default_timer as timer
+from scipy import integrate
 
 import UnitConversions as units
 import FileHandling as handle

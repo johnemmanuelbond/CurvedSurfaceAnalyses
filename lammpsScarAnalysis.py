@@ -14,7 +14,7 @@ from timeit import default_timer as timer
 import UnitConversions as units
 import FileHandling as handle
 from MCBatchAnalyzer import scar_correlation
-
+import matplotlib.pyplot as plt
 
 #set up plots
 r_ico = np.sin(2*np.pi/5)
