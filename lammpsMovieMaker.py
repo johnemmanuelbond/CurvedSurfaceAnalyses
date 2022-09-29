@@ -17,6 +17,25 @@ import FileHandling as handle
 
 from FileHandling import read_infile, get_thermo_time
 
+def coord_colors():
+    """returns dictionary with colormap for coordination number coloring"""
+    colmap = defaultdict(lambda: (1., 1., 0.42745098, 1)) #defaults to yellow
+    colors = {8: (1.        , 1.        , 0.42745098, 1), #yellow
+              7: (0.14117647, 1.        , 0.14117647, 1), #green
+              6: (0.3       , 0.3       , 0.3       , 1), #dark grey
+              5: (0.57254902, 0.        , 0.        , 1), #red
+              }
+    colmap.update(colors)
+    colmap.update(dict.fromkeys([0,1,2,3,4], (0.6, 0.6, 0.6, 1))) #light grey
+    return colmap
+
+def coord_num_color(coordination, colmap=None):
+    """Returns coloration based on coordination number."""
+    if colmap is None:
+        colmap = coord_colors()
+
+    return [colmap[n] for n in coordination]
+
 # load data
 start = timer()
 path = os.getcwd()+"/"
