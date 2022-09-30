@@ -79,6 +79,7 @@ print(idx)
 
 for i in idx:
 	frame = multiple[i]
+	R = np.linalg.norm(frame,axis=-1).mean()
 	q = 6-coordination[i]
 	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40)
 	midssScar.append(midsScar/(np.pi*R))
