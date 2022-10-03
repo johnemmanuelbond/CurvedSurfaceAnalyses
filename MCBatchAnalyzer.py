@@ -583,8 +583,8 @@ def firstCoordinationShell(seedFolders,label):
 
 	return mids, hval, shellRadius, spacing
 
-def scar_correlation(frame, shellRadius, bin_width=2):	
-	scars, scarCharges = order.findScars(frame)
+def scar_correlation(frame, shellRadius, bin_width=2,mtol=1e-6):	
+	scars, scarCharges = order.findScars(frame,tol=tol)
 
 	hbin_edge = np.histogram_bin_edges(range(10),
 							   bins=int(np.pi*shellRadius/bin_width),
@@ -614,7 +614,7 @@ def scar_correlation(frame, shellRadius, bin_width=2):
 
 	return mids, hval, scars, meanscarpositions
 
-def compute_average_scar_correlation(seedFolders, config, label = "N_n_R_r_V_v", bs = np.pi/40):
+def compute_average_scar_correlation(seedFolders, config, label = "N_n_R_r_V_v", bs = np.pi/40,tol=1e-6):
 	#we want to log any time we read a file
 	log = open("log.txt", "a")
 	now = datetime.now()
@@ -632,7 +632,7 @@ def compute_average_scar_correlation(seedFolders, config, label = "N_n_R_r_V_v",
 	for frame in frames:
 		#qs = 6-order.Nc(frame,shellradius=order.firstCoordinationShell(frame))
 		#print(np.sum(qs),qs[qs==1].size,qs[qs==-1].size)
-		mids, hval, _,meanscarpositions = scar_correlation(frame,R,bin_width=R*bs)
+		mids, hval, _,meanscarpositions = scar_correlation(frame,R,bin_width=R*bs,tol=tol)
 		midss.append(mids)
 		hvals.append(hval)
 		scarCount.append(meanscarpositions.shape[0])

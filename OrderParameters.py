@@ -130,14 +130,14 @@ def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
 	return Nc
 
 #coordination number based of voronoi triangulation
-def Vc(frame,excludeborder=False,R=None):
+def Vc(frame,excludeborder=False,R=None,tol=1e-6):
 	minZ = min(frame[:,2])
 	
 	if R == None:
 		radius = np.mean(np.linalg.norm(frame,axis=1))
 	else:
 		radius = R
-	sv = SphericalVoronoi(frame, radius = radius)
+	sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
 	Vc = np.zeros(frame.shape[0])
 	for i, region in enumerate(sv.regions):
 		Vc[i] = len(region)
@@ -149,8 +149,8 @@ def Vc(frame,excludeborder=False,R=None):
 	return Vc
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def voronoi_colors(frame):
-    v = Vc(frame, excludeborder=False)
+def voronoi_colors(frame,tol=1e-6):
+    v = Vc(frame, excludeborder=False,tol=tol)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     colors = np.array([[0.6,0.6,0.6] for _ in v])
@@ -161,22 +161,22 @@ def voronoi_colors(frame):
     return colors
 
 #point-density based on the are of voronoi polygons on a frame
-def rho_voronoi(frame,excludeborder=False,R=None):
+def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6):
 	minZ = min(frame[:,2])
 	
 	if R == None:
 		radius = np.mean(np.linalg.norm(frame,axis=1))
 	else:
 		radius = R
-	sv = SphericalVoronoi(frame, radius = radius)
+	sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
 	V_rho = np.zeros(frame.shape[0])
 	for i, area in enumerate(sv.calculate_areas()):
 		V_rho[i] = 1/area
 	return V_rho
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def density_colors(frame,aeff = 0.5):
-    rhos = rho_voronoi(frame, excludeborder=False)
+def density_colors(frame,aeff = 0.5,tol=1e-6):
+    rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     rho_cp = 0.9067/(np.pi*aeff**2)
@@ -191,10 +191,10 @@ def shareVoronoiVertex(sv, i, j):
 	vertices_i = sv.regions[i]
 	vertices_j = sv.regions[j]
 
-def findScarsCarefully(frame):
+def findScarsCarefully(frame,tol=1e-6):
 	N = frame.shape[0]
 	radius = np.mean(np.linalg.norm(frame,axis=1))
-	sv = SphericalVoronoi(frame, radius = radius)
+	sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
 	qs = np.array([6-len(region) for region in sv.regions])
 
 	shared_vertices = np.array([[np.sum(np.isin(r1,r2)) for r1 in sv.regions] for r2 in sv.regions])
@@ -223,9 +223,9 @@ def findScarsCarefully(frame):
 	return scars, scarCharges
 
 
-def findScars(frame):
+def findScars(frame,tol=1e-6):
 
-	charge = 6-Vc(frame)
+	charge = 6-Vc(frame,tol=tol)
 	_,info = radialDistributionFunction(frame)
 
 	neighbors = np.array(1*(info["distance_matrix"]<=info["first_coordination_shell"]))

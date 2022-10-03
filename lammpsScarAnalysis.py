@@ -80,7 +80,7 @@ print(idx)
 for i in idx:
 	frame = multiple[i]
 	q = 6-coordination[i]
-	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40)
+	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5)
 	midssScar.append(midsScar/(np.pi*R))
 	gsScar.append(gScar)
 	[scarSizes.append(s.size) for s in scars]
