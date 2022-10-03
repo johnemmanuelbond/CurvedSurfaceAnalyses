@@ -583,7 +583,7 @@ def firstCoordinationShell(seedFolders,label):
 
 	return mids, hval, shellRadius, spacing
 
-def scar_correlation(frame, shellRadius, bin_width=2,mtol=1e-6):	
+def scar_correlation(frame, shellRadius, bin_width=2,tol=1e-6):	
 	scars, scarCharges = order.findScars(frame,tol=tol)
 
 	hbin_edge = np.histogram_bin_edges(range(10),
