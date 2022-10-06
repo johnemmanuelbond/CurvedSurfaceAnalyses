@@ -138,7 +138,7 @@ cs = plt.rcParams['axes.prop_cycle']
 js = np.flip(np.argsort(hist[0]))
 for c,j in enumerate(js):
 	x = ymids[0]
-	y = hist[0][i]
+	y = hist[0][j]
 	q = xmids[j]
 	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
 
