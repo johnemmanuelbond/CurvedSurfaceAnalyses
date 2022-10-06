@@ -15,6 +15,8 @@ import UnitConversions as units
 import FileHandling as handle
 from MCBatchAnalyzer import scar_correlation
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
 
 #set up plots
 r_ico = np.sin(2*np.pi/5)
@@ -34,6 +36,11 @@ ax1.set_ylabel("Counts")
 ax1.set_xlabel("Cluster Size")
 ax2.set_xlabel("Cluster Net Charge")
 ax3.set_xlabel("Cluster Total Charge")
+
+fig3D = plt.figure()
+ax3D = fig.add_subplot(projection='3d')
+ax3D.set_xlabel("Cluster Net Charge")
+ax3D.set_y;abel("Clusetr Total Charge")
 
 # load data
 start = timer()
@@ -101,3 +108,14 @@ ax1.hist(scarSizes,bins=np.arange(max(scarSizes+2))-0.5)
 ax2.hist(scarNetCharges,bins=np.arange(max(scarNetCharges+2))-0.5)
 ax3.hist(scarTotalCharges,bins=np.arange(max(scarTotalCharges+2))-0.5)
 figHist.savefig("Cluster Histrograms.jpg")
+
+hist, xedges, yedges = np.histogram2D(scarNetCharges,scarTotalCharges,bins=[np.arange(max(scarNetCharges+2))-0.5,np.arange(max(scarTotalCharges+2))-0.5])
+
+xmids = (xedges[1:]-xedges[:-1])/2
+ymids = (yedges[1:]-yedges[:-1])/2
+
+X,Y = np.meshgrid(xmids,ymids)
+
+ax3D.bar3D(X,Y,hist)
+
+fig3D.savefig("3DHistogram.jpg")
