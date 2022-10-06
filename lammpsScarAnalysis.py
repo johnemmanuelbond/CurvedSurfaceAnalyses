@@ -140,5 +140,5 @@ for i, ser in enumerate(hist):
 	xdata = ymids-wbars/2+i*w
 	axHists.bar(xdata,ser,w,label=rf"$\sum$q={q}")
 
-axhists.legend()
+axHists.legend()
 figHists.savefig("3DHistogramButBetter.jpg")
