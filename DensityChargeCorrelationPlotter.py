@@ -18,17 +18,17 @@ from UnitConversions import getAEff
 from OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
 from MCBatchAnalyzer import categorize_batch, sample_frames
 
-fig, [ax,axshell] = plt.subplots(2,1)
+fig, [ax,axshell] = plt.subplots(1,2,sharex=all,sharey=all)
 ax.set_title("Single Particle")
-#ax.set_xlabel("Topological Charge")
+ax.set_xlabel("Topological Charge")
 ax.set_ylabel(r"$\eta_{eff}$")
 ax.set_ylim([0,1])
 ax.axhline(y=0.69)
 ax.axhline(y=0.71)
 
 axshell.set_title("First Coord Shell")
-axshell.set_xlabel("Topological Charge")
-axshell.set_ylabel(r"$\eta_{eff}$")
+#axshell.set_xlabel("Topological Charge")
+#axshell.set_ylabel(r"$\eta_{eff}$")
 axshell.set_ylim([0,1])
 axshell.axhline(y=0.69)
 axshell.axhline(y=0.71)
@@ -131,7 +131,7 @@ elif batch:
 		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 		axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
-axshell.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+axshell.legend(loc='center right')#, bbox_to_anchor=(1, 0.5))
 
 fig.savefig("DensityChargeCorrelation.jpg",bbox_inches='tight')
 
