@@ -81,7 +81,6 @@ scarTotalCharges = []
 last_section = 1/3
 desired_samples = 100
 idx = np.arange(int((1-last_section)*fnum),fnum,int((last_section*fnum)/desired_samples))
-print(idx)
 
 
 for i in idx:
@@ -104,17 +103,22 @@ scarSizes = np.array(scarSizes)
 scarNetCharges = np.array(scarNetCharges)
 scarTotalCharges = np.array(scarTotalCharges)
 
-ax1.hist(scarSizes,bins=np.arange(max(scarSizes+2))-0.5)
-ax2.hist(scarNetCharges,bins=np.arange(max(scarNetCharges+2))-0.5)
-ax3.hist(scarTotalCharges,bins=np.arange(max(scarTotalCharges+2))-0.5)
+def bins(arr):
+	start = min(arr) - 0.5
+	end = max(arr) + 0.5
+	return np.linspace(start,end,end-start+1)
+
+ax1.hist(scarSizes,bins=bins(scarSizes))
+ax2.hist(scarNetCharges,bins=bins(scarNetCharges))
+ax3.hist(scarTotalCharges,bins=bins(scarTotalCharges))
 figHist.savefig("Cluster Histrograms.jpg")
 
-hist, xedges, yedges = np.histogram2d(scarNetCharges,scarTotalCharges,bins=[np.arange(max(scarNetCharges+2))-0.5,np.arange(max(scarTotalCharges+2))-0.5])
+hist, xedges, yedges = np.histogram2d(scarNetCharges,scarTotalCharges,bins=[bins(scarNetCharges),bins(scarTotalCharges)])
 
 xmids = (xedges[1:]-xedges[:-1])/2
 ymids = (yedges[1:]-yedges[:-1])/2
 
-X,Y = np.meshgrid(xmids,ymids)
+X,Y = np.mgrid[xmids,ymids]
 
 print(hist.shape,X.shape)
 
