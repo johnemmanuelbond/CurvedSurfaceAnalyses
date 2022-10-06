@@ -136,9 +136,9 @@ wbars = 2/3
 w = wbars/hist.shape[0]
 
 for i, ser in enumerate(hist):
-	q = scarNetCharges(i)
+	q = scarNetCharges[i]
 	xdata = ymids-wbars/2+i*w
-	axHists.bar(xdata,ser,bins=bins(scarTotalCharges),label=rf"$\sum$q={q}")
+	axHists.bar(xdata,ser,w,label=rf"$\sum$q={q}")
 
 axhists.legend()
 figHists.savefig("3DHistogramButBetter.jpg")
