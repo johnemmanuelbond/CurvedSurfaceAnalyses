@@ -79,7 +79,7 @@ if single:
 		pltdetashells.append(detashell)
 
 	ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
-	ax.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
+	axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 elif batch:
 	configs, seedFoldersList = categorize_batch()
@@ -129,7 +129,7 @@ elif batch:
 			pltdetashells.append(detashell)
 
 		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
-		ax.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
+		axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
