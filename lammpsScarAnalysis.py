@@ -109,7 +109,7 @@ ax2.hist(scarNetCharges,bins=np.arange(max(scarNetCharges+2))-0.5)
 ax3.hist(scarTotalCharges,bins=np.arange(max(scarTotalCharges+2))-0.5)
 figHist.savefig("Cluster Histrograms.jpg")
 
-hist, xedges, yedges = np.histogram2D(scarNetCharges,scarTotalCharges,bins=[np.arange(max(scarNetCharges+2))-0.5,np.arange(max(scarTotalCharges+2))-0.5])
+hist, xedges, yedges = np.histogram2d(scarNetCharges,scarTotalCharges,bins=[np.arange(max(scarNetCharges+2))-0.5,np.arange(max(scarTotalCharges+2))-0.5])
 
 xmids = (xedges[1:]-xedges[:-1])/2
 ymids = (yedges[1:]-yedges[:-1])/2
