@@ -122,6 +122,6 @@ X,Y = np.meshgrid(xmids,ymids)
 
 print(hist.shape,X.shape)
 
-ax3D.bar3d(X,Y,0*hist.T,1,1,hist.T)
+ax3D.bar3d(X.ravel(),Y.ravel(),0*hist.T.ravel(),1,1,hist.T.ravel())
 
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
