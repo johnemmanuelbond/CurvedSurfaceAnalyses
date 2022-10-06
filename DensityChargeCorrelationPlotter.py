@@ -18,7 +18,7 @@ from UnitConversions import getAEff
 from OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
 from MCBatchAnalyzer import categorize_batch, sample_frames
 
-fig, [ax,axshell] = plt.subplots(1,2,sharex=all,sharey=all)
+fig, [ax,axshell] = plt.subplots(1,2,sharex=True,sharey=True)
 ax.set_title("Single Particle")
 ax.set_xlabel("Topological Charge")
 ax.set_ylabel(r"$\eta_{eff}$")
