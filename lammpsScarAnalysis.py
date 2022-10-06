@@ -135,7 +135,7 @@ fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 cs = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-js = np.flip(np.argsort(hist[0]))
+js = np.flip(np.argsort(hist.T[0]))
 for c,j in enumerate(js):
 	x = ymids[0]
 	y = hist[0][j]
@@ -143,11 +143,10 @@ for c,j in enumerate(js):
 	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
 
 
-for i, ser in enumerate(hist[1:]):
+for i, ser in enumerate(hist.T[1:]):
 	x = ymids[i]
 	js = np.flip(np.argsort(ser))
 	for c,j in enumerate(js):
-		q = xmids[j]
 		y = ser[j]
 		axHists.bar(x,y,2/3,color=cs[c])
 
