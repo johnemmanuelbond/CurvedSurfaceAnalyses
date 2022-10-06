@@ -143,7 +143,7 @@ for j in np.argsort(hist[0]).flip():
 
 for i, ser in enumerate(hist[1:]):
 	x = ymids[i]
-	for j in np.argsort(ser).flip()
+	for j in np.argsort(ser).flip():
 		q = xmids[j]
 		y = ser[j]
 		axHists.bar(x,y,2/3)
