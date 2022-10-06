@@ -135,7 +135,7 @@ fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 cs = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-for i, x in ymids:
+for i, x in enumerate(ymids):
 	ser = hist[:,i]
 	print(ser)
 	js = np.flip(np.argsort(ser))
