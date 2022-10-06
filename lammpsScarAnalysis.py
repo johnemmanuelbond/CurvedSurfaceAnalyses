@@ -133,20 +133,23 @@ ax3D.bar3d(X.ravel()-w/2,Y.ravel()-w/2,0,w,w,hist.ravel())
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 
-c = plt.rcParams['axes.prop_cycle']
-for j in np.flip(np.argsort(hist[0])):
+cs = plt.rcParams['axes.prop_cycle']
+
+js = np.flip(np.argsort(hist[0]))
+for c,j in enumerate(js):
 	x = ymids[0]
 	y = hist[0][i]
 	q = xmids[j]
-	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}")
+	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
 
 
 for i, ser in enumerate(hist[1:]):
 	x = ymids[i]
-	for j in np.flip(np.argsort(ser)):
+	js = np.flip(np.argsort(ser))
+	for c,j in enumerate(js):
 		q = xmids[j]
 		y = ser[j]
-		axHists.bar(x,y,2/3)
+		axHists.bar(x,y,2/3,color=cs[c])
 
 axHists.legend()
 figHists.savefig("3DHistogramButBetter.jpg")
