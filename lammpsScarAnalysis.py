@@ -40,7 +40,7 @@ ax3.set_xlabel("Cluster Total Charge")
 fig3D = plt.figure()
 ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
-ax3D.set_yabel("Cluster Total Charge")
+ax3D.set_ylabel("Cluster Total Charge")
 
 # load data
 start = timer()
