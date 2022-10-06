@@ -70,13 +70,13 @@ if single:
 		counts = etas[qs==q].size
 		print(f"q:{q}, counts:{counts}")
 		deta = etas[qs==q].std()
-		detashell = etashells[qs==1].std()
+		detashell = etashells[qs==q].std()
 
 		pltqs.append(q)
 		pltetas.append(eta)
-		pltetashells.append(etashells)
+		pltetashells.append(etashell)
 		pltdetas.append(deta)
-		pltdetashells.append()
+		pltdetashells.append(detashell)
 
 	ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 	ax.errorbar(pltqs,pltetashellss,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
@@ -120,13 +120,13 @@ elif batch:
 			counts = etas[qs==q].size
 			print(f"q:{q}, counts:{counts}")
 			deta = etas[qs==q].std()
-			detashell = etashells[qs==1].std()
+			detashell = etashells[qs==q].std()
 
 			pltqs.append(q)
 			pltetas.append(eta)
-			pltetashells.append(etashells)
+			pltetashells.append(etashell)
 			pltdetas.append(deta)
-			pltdetashells.append()
+			pltdetashells.append(detashell)
 
 		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 		ax.errorbar(pltqs,pltetashellss,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
