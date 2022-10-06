@@ -131,7 +131,7 @@ elif batch:
 		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 		axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
-axshell.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+axshell.legend(loc='center left')#, bbox_to_anchor=(1, 0.5))
 
 fig.savefig("DensityChargeCorrelation.jpg",bbox_inches='tight')
 
