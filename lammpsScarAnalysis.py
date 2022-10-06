@@ -142,7 +142,7 @@ for i, x in enumerate(ymids):
 	for j in js:
 		y = ser[j]
 		q = xmids[j]
-		c = cs[1*(xmids==q)]
+		c = cs[np.where(xmids==q)[0][0]]
 		if i == 0:
 			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=c)
 		else: axHists.bar(x,y,2/3,color=c)
