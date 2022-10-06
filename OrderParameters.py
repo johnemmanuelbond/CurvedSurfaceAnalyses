@@ -160,7 +160,7 @@ def voronoi_colors(frame,tol=1e-6):
     colors[v<6] = reds[v<6]
     return colors
 
-#point-density based on the are of voronoi polygons on a frame
+#point-density based on the area of voronoi polygons on a frame
 def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6):
 	minZ = min(frame[:,2])
 	
@@ -172,6 +172,28 @@ def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6):
 	V_rho = np.zeros(frame.shape[0])
 	for i, area in enumerate(sv.calculate_areas()):
 		V_rho[i] = 1/area
+	return V_rho
+
+#point-density based on the area of voronoi polygons INCLUDING NEAREST NEIGHBORS on a frame
+def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6):
+	minZ = min(frame[:,2])
+	
+	if R == None:
+		radius = np.mean(np.linalg.norm(frame,axis=1))
+	else:
+		radius = R
+
+	sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
+	_,info = radialDistributionFunction(frame)
+	neighbors = np.array(1*(info["distance_matrix"]<=info["first_coordination_shell"]))
+
+	V_rho = np.zeros(frame.shape[0])
+	areas = sv.calculate_areas()
+	for i, _ in enumerate(areas):
+		As = areas[neighbors[i]]
+		area = As.sum()
+		nshell = As.size
+		V_rho[i] = nshell/area
 	return V_rho
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
@@ -278,11 +300,11 @@ def c6_hex(pnum):
     return 6*(3*s**2 + s)/pnum
 
 # a little depricated atm
-def findNeighbors(frame, info = None):
+def findNeighbors(frame, info = None,tol=1e-6):
 	N = frame.shape[0]
 	i,j = np.mgrid[0:N,0:N]
 
-	vc = Vc(frame)
+	vc = Vc(frame,tol=tol)
 	
 	dr_vec = frame[i]-frame[j]
 	dr_norm = np.linalg.norm(dr_vec,axis=-1)
