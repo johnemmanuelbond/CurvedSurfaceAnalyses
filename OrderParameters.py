@@ -190,8 +190,7 @@ def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6):
 	V_rho = np.zeros(frame.shape[0])
 	areas = sv.calculate_areas()
 	for i, nei in enumerate(neighbors):
-		print(np.where(nei!=0)[0])
-		As = areas[np.where(nei[i]!=0)[0]]
+		As = areas[np.where(nei!=0)[0]]
 		area = As.sum()
 		nshell = As.size
 		V_rho[i] = nshell/area
