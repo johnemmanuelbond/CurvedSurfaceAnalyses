@@ -124,7 +124,7 @@ ymids = (yedges[1:]+yedges[:-1])/2
 
 X,Y = np.meshgrid(xmids,ymids,indexing="ij")
 
-print(hist.shape,X.shape)
+print(hist)
 
 w=0.5
 
@@ -144,9 +144,10 @@ for c,j in enumerate(js):
 	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
 
 
-for i, _ in enumerate(hist[1:]):
+for i, _ in enumerate(hist):
 	x = ymids[i]
 	ser = hist.T[i]
+	print(ser)
 	js = np.flip(np.argsort(ser))
 	for c,j in enumerate(js):
 		y = ser[j]
