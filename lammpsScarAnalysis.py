@@ -133,7 +133,7 @@ ax3D.bar3d(X.ravel()-w/2,Y.ravel()-w/2,0,w,w,hist.ravel())
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 
-cs = plt.rcParams['axes.prop_cycle']
+cs = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
 js = np.flip(np.argsort(hist[0]))
 for c,j in enumerate(js):
