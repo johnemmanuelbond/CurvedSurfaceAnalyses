@@ -106,7 +106,7 @@ scarTotalCharges = np.array(scarTotalCharges)
 def bins(arr):
 	start = min(arr) - 0.5
 	end = max(arr) + 0.5
-	return np.linspace(start,end,end-start+1)
+	return np.linspace(start,end,int(end-start+1))
 
 ax1.hist(scarSizes,bins=bins(scarSizes))
 ax2.hist(scarNetCharges,bins=bins(scarNetCharges))
