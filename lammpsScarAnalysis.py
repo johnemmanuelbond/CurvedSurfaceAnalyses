@@ -134,16 +134,18 @@ fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 
 c = plt.rcParams['axes.prop_cycle']
-for j, y in enumerate(hist[0]):
+for j in np.argsort(hist[0]).flip():
 	x = ymids[0]
+	y = hist[0][i]
 	q = xmids[j]
 	axHists.bar(x,y,2/3,label=rf"$\sum$q={q}")
 
 
 for i, ser in enumerate(hist[1:]):
 	x = ymids[i]
-	for j, y in enumerate(ser)
+	for j in np.argsort(ser).flip()
 		q = xmids[j]
+		y = ser[j]
 		axHists.bar(x,y,2/3)
 
 axHists.legend()
