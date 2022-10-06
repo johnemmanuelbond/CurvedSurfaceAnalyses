@@ -118,10 +118,10 @@ hist, xedges, yedges = np.histogram2d(scarNetCharges,scarTotalCharges,bins=[bins
 xmids = (xedges[1:]-xedges[:-1])/2
 ymids = (yedges[1:]-yedges[:-1])/2
 
-X,Y = np.mgrid[xmids,ymids]
+X,Y = np.meshgrid(xmids,ymids)
 
 print(hist.shape,X.shape)
 
-ax3D.bar3d(X,Y,0*hist,1,1,hist)
+ax3D.bar3d(X,Y,0*hist.T,1,1,hist.T)
 
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
