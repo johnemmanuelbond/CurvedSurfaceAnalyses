@@ -37,6 +37,10 @@ ax1.set_xlabel("Cluster Size")
 ax2.set_xlabel("Cluster Net Charge")
 ax3.set_xlabel("Cluster Total Charge")
 
+figHists, axHists = plt.subplots()
+axHists.set_xlabel("Cluster Total Charge")
+axHists.set_ylabel("Counts")
+
 fig3D = plt.figure()
 ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
@@ -127,3 +131,14 @@ w=0.5
 ax3D.bar3d(X.ravel()-w/2,Y.ravel()-w/2,0,w,w,hist.ravel())
 
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
+
+wbars = 2/3
+w = wbars/hist.shape[0]
+
+for i, ser in enumerate(hist):
+	q = scarNetCharges(i)
+	xdata = ymids-wbars/2+i*w
+	axHists.bar(xdata,ser,bins=bins(scarTotalCharges),label=rf"$\sum$q={q}")
+
+axhists.legend()
+figHists.savefig("3DHistogramButBetter.jpg")
