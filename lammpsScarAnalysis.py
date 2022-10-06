@@ -40,7 +40,7 @@ ax3.set_xlabel("Cluster Total Charge")
 fig3D = plt.figure()
 ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
-ax3D.set_y;abel("Clusetr Total Charge")
+ax3D.set_yabel("Cluster Total Charge")
 
 # load data
 start = timer()
@@ -116,6 +116,8 @@ ymids = (yedges[1:]-yedges[:-1])/2
 
 X,Y = np.meshgrid(xmids,ymids)
 
-ax3D.bar3D(X,Y,hist)
+print(hist.shape,X.shape)
 
-fig3D.savefig("3DHistogram.jpg")
+ax3D.bar3D(X,Y,0*hist,1,1,hist)
+
+fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
