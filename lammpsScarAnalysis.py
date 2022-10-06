@@ -139,12 +139,12 @@ for i, x in enumerate(ymids):
 	ser = hist[:,i]
 	print(ser)
 	js = np.flip(np.argsort(ser))
-	for c,j in enumerate(js):
+	for j in js:
 		y = ser[j]
+		q = xmids[j]
 		if i == 0:
-			q = xmids[j]
-			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
-		else: axHists.bar(x,y,2/3,color=cs[c])
+			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[ymids==q])
+		else: axHists.bar(x,y,2/3,color=cs[xmids==q])
 
 axHists.legend()
 figHists.savefig("3DHistogramButBetter.jpg")
