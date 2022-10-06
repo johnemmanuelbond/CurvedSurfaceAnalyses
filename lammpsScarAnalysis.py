@@ -142,10 +142,10 @@ for i, x in enumerate(ymids):
 	for j in js:
 		y = ser[j]
 		q = xmids[j]
-		c = np.where(xmids==q)
+		c = cs[1*(xmids==q)]
 		if i == 0:
-			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=cs[c])
-		else: axHists.bar(x,y,2/3,color=cs[c])
+			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=c)
+		else: axHists.bar(x,y,2/3,color=c)
 
 axHists.legend()
 figHists.savefig("3DHistogramButBetter.jpg")
