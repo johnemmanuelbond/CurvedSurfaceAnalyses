@@ -44,7 +44,7 @@ if __name__=="__main__":
     #ax.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
     fig55,ax55 = plt.subplots()
-    ax55.set_xlabel(r"Geodesic Distance $[rad/$\pi]$")
+    ax55.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
     ax55.set_ylim([0,2])
     ax55.set_xlim([0,1])
     ax55.set_ylabel(r"$g_{{5-5}}$")
@@ -52,7 +52,7 @@ if __name__=="__main__":
     ax55.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
     
     figScar,axScar = plt.subplots()
-    axScar.set_xlabel(r"Geodesic Distance $[rad/$\pi]$")
+    axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
     axScar.set_ylim([0,2])
     axScar.set_xlim([0,1])
     axScar.set_ylabel(r"$g_{{scar-scar}}$")

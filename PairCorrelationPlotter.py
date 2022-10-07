@@ -43,14 +43,14 @@ configs, seedFoldersList = categorize_batch()
 #+1 +1 charge correlation visualization
 fig55,ax55 = plt.subplots()
 ax55.set_title("5-5 Pair Correlation Functions for Long-Range Repulsion")
-ax55.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+ax55.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
 ax55.set_ylim([0,2])
 ax55.set_xlim([0,1])
 
 #Scar Scar correlation visualization
 figScar, axScar = plt.subplots()
 axScar.set_title("Scar-Scar Correlation Functions for Long-Range Repulsion")
-axScar.set_xlabel(r"Geodesic Distance [rad/$\pi]$")
+axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
 axScar.set_ylim([0,2])
 axScar.set_xlim([0,1])
 

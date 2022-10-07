@@ -24,7 +24,7 @@ theta1 = 2*np.arcsin(1/2/r_ico)
 theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
 
 figScar,axScar = plt.subplots()
-axScar.set_xlabel(r"Geodesic Distance $[rad/$\pi]$")
+axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
 axScar.set_ylim([0,2])
 axScar.set_xlim([0,1])
 axScar.set_ylabel(r"$g_{{scar-scar}}$")
