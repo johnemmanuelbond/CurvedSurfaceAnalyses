@@ -76,6 +76,8 @@ times = ts*dt
 
 midssScar =  []
 gsScar = []
+midssBackground =  []
+gsBackground = []
 
 scarSizes = []
 scarNetCharges = []
@@ -92,15 +94,22 @@ for i in idx:
 	R = np.linalg.norm(frame,axis=-1).mean()
 	q = 6-coordination[i]
 	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5)
+	midsBackground, gBackground, _, _ = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5,charge_to_correlate = 0)
 	midssScar.append(midsScar/(np.pi*R))
 	gsScar.append(gScar)
+	midssBackground.append(midsBackground/(np.pi*R))
+	gsBackground.append(gBackground)
 	[scarSizes.append(s.size) for s in scars]
 	[scarNetCharges.append(np.sum(q[s])) for s in scars]
 	[scarTotalCharges.append(np.sum(np.abs(q[s]))) for s in scars]
 
 midsScar = np.mean(np.array(midssScar),axis=0)
 gScar = np.mean(np.array(gsScar),axis=0)
-axScar.plot(midsScar, gScar,lw = 0.5)
+midsBackground = np.mean(np.array(midssBackground),axis=0)
+gBackground = np.mean(np.array(gsBackground),axis=0)
+axScar.plot(midsBackground, gBackground,lw = 0.5,label = r"$\sum q = 0$")
+axScar.plot(midsScar, gScar,lw = 0.5,label = r"$\sum q = 1$")
+axScar.legend()
 figScar.savefig("Scar-Scar Pair Correlation.jpg", bbox_inches='tight')
 
 scarSizes = np.array(scarSizes)
