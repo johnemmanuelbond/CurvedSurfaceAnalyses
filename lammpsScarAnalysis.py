@@ -38,13 +38,17 @@ ax2.set_xlabel("Cluster Net Charge")
 ax3.set_xlabel("Cluster Total Charge")
 
 figHists, axHists = plt.subplots()
-axHists.set_xlabel("Cluster Total Charge")
+axHists.set_xlabel("Cluster Size")
 axHists.set_ylabel("Counts")
 
 fig3D = plt.figure()
 ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
-ax3D.set_ylabel("Cluster Total Charge")
+ax3D.set_ylabel("Cluster Size")
+
+figgrid, axgrid = plt.subplots()
+axgrid.set_xlabel("Cluster Net Charge")
+axgrid.set_ylabel("Cluster Size")
 
 # load data
 start = timer()
@@ -76,8 +80,8 @@ times = ts*dt
 
 midssScar =  []
 gsScar = []
-midssBackground =  []
-gsBackground = []
+#midssBackground =  []
+#gsBackground = []
 
 scarSizes = []
 scarNetCharges = []
@@ -94,21 +98,21 @@ for i in idx:
 	R = np.linalg.norm(frame,axis=-1).mean()
 	q = 6-coordination[i]
 	midsScar, gScar, scars, meanscarpositions = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5)
-	midsBackground, gBackground, _, _ = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5,charge_to_correlate = 0)
+	#midsBackground, gBackground, _, _ = scar_correlation(frame,R,bin_width=R*np.pi/40,tol=1e-5,charge_to_correlate = 0)
 	midssScar.append(midsScar/(np.pi*R))
 	gsScar.append(gScar)
-	midssBackground.append(midsBackground/(np.pi*R))
-	gsBackground.append(gBackground)
+	#midssBackground.append(midsBackground/(np.pi*R))
+	#gsBackground.append(gBackground)
 	[scarSizes.append(s.size) for s in scars]
 	[scarNetCharges.append(np.sum(q[s])) for s in scars]
 	[scarTotalCharges.append(np.sum(np.abs(q[s]))) for s in scars]
 
 midsScar = np.mean(np.array(midssScar),axis=0)
 gScar = np.mean(np.array(gsScar),axis=0)
-midsBackground = np.mean(np.array(midssBackground),axis=0)
-gBackground = np.mean(np.array(gsBackground),axis=0)
-axScar.plot(midsBackground, gBackground,lw = 0.5,label = r"$\sum q = 0$")
 axScar.plot(midsScar, gScar,lw = 0.5,label = r"$\sum q = 1$")
+#midsBackground = np.mean(np.array(midssBackground),axis=0)
+#gBackground = np.mean(np.array(gsBackground),axis=0)
+#axScar.plot(midsBackground, gBackground,lw = 0.5,label = r"$\sum q = 0$")
 axScar.legend()
 figScar.savefig("Scar-Scar Pair Correlation.jpg", bbox_inches='tight')
 
@@ -126,14 +130,14 @@ ax2.hist(scarNetCharges,bins=bins(scarNetCharges))
 ax3.hist(scarTotalCharges,bins=bins(scarTotalCharges))
 figHist.savefig("Cluster Histrograms.jpg")
 
-hist, xedges, yedges = np.histogram2d(scarNetCharges,scarTotalCharges,bins=[bins(scarNetCharges),bins(scarTotalCharges)])
+hist, xedges, yedges = np.histogram2d(scarNetCharges,scarSizes,bins=[bins(scarNetCharges),bins(scarTotalCharges)])
 
 xmids = (xedges[1:]+xedges[:-1])/2
 ymids = (yedges[1:]+yedges[:-1])/2
 
 X,Y = np.meshgrid(xmids,ymids,indexing="ij")
 
-print(hist)
+#print(hist)
 
 w=0.5
 
@@ -157,4 +161,7 @@ for i, x in enumerate(ymids):
 		else: axHists.bar(x,y,2/3,color=c)
 
 axHists.legend()
-figHists.savefig("3DHistogramButBetter.jpg")
+figHists.savefig("BarChart.jpg")
+
+X,Y = np.meshgrid(xedges,yedges,indexing='ij')
+axgrid.pcolor([X,Y,],hist/np.max(hist))
