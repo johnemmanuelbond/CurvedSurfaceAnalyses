@@ -164,5 +164,5 @@ axHists.legend()
 figHists.savefig("BarChart.jpg")
 
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
-axgrid.pcolormesh(X,Y,hist/np.max(hist),cmap='RdBu')
+axgrid.pcolormesh(X,Y,hist/np.max(hist),cmap='BuGn')
 figgrid.savefig("ClusterGrid.jpg")
