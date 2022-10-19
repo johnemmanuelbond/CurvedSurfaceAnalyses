@@ -165,5 +165,6 @@ figHists.savefig("BarChart.jpg")
 
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
 axgrid.pcolormesh(X,Y,2*hist/np.max(hist),cmap='BuGn')
-plt.colorbar(cax=axgrid)
+axgrid.set_aspect('equal','box')
+plt.colorbar(ax=axgrid)
 figgrid.savefig("ClusterGrid.jpg")
