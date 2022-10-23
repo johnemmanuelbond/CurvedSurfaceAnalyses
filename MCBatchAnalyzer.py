@@ -594,7 +594,7 @@ def scar_correlation(frame, shellRadius,charge_to_correlate = 1, bin_width=2,tol
 	mids = hbin_edge[:-1] + widths/2
 	hval = 0*mids
 
-	#print(scars, np.where(scarCharges!=0)[0])
+	print(scars, np.where(scarCharges==charge_to_correlate)[0])
 	chargedScars = [scars[i] for i in np.where(scarCharges==charge_to_correlate)[0]]
 
 	meanscarpositions = np.array([np.mean(frame[scar],axis=0) for scar in chargedScars])
