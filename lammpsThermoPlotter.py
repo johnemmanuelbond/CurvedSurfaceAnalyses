@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sat, Sep 10, 2022
+
+Plots several useful quantities--T, mean nearest-neighbot distance, etc--against time for a lammps run.
+
+@author: Jack Bond, Alex Yeh
+"""
+
 import glob, os
 import numpy as np
 

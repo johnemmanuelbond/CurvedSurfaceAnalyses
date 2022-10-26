@@ -245,12 +245,12 @@ def findScarsCarefully(frame,tol=1e-6):
 	return scars, scarCharges
 
 
-def findScars(frame,tol=1e-6):
+def findScars(frame,tol=1e-6,coordinationShells=1.1):
 
 	charge = 6-Vc(frame,tol=tol)
 	_,info = radialDistributionFunction(frame)
 
-	neighbors = np.array(1*(info["distance_matrix"]<=info["first_coordination_shell"]))
+	neighbors = np.array(1*(info["distance_matrix"]<=coordinationShells*info["first_coordination_shell"]))
 	#neighbors = neighbors-np.eye(len(charge))
 	charged_pairs = np.abs(np.array([charge for _ in charge])*np.array([charge for _ in charge]).T)
 
@@ -287,6 +287,33 @@ def findScars(frame,tol=1e-6):
 	scarCharges = np.array([np.sum(charge[scar]) for scar in scars])
 
 	return scars, scarCharges
+
+def ScarNumber(frame,tol=1e-6):
+	Sc = np.array([None for _ in range(frame.shape[0])])
+
+	scars, scarCharges = findScars(frame,tol=tol)
+
+	for i, scar in enumerate(scars):
+		Sc[scar] = scarCharges[i]
+
+	return Sc
+
+#returns an Nx3 array of rgb values based on the net voronoi charge of a frame
+def scar_colors(frame,tol=1e-6):
+    s = ScarNumber(frame,tol=tol)
+    colors = np.zeros((s.size,3))
+    for i,si in enumerate(s):
+    	if si == None:
+    		colors[i] = np.array([0.6,0.6,0.6])
+    	elif si == 0:
+    		colors[i] = np.array([0.2,0.2,0.6])
+    	elif si > 0:
+    		colors[i] = np.array([0.5+(si-1)/2,0.2,0.2])
+    	elif si < 0:
+    		colors[i] = np.array([0.2,0.5+(1-si)/2,0.2])
+
+    return colors
+
 
 def shells(pnum):
     """from particle number, calculate number of shells assuming hexagonal crystal"""

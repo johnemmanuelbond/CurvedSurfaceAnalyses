@@ -1,21 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat, Sep 10, 2022
+Created on Sat, Oct 22, 2022
 
-uses MCBatchAnalyzer to correlate local density (via voronoi areas) to
+uses Alex Yeh's lammps analyss tools  to correlate local density (via voronoi areas) to
 topological charge (via voronoi vertices)
 
 @author: Jack Bond
 """
 import numpy as np
+from scipy import integrate
 import os, sys, json, glob
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import Filehandling as handle
+from timeit import default_timer as timer
 
+
+import FileHandling as handle
 #from OrderParameters import radialDistributionFunction
 from OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
+
 
 def int_a_eff(radius, Bpp, kappa):
     integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
@@ -43,7 +47,7 @@ axshell.axhline(y=0.69)
 axshell.axhline(y=0.71)
 
 single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
-batch = sys.argv[1]=='batch'
+if len(sys.argv)>=2: batch = sys.argv[1]=='batch'
 
 if single:
 	# load data
@@ -84,10 +88,10 @@ if single:
 
 	frames = multiple[idx]
 
-	qs = np.array([6-Vc(frame, R = R) for frame in frames]).flatten()
+	qs = np.array([6-Vc(frame, R = R,tol=1e-5) for frame in frames]).flatten()
 	#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-	etas = np.array([rho_voronoi(frame,R=R) for frame in frames]).flatten()*np.pi*(aeff/(2*a))**2
-	etashells = np.array([rho_voronoi_shell(frame,R=R) for frame in frames]).flatten()*np.pi*(aeff/(2*a))**2
+	etas = np.array([rho_voronoi(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
+	etashells = np.array([rho_voronoi_shell(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
 
 	pltqs=[]
 	pltetas=[]
@@ -112,31 +116,30 @@ if single:
 	ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
 	axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
-	handle.dumpDictionaryJSON({'qs':pltqs,'etas':pltetas,'detas':pltdetas,'etashells':pltetashells,'detashells':pltdetashells,'etaeff':eta_eff,'R':R,'N':N},"ChargeAndDensity")
+	handle.dumpDictionaryJSON({'qs':pltqs,'etas':pltetas,'detas':pltdetas,'etashells':pltetashells,'detashells':pltdetashells,'eta_eff':eta_eff,'R':R,'N':N},"ChargeAndDensity")
 
 elif batch:
-	fldrs = glob.glob("./*radius*etaeff*pnum*trial*")
+	outs = glob.glob("./*radius*etaeff*pnum*trial*/ChargeAndDensity.json")
 
 
-	for fldr in fldrs:
-		os.system(f"cd {fldr}")
-		os.system("python lammpsDensityPerCharge.py")
-		os,system("cd ..")
+	for o in outs:
 
-		dic = json.load(f"{fldr}/ChargeAndDensity.json")
+		dic = json.load(open(o,'r'))
 		eta_eff, R, N = dic['eta_eff'], dic['R'], dic['N']
 
-		lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
-		pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
+		if eta_eff>0.68:
 
-		pltqs= dic['qs']
-		pltetas= dic['etas']
-		pltetashells = dic['etashells']
-		pltdetas = dic['detas']
-		pltdetashells = dic['detashells']
+			lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={N}"
+			pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
 
-		ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
-		axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
+			pltqs= dic['qs']
+			pltetas= dic['etas']
+			pltetashells = dic['etashells']
+			pltdetas = dic['detas']
+			pltdetashells = dic['detashells']
+
+			ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
+			axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
 axshell.legend(loc='center right', bbox_to_anchor=(2.2, 0.5))
 
