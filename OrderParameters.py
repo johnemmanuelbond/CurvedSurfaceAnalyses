@@ -149,8 +149,9 @@ def Vc(frame,excludeborder=False,R=None,tol=1e-6):
 	return Vc
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def voronoi_colors(frame,tol=1e-6):
-    v = Vc(frame, excludeborder=False,tol=tol)
+def voronoi_colors(frame,v=None,tol=1e-6):
+    if v==None:
+    	v = Vc(frame, excludeborder=False,tol=tol)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     colors = np.array([[0.6,0.6,0.6] for _ in v])
@@ -197,8 +198,9 @@ def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6):
 	return V_rho
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def density_colors(frame,aeff = 0.5,tol=1e-6):
-    rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
+def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
+    if rhos == None:
+    	rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     rho_cp = 0.9067/(np.pi*aeff**2)
@@ -299,8 +301,9 @@ def ScarNumber(frame,tol=1e-6):
 	return Sc
 
 #returns an Nx3 array of rgb values based on the net voronoi charge of a frame
-def scar_colors(frame,tol=1e-6):
-    s = ScarNumber(frame,tol=tol)
+def scar_colors(frame,s=None,tol=1e-6):
+    if s == None:
+    	s = ScarNumber(frame,tol=tol)
     colors = np.zeros((s.size,3))
     for i,si in enumerate(s):
     	if si == None:
