@@ -140,6 +140,7 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None):
                 coords = " ".join([f"{val:0.5f}" for val in part]) + " "
                 coloring = " ".join([f"{val:0.5f}" for val in colors[i,p]])
                 outfile.write(line+coords+coloring+'\n')
+        outfile.close()
 
 """
 simple method to make a string for the simulation box needed
