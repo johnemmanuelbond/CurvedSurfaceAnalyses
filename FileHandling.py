@@ -274,6 +274,7 @@ def read_dump(filename):
 	                frame.append([float(i) for i in line.split()[2:5]])
 	                    
 	            coord_acc.append(frame)
+	    outfile.close()
 	multiple = np.array(coord_acc)
 	times = np.array(time_acc)
 	return multiple, times
