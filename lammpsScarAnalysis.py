@@ -55,7 +55,7 @@ def int_a_eff(radius, Bpp, kappa):
 	return radius + 1/2*(first+second)
 
 aeff = int_a_eff(a_hc, bpp, kappa)
-eta_eff = N*(aeff/(2*a_hc))**2/(4*R**2)
+eta_eff = pnum*(aeff/(2*a_hc))**2/(4*R**2)
 lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={pnum}"
 pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={pnum}"
 
