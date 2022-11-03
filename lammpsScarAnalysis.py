@@ -165,8 +165,8 @@ figHists.savefig("BarChart.jpg")
 
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
 p = hist/(hist.sum().sum())
-e = -np.log(p) #kT
-g = axgrid.pcolormesh(X,Y,e,cmap='RdBu')
+e = -np.log(p+0.00000001) #kT
+g = axgrid.pcolormesh(X,Y,e,cmap='BuRd')
 #axgrid.set_aspect('equal','box')
-figgrid.colorbar(g)
+figgrid.colorbar(g,label='Energy [kT]')
 figgrid.savefig("ClusterGrid.jpg")
