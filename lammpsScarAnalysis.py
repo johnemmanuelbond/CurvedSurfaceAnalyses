@@ -184,7 +184,7 @@ axHists.legend()
 figHists.savefig("BarChart.jpg")
 
 # 2D projection of the complete 3D histogram plus a boltzmann inversion
-figgrid, axgrid = plt.subplots(figsize=(3,3))
+figgrid, axgrid = plt.subplots(figsize=(5,5))
 axgrid.set_xlabel("Cluster Net Charge")
 axgrid.set_ylabel("Cluster Size")
 axgrid.set_title(pltlab)
