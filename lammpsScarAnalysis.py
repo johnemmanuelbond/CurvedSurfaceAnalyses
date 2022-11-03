@@ -46,7 +46,7 @@ ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
 ax3D.set_ylabel("Cluster Size")
 
-figgrid, axgrid = plt.subplots(figsize=(5,5))
+figgrid, axgrid = plt.subplots(figsize=(10,10))
 axgrid.set_xlabel("Cluster Net Charge")
 axgrid.set_ylabel("Cluster Size")
 
@@ -166,7 +166,7 @@ figHists.savefig("BarChart.jpg")
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
 p = hist/(hist.sum().sum())
 e = -np.log(p+0.00000001) #kT
-g = axgrid.pcolormesh(X,Y,e,cmap='BuRd')
+g = axgrid.pcolormesh(X,Y,e,cmap='RdBu_r')
 #axgrid.set_aspect('equal','box')
 figgrid.colorbar(g,label='Energy [kT]')
 figgrid.savefig("ClusterGrid.jpg")
