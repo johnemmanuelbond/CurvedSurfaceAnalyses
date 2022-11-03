@@ -46,7 +46,7 @@ ax3D = fig3D.add_subplot(projection='3d')
 ax3D.set_xlabel("Cluster Net Charge")
 ax3D.set_ylabel("Cluster Size")
 
-figgrid, axgrid = plt.subplots()
+figgrid, axgrid = plt.subplots(figsize=(5,5))
 axgrid.set_xlabel("Cluster Net Charge")
 axgrid.set_ylabel("Cluster Size")
 
@@ -61,7 +61,7 @@ assert len(infile) == 1, "need to have one specified input file"
 a_hc = 1.4
 
 lammps_params = handle.read_infile(infile[0])
-time_str = handle.get_thermo_time(path+'log.lammps')
+time_str = handle.get_thermo_timecd (path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
 ts = np.load(path+'times.npy')
 fnum = multiple.shape[0]
@@ -164,7 +164,9 @@ axHists.legend()
 figHists.savefig("BarChart.jpg")
 
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
-g = axgrid.pcolormesh(X,Y,hist,cmap='BuGn')
+p = hist/(hist.sum().sum())
+e = -np.log(p) #kT
+g = axgrid.pcolormesh(X,Y,e,cmap='RdBu')
 #axgrid.set_aspect('equal','box')
 figgrid.colorbar(g)
 figgrid.savefig("ClusterGrid.jpg")
