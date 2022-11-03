@@ -18,38 +18,6 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-#set up plots
-r_ico = np.sin(2*np.pi/5)
-theta1 = 2*np.arcsin(1/2/r_ico)
-theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
-
-figScar,axScar = plt.subplots()
-axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
-axScar.set_ylim([0,2])
-axScar.set_xlim([0,1])
-axScar.set_ylabel(r"$g_{{scar-scar}}$")
-axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--',")
-axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
-
-figHist,(ax1,ax2,ax3) = plt.subplots(1,3)
-ax1.set_ylabel("Counts")
-ax1.set_xlabel("Cluster Size")
-ax2.set_xlabel("Cluster Net Charge")
-ax3.set_xlabel("Cluster Total Charge")
-
-figHists, axHists = plt.subplots()
-axHists.set_xlabel("Cluster Size")
-axHists.set_ylabel("Counts")
-
-fig3D = plt.figure()
-ax3D = fig3D.add_subplot(projection='3d')
-ax3D.set_xlabel("Cluster Net Charge")
-ax3D.set_ylabel("Cluster Size")
-
-figgrid, axgrid = plt.subplots(figsize=(10,10))
-axgrid.set_xlabel("Cluster Net Charge")
-axgrid.set_ylabel("Cluster Size")
-
 # load data
 start = timer()
 path = os.getcwd()+"/"
@@ -75,8 +43,25 @@ bpp = lammps_params['bpp']
 dt = lammps_params['timestep']
 R = lammps_params['rad']
 
+def int_a_eff(radius, Bpp, kappa):
+	integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
+
+	debye_points = np.arange(5)/(kappa)
+
+	first, fErr = integrate.quad(integrand, 0, 1000/kappa, points=debye_points)
+	second, sErr = integrate.quad(integrand, 1000/kappa, np.inf)
+
+	return radius + 1/2*(first+second)
+
+aeff = int_a_eff(a_hc, bpp, kappa)
+eta_eff = N*(aeff/(2*a_hc))**2/(4*R**2)
+lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={pnum}"
+pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={pnum}"
+
 times = ts*dt
 
+
+#Set up data structures
 
 midssScar =  []
 gsScar = []
@@ -92,6 +77,19 @@ last_section = 1/3
 desired_samples = 100
 idx = np.arange(int((1-last_section)*fnum),fnum,int((last_section*fnum)/desired_samples))
 
+#Spatial correlation of scars
+r_ico = np.sin(2*np.pi/5)
+theta1 = 2*np.arcsin(1/2/r_ico)
+theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
+
+figScar,axScar = plt.subplots()
+axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
+axScar.set_title(pltlab)
+axScar.set_ylim([0,2])
+axScar.set_xlim([0,1])
+axScar.set_ylabel(r"$g_{{scar-scar}}$")
+axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--',")
+axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
 for i in idx:
 	frame = multiple[i]
@@ -120,6 +118,14 @@ scarSizes = np.array(scarSizes)
 scarNetCharges = np.array(scarNetCharges)
 scarTotalCharges = np.array(scarTotalCharges)
 
+#Histograms of each scar quality: net cahrge, total charge, size
+figHist,(ax1,ax2,ax3) = plt.subplots(1,3)
+ax1.set_ylabel("Counts")
+ax1.set_xlabel("Cluster Size")
+ax2.set_xlabel("Cluster Net Charge")
+ax3.set_xlabel("Cluster Total Charge")
+ax2.set_title(pltlab)
+
 def bins(arr):
 	start = min(arr) - 0.5
 	end = max(arr) + 0.5
@@ -129,6 +135,13 @@ ax1.hist(scarSizes,bins=bins(scarSizes))
 ax2.hist(scarNetCharges,bins=bins(scarNetCharges))
 ax3.hist(scarTotalCharges,bins=bins(scarTotalCharges))
 figHist.savefig("Cluster Histrograms.jpg")
+
+#complete 3D histogram of net charge and cluster size
+fig3D = plt.figure()
+ax3D = fig3D.add_subplot(projection='3d')
+ax3D.set_xlabel("Cluster Net Charge")
+ax3D.set_ylabel("Cluster Size")
+ax3D.set_title(pltlab)
 
 hist, xedges, yedges = np.histogram2d(scarNetCharges,scarSizes,bins=[bins(scarNetCharges),bins(scarTotalCharges)])
 
@@ -145,6 +158,12 @@ ax3D.bar3d(X.ravel()-w/2,Y.ravel()-w/2,0,w,w,hist.ravel())
 
 fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
+
+#Stacked histograms of cluster size per each net charge
+figHists, axHists = plt.subplots()
+axHists.set_xlabel("Cluster Size")
+axHists.set_ylabel("Counts")
+axHists.set_title(pltlab)
 
 cs = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -163,11 +182,17 @@ for i, x in enumerate(ymids):
 axHists.legend()
 figHists.savefig("BarChart.jpg")
 
+# 2D projection of the complete 3D histogram plus a boltzmann inversion
+figgrid, axgrid = plt.subplots(figsize=(10,10))
+axgrid.set_xlabel("Cluster Net Charge")
+axgrid.set_ylabel("Cluster Size")
+axgrid.set_title(pltlab)
+
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
 p = hist/(hist.sum().sum())
 p[p==0] = np.min(p[p!=0].flatten())*np.exp(-5) #make sure high-energy clusters appear so on the grid.
 e = -np.log(p) #kT
 g = axgrid.pcolormesh(X,Y,e,cmap='coolwarm')
 #axgrid.set_aspect('equal','box')
-figgrid.colorbar(g,label='Energy [kT]',extend='max',spacing='uniform',ticks=np.arange(11))
+figgrid.colorbar(g,label='Energy [kT]',extend='max',extendfrac=0.02,spacing='uniform',ticks=np.arange(11))
 figgrid.savefig("ClusterGrid.jpg")
