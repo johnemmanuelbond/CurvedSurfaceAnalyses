@@ -61,7 +61,7 @@ assert len(infile) == 1, "need to have one specified input file"
 a_hc = 1.4
 
 lammps_params = handle.read_infile(infile[0])
-time_str = handle.get_thermo_timecd (path+'log.lammps')
+time_str = handle.get_thermo_time(path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
 ts = np.load(path+'times.npy')
 fnum = multiple.shape[0]
