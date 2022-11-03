@@ -43,6 +43,7 @@ bpp = lammps_params['bpp']
 dt = lammps_params['timestep']
 R = lammps_params['rad']
 
+from scipy import integrate
 def int_a_eff(radius, Bpp, kappa):
 	integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
 
