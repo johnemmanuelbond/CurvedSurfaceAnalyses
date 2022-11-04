@@ -256,7 +256,7 @@ def read_dump(filename):
 	pnum = None
 	coord_acc = []
 
-	with open(filename) as outfile:
+	with open(filename, 'r') as outfile:
 	    file_iter = enumerate(outfile)
 	    for i, line in file_iter:
 	        if line.startswith('ITEM: TIMESTEP'):
