@@ -338,10 +338,16 @@ if __name__=="__main__":
     ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
+    ax.set_title(title)
 
-    #ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
-    #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
+    ax.legend()
+    fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
 
+    short_time = 100*damp
+    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlim([0, short_time])
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylim([0, 1.1*4*D0*short_time])
     ax.set_title(title)
 
     ax.legend()
