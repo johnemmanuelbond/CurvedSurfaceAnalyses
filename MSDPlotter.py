@@ -333,27 +333,18 @@ if __name__=="__main__":
     # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
     # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
 
-
-    fig, ax = plt.subplots(figsize=(5,5))
-    ax.plot(msd_times, msd, label='mto msd')
-    #ax.plot(msd_times, msd_w, label='mto msd arclength')
-    ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
-                    alpha=0.3, label='95% bootstrap ci')
-    ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
-    ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
-            color='C0', ls='-.',
-            label=f'D={diff_coef[0]:0.3f} (fit)')
-
+    short_time = 10*damp
     ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, 5*damp])
+    ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    #ax.set_ylim([0, 4*shell_radius**2])#1.1*msd_func(msd_times[-1], damp)])
+    ax.set_ylim([0, 1.1*4*D0*short_time])
 
     #ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
     #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
 
     ax.set_title(title)
 
+    ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
     end = timer()
