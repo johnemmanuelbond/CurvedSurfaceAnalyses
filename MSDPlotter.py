@@ -345,7 +345,7 @@ if __name__=="__main__":
             label=f'D={diff_coef[0]:0.3f} (fit)')
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, 2*damp])
+    ax.set_xlim([0, 5*damp])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     #ax.set_ylim([0, 4*shell_radius**2])#1.1*msd_func(msd_times[-1], damp)])
 
