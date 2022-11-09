@@ -343,7 +343,7 @@ if __name__=="__main__":
     ax.legend()
     fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
 
-    short_time = 2
+    short_time = (0.5**2)/(4*D0)
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
