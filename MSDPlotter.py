@@ -346,7 +346,7 @@ if __name__=="__main__":
     short_time = (0.5**2)/(4*D0)
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, short_time])
-    ax.set_ylabel("Particle Radius Length Scale [$\sigma ^2$]", fontsize=12)
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
     ax.set_title("Self-Diffusion over Particle Radius")
 
