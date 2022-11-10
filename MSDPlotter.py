@@ -321,7 +321,7 @@ if __name__=="__main__":
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, 4*shell_radius**2])#1.1*msd_func(msd_times[-1], damp)])
+    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
     #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
