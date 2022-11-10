@@ -248,8 +248,8 @@ if __name__=="__main__":
     temp = config['arg']['xxxtempxxx']
     D0 = temp*damp/mass
 
-    tau_D = 1/(4*D0)
-    tau_D_SI = (a_hc**2)/D_SI
+    tau_D = 1/(16*D0)
+    tau_D_SI = (a_hc**2)/(4*D_SI)
 
     #kappa = lammps_params['kappa_2a']/(2*a_hc)
     #bpp = lammps_params['bpp']
@@ -333,12 +333,12 @@ if __name__=="__main__":
     # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
     # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
 
-    short_time = 10*damp
+    short_time = 5*damp
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title(title)
+    ax.set_title("Self-Diffusion over Damping Timescale")
 
     ax.legend()
     fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
@@ -346,9 +346,9 @@ if __name__=="__main__":
     short_time = (0.5**2)/(4*D0)
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, short_time])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylabel("Particle Radius Length Scale [$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title(title)
+    ax.set_title("Self-Diffusion over Particle Radius")
 
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')

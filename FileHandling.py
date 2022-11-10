@@ -297,7 +297,7 @@ def output_plain(filename, frame, density=1.90985,
         outfile.write(box)
         outfile.write(title)
         for i, part in enumerate(frame):
-            line = f"{i+1} 1 1.0 {density:0.5f} "
+            line = f"{i+1} 1 1.0 {density:0.5e} "
             coords = " ".join([f"{val:0.5f}" for val in part])
             outfile.write(line+coords+'\n')
 
