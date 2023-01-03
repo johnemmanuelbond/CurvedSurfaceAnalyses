@@ -244,7 +244,6 @@ def findScarsCarefully(frame,tol=1e-6):
 
 	scarCharges = np.array([np.sum(qs[scar]) for scar in scars])
 
-	return scars, scarCharges
 
 
 def findScars(frame,tol=1e-6,coordinationShells=1.1):
