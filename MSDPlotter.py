@@ -248,8 +248,8 @@ if __name__=="__main__":
     temp = config['arg']['xxxtempxxx']
     D0 = temp*damp/mass
 
-    tau_D = 1/(16*D0)
-    tau_D_SI = (a_hc**2)/(4*D_SI)
+    tau_D = 1/(4*D0)
+    tau_D_SI = (a_hc**2)/(D_SI)
 
     #kappa = lammps_params['kappa_2a']/(2*a_hc)
     #bpp = lammps_params['bpp']
@@ -352,6 +352,18 @@ if __name__=="__main__":
 
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
+
+    msd5,msd6,msd7 = mto_msd_part_Vcweight(frames, coordination, msd_time_scale)
+
+    fig, ax = plt.subplots()
+    ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
+    ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
+    ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
+    ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
+    ax.set_title(title)
+    ax.legend()
+
+    fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
 
     end = timer()
     print(f"msd calculation {end - start:.2f}s")
