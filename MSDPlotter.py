@@ -353,11 +353,11 @@ if __name__=="__main__":
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
-    msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
-
     #if the voronoi tesselation is already done we'll do the charge-weighted msd too
     if os.path.exists(path+'vor_coord.npy'):
+        
         coordination = np.load(path+'vor_coord.npy')
+        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
 
         fig, ax = plt.subplots()
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
