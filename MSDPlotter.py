@@ -353,17 +353,21 @@ if __name__=="__main__":
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
-    msd5,msd6,msd7 = mto_msd_part_Vcweight(frames, coordination, msd_time_scale)
+    msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
 
-    fig, ax = plt.subplots()
-    ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
-    ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
-    ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
-    ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
-    ax.set_title(title)
-    ax.legend()
+    #if the voronoi tesselation is already done we'll do the charge-weighted msd too
+    if os.path.exists(path+'vor_coord.npy'):
+        coordination = np.load(path+'vor_coord.npy')
 
-    fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
+        fig, ax = plt.subplots()
+        ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
+        ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
+        ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
+        ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
+        ax.set_title(title)
+        ax.legend()
+
+        fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
 
     end = timer()
     print(f"msd calculation {end - start:.2f}s")
