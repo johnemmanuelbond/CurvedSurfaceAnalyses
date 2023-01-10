@@ -42,7 +42,7 @@ def getRandomInputFile(dicString):
 	return random.choice(files)
 
 #runs a simulation using Marcc's parallelism
-def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved, replaceDic=None):
+def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved):
 	pwd = os.getcwd()
 	print("Foldername :", fldr)
 	# Commands to create folder and run jobs
@@ -55,9 +55,6 @@ def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved, replaceDic=None):
 	data = fin.read()
 	data = data.replace('xxx',f"{pwd}/{fldr}")
 	data = data.replace('yyy',"time "+exe)
-	if type(replaceDic)!=type(None):
-		for key in replaceDic:
-			data = data.replace(key,replaceDic[key])
 	fin.close()
 
 	fin = open("sub_edit.sh", "wt")
@@ -74,18 +71,6 @@ def runMarccSimWithJSON(config, fldr, exe = exe_Marcc_Curved, replaceDic=None):
 	os.system("sbatch sub.sh;")
 
 	os.chdir("..")
-
-	return
-
-def swapStringInSub(filepath,string,value):
-	fin = open(filepath, "rt")
-	data = fin.read()
-	data = data.replace(string,value)
-	fin.close()
-
-	fin = open(filepath, "wt")
-	fin.write(data)
-	fin.close()
 
 	return
 
