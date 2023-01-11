@@ -98,7 +98,7 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
-    for bw in [0.001]
+    for bw in [0.001]:
         vals,mids,bins = g_r(multiple,shell_radius=shell_radius,bin_width=bw)
         np.save(path+f'RDF_bw{bw}',np.array(mids,vals))
         fig,ax = plt.subplots()
