@@ -81,7 +81,7 @@ def radialDistributionFunction(frame, info=None):
 """
 Given a frame or set of frames, computed the average radial distribution function
 source: general_analysis, 7/23/22
-author: Alex yeh
+author: Alex yeh, Jack Bond
 """
 def g_r(coords, shell_radius=None, bin_width=0.1):
     """calculates the pair distribution function from the given coordinates"""
@@ -93,13 +93,18 @@ def g_r(coords, shell_radius=None, bin_width=0.1):
     
     allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
     for t, frame in enumerate(coords):
-        for i, p1 in enumerate(frame):
-            for j in range(i+1, pnum):
-                flat_idx = pnum*i - i*(i+1)//2 + j - i - 1
-                cos_dist = np.dot(frame[i], frame[j])/(shell_radius**2)
-                if cos_dist>1: cos_dist=1
-                if cos_dist<-1: cos_dist=-1
-                allrs[t, flat_idx] = shell_radius*np.arccos(cos_dist)
+        cos_dists = pdist(frame,metric='cosine')
+        cos_dists[cos_dists>1]=1
+        cos_dists[cos_dists<-1]=-1
+        allrs[t] = shell_radius*np.arccos(cos_dists)
+        # pdist does this better
+        # for i, p1 in enumerate(frame):
+        #     for j in range(i+1, pnum):
+        #         flat_idx = pnum*i - i*(i+1)//2 + j - i - 1
+        #         cos_dist = np.dot(frame[i], frame[j])/(shell_radius**2)
+        #         if cos_dist>1: cos_dist=1
+        #         if cos_dist<-1: cos_dist=-1
+        #         allrs[t, flat_idx] = shell_radius*np.arccos(cos_dist)
     bins = np.histogram_bin_edges(allrs[0],
                                   bins = int(np.pi*shell_radius/bin_width),
                                   range = (0, np.pi*shell_radius))

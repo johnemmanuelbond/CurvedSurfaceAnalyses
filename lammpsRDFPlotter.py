@@ -117,7 +117,7 @@ if __name__=="__main__":
         ax.set_title(title)
         ax.set_xlabel(r"Arclength [$\sigma$]")
         ax.set_ylabel(r"$g(r)$")
-        ax.plot(vals,mids,label=f"Bin Width = {bw}")
+        ax.plot(mids,vals,label=f"Bin Width = {bw}")
         ax.legend()
         fig.savefig(path+f"g(r)_bw{bw}.jpg",bbox_inches='tight')
         ax.set_xlim([0,5])
