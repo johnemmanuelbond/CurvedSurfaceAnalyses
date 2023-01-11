@@ -124,7 +124,7 @@ if __name__=="__main__":
         fig.savefig(path+f"g(r)_close_bw{bw}.jpg",bbox_inches='tight')
         # code to integrate the first peak and also get the peak height by multiple methods
 
-        RDF = {
+        output = {
                 "gr_peak_simple": np.max(vals[mids<3]),
                 "gr_peak_fit": None,
                 "gr_area": None,
