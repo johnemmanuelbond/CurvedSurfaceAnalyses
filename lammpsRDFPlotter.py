@@ -13,7 +13,7 @@ import glob, os, json
 import numpy as np
 
 from UnitConversions import getAEff, kb
-from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time
+from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
 from OrderParameters import g_r
 
 from numpy.random import default_rng
@@ -129,7 +129,7 @@ if __name__=="__main__":
                 "gr_peak_fit": None,
                 "gr_area": None,
         }
-        handle.dumpDictionaryJSON(output,"RDF")
+        dumpDictionaryJSON(output,"RDF")
     
     allend = timer()
     print(f"full runtime {allend-allstart:.2f}s")
