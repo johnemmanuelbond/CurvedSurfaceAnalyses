@@ -97,7 +97,7 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
-    samples = 10001
+    samples = 2000
     for bw in [0.001]:
 
         #getting random sample frames
@@ -120,10 +120,16 @@ if __name__=="__main__":
         ax.plot(mids,vals,label=f"Bin Width = {bw}")
         ax.legend()
         fig.savefig(path+f"g(r)_bw{bw}.jpg",bbox_inches='tight')
-        ax.set_xlim([0,5])
+        ax.set_xlim([0,4])
         fig.savefig(path+f"g(r)_close_bw{bw}.jpg",bbox_inches='tight')
         # code to integrate the first peak and also get the peak height by multiple methods
-        #handle.dumpDictionaryJSON(output,"RDF")
+
+        RDF = {
+                "gr_peak_simple": np.max(vals[mids<3]),
+                "gr_peak_fit": None,
+                "gr_area": None,
+        }
+        handle.dumpDictionaryJSON(output,"RDF")
     
     allend = timer()
     print(f"full runtime {allend-allstart:.2f}s")
