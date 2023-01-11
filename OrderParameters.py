@@ -93,10 +93,10 @@ def g_r(coords, shell_radius=None, bin_width=0.1):
     
     allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
     for t, frame in enumerate(coords):
-        cos_dists = pdist(frame,metric='cosine')
-        cos_dists[cos_dists>1]=1
+        cos_dists = 1-pdist(frame,metric='cosine')
+        cos_dists[cos_dists>1] = 1
         cos_dists[cos_dists<-1]=-1
-        allrs[t] = shell_radius*np.arccos(cos_dists)
+        allrs[t,:] = shell_radius*np.arccos(cos_dists)
         # pdist does this better
         # for i, p1 in enumerate(frame):
         #     for j in range(i+1, pnum):
