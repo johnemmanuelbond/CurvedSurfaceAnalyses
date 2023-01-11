@@ -119,9 +119,9 @@ if __name__=="__main__":
         ax.set_ylabel(r"$g(r)$")
         ax.plot(vals,mids,label=f"Bin Width = {bw}")
         ax.legend()
-        fig.savefig(path+"g(r)_bw{bw}.jpg",bbox_inches='tight')
+        fig.savefig(path+f"g(r)_bw{bw}.jpg",bbox_inches='tight')
         ax.set_xlim([0,5])
-        fig.savefig(path+"g(r)_close_bw{bw}.jpg",bbox_inches='tight')
+        fig.savefig(path+f"g(r)_close_bw{bw}.jpg",bbox_inches='tight')
         # code to integrate the first peak and also get the peak height by multiple methods
         #handle.dumpDictionaryJSON(output,"RDF")
     
