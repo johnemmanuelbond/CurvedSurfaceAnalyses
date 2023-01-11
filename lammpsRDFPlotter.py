@@ -103,14 +103,14 @@ if __name__=="__main__":
         #getting random sample frames
         fnum = multiple.shape[0]
         rng = np.random.default_rng()
-        curr_idx = np.arange(fnum)[:samples]
+        curr_idx = rng.shuffle(np.arange(fnum))[:samples]
         reduced = multiple[sorted(curr_idx)]
 
         #get g(r)
         vals,mids,bins = g_r(reduced,shell_radius=shell_radius,bin_width=bw)
         
         #save images and numpy arrays
-        np.save(path+f'RDF_bw{bw}.npy',np.array(mids,vals))
+        np.save(path+f'RDF_bw{bw}.npy',np.array([mids,vals]))
         fig,ax = plt.subplots()
         ax.set_title(title)
         ax.set_xlabel(r"Arclength [$\sigma$]")
