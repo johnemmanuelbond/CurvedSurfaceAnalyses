@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat, Sep 10, 2022
+Created on Sat, Jan 1a, 2023
 
-Plots the mean squared displacement, and several variations thereof for a lammps run
+Plots the radial distribution function at several bin widths for a single lammps run
 
-Also performs fits to find the diffusivities
+Also performs fits to find the peak heights
 
 @author: Jack Bond, Alex Yeh
 """
 
-import glob, os
+import glob, os, json
 import numpy as np
 
-from UnitConversions import getAEff
+from UnitConversions import getAEff, kb
 from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time
 from OrderParameters import g_r
 
@@ -54,11 +54,10 @@ if __name__=="__main__":
         np.save(path+'datapts.npy',multiple)
         np.save(path+'times.npy',ts)
 
-    import json
+
     config = json.load(open('config.json','r'))
     params = config['params']
 
-    from UnitConversions import kb
     a_hc = params['particle_radius']
     kT = params['temperature']*kb
     a_eff = getAEff(params)
@@ -98,9 +97,20 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
+    samples = 1000
     for bw in [0.001]:
-        vals,mids,bins = g_r(multiple,shell_radius=shell_radius,bin_width=bw)
-        np.save(path+f'RDF_bw{bw}',np.array(mids,vals))
+
+        #getting random sample frames
+        fnum = multiple.shape[0]
+        rng = np.random.default_rng()
+        curr_idx = np.arange(fnum)[:samples]
+        reduced = multiple[sorted(curr_idx)]
+
+        #get g(r)
+        vals,mids,bins = g_r(reduced,shell_radius=shell_radius,bin_width=bw)
+        
+        #save images and numpy arrays
+        np.save(path+f'RDF_bw{bw}.npy',np.array(mids,vals))
         fig,ax = plt.subplots()
         ax.set_title(title)
         ax.set_xlabel(r"Arclength [$\sigma$]")
