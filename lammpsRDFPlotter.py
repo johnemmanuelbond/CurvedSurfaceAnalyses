@@ -97,7 +97,7 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
-    samples = 1000
+    samples = 10001
     for bw in [0.001]:
 
         #getting random sample frames
