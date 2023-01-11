@@ -103,7 +103,9 @@ if __name__=="__main__":
         #getting random sample frames
         fnum = multiple.shape[0]
         rng = np.random.default_rng()
-        curr_idx = rng.shuffle(np.arange(fnum))[:samples]
+        idx = np.arange(fnum)
+        rng.shuffle(idx)
+        curr_idx = idx[:samples]
         reduced = multiple[sorted(curr_idx)]
 
         #get g(r)
