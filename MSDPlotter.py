@@ -360,6 +360,8 @@ if __name__=="__main__":
         msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
 
         fig, ax = plt.subplots()
+        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+        ax.set_xlabel("[$\\tau$]", fontsize=12)
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
         ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
         ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
@@ -385,7 +387,7 @@ if __name__=="__main__":
             'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
     }
 
-    dumpDictionaryJSON(output, 'output')
+    dumpDictionaryJSON(output, 'diffusion')
 
     allend = timer()
     print(f"full runtime {allend-allstart:.2f}s")

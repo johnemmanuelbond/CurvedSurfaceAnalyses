@@ -430,6 +430,19 @@ def C6(frame):
 
 	return C6, np.mean(C6)/c6_hex(N), psi6, psi6global
 
+# Second virial coeffecient for an arbitrary potential
+# recieve a pair potential in kT units, phi, which takes r in simulation units
+# returns the second virial coefficient for that potential
+def B2(phi,splits=np.array([0,5,np.infty])):
+    
+    if type(phi) != type(np.mean): raise Exception("Input must be a python function")
+    
+    bounds = zip(splits[:-1],splits[1:])
+    integrand = lambda r: -2*np.pi*r**2 * (np.exp(-phi(r))-1)
+    parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
+
+    return np.array(parts).sum(), integrand, parts
+
 if __name__=="__main__":
 
 	nargs = len(sys.argv)
