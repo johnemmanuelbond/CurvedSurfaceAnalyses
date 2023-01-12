@@ -13,6 +13,7 @@ import glob, os
 import numpy as np
 
 from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time
+from UnitConversions import kb, getAEff
 from numpy.random import default_rng
 import matplotlib.pyplot as plt
 
@@ -234,8 +235,8 @@ if __name__=="__main__":
     config = json.load(open('config.json','r'))
     params = config['params']
 
-    from UnitConversions import kb
     a_hc = params['particle_radius']
+    a_eff = getAEff(params)
     kT = params['temperature']*kb
     visc = params['viscosity']
     D_SI = kT/(6*np.pi*visc*a_hc)
@@ -256,7 +257,6 @@ if __name__=="__main__":
     dt = lammps_params['timestep']
 
     times = ts*dt
-    a_eff = a_hc#int_a_eff(a_hc, bpp, kappa)
 
     if lammps_params['rad'] is None:
         shell_radii = np.linalg.norm(multiple,axis=-1).mean(axis=-1)

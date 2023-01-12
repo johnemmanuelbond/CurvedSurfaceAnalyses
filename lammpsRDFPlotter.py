@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat, Jan 1a, 2023
+Created on Wed, Jan 11, 2023
 
 Plots the radial distribution function at several bin widths for a single lammps run
 
