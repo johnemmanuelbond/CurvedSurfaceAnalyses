@@ -78,7 +78,7 @@ if lammps_params['rad'] is None:
     shell_radii = np.linalg.norm(multiple,axis=-1).mean(axis=-1)
     shell_radius = shell_radii.min() #get stand in value for rough approximation
     all_eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radii**2)
-    eta_eff = eta_eff.max() #get stand in value for rough approximation
+    eta_eff = all_eta_eff.max() #get stand in value for rough approximation
     title = (f"N: {pnum}, "
              +f"R: {shell_radii.max():0.3f}-{shell_radii.min():0.3f} "
              +r"[2a], $\eta_{eff}$:" 
