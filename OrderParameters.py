@@ -1,7 +1,7 @@
 import os, sys, glob, json
 sys.path.append(os.path.dirname(__file__))
 
-from UnitConversions as units
+import UnitConversions as units
 from FileHandling import read_xyz_frame
 
 import numpy as np
