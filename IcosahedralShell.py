@@ -2,8 +2,11 @@
 # coding: utf-8
 # @author = Alex Yeh
 
+import os, sys, glob, json
+sys.path.append(os.path.dirname(__file__))
+
 import matplotlib.pyplot as plt
-from . import FileHandling as handle
+import FileHandling as handle
 
 import numpy as np
 from scipy.spatial.distance import pdist

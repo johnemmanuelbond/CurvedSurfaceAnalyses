@@ -1,12 +1,15 @@
-from . import UnitConversions as units
-from .FileHandling import read_xyz_frame
+import os, sys, glob, json
+sys.path.append(os.path.dirname(__file__))
+
+from UnitConversions as units
+from FileHandling import read_xyz_frame
+
 import numpy as np
 import scipy as sp
+
 from scipy.spatial.distance import pdist
 from scipy.spatial import SphericalVoronoi#, geometric_slerp
 from scipy.signal import find_peaks
-
-import os, sys, glob, json
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
