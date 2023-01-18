@@ -8,16 +8,15 @@ Mostly copied from a version of Alex's 'visualizing.py' circa 8/25/22
 @author: Alex Yeh, Jack Bond
 """
 
-import glob, os
+import glob, os, sys
 import numpy as np
 from collections import defaultdict
 from timeit import default_timer as timer
 from scipy import integrate
 
-import UnitConversions as units
-import FileHandling as handle
-
-from FileHandling import read_infile, get_thermo_time
+pwd = os.path.dirname(__file__)
+sys.path.append(os.path.realpath(pwd+'/..'))
+from FileHandling import read_infile, get_thermo_time, output_vis
 
 def int_a_eff(radius, Bpp, kappa):
     integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
@@ -58,8 +57,8 @@ assert len(infile) == 1, "need to have one specified input file"
 
 a_hc = 1.4
 
-lammps_params = handle.read_infile(infile[0])
-time_str = handle.get_thermo_time(path+'log.lammps')
+lammps_params = read_infile(infile[0])
+time_str = get_thermo_time(path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
 ts = np.load(path+'times.npy')
 pnum = multiple.shape[1]
@@ -82,6 +81,6 @@ title = (f"N: {pnum}, "
          +r"[2a], $\eta_{eff}$:" 
          + f"{eta_eff:0.3f}")
 
-handle.output_vis(path+"movie_voronoi.atom", 
+output_vis(path+"movie_voronoi.atom", 
            multiple, ts=ts,
            colors=vor_col)

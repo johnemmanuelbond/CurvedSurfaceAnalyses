@@ -9,9 +9,11 @@ Also performs fits to find the peak heights
 @author: Jack Bond, Alex Yeh
 """
 
-import glob, os, json
+import glob, os, sys, json
 import numpy as np
 
+pwd = os.path.dirname(__file__)
+sys.path.append(os.path.realpath(pwd+'/..'))
 from UnitConversions import getAEff, kb
 from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
 from OrderParameters import g_r

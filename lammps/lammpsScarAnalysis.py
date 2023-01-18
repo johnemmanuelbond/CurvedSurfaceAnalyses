@@ -7,10 +7,13 @@ Analyzes a lammps run for clusters of charge, as a well as the spatial coordinat
 @author: Jack Bond
 """
 
-import glob, os
+import glob, os, sys
 import numpy as np
 from timeit import default_timer as timer
 
+pwd = os.path.dirname(__file__)
+sys.path.append(os.path.realpath(pwd+'/..'))
+sys.path.append(os.path.realpath(pwd+"/../edison"))
 import UnitConversions as units
 import FileHandling as handle
 from MCBatchAnalyzer import scar_correlation
