@@ -1,7 +1,5 @@
-import UnitConversions as units
-#from visualize import getRGB
-from FileHandling import read_xyz_frame
-
+from . import UnitConversions as units
+from .FileHandling import read_xyz_frame
 import numpy as np
 import scipy as sp
 from scipy.spatial.distance import pdist

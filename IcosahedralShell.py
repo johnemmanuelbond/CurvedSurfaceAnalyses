@@ -3,7 +3,7 @@
 # @author = Alex Yeh
 
 import matplotlib.pyplot as plt
-import FileHandling as handle
+from . import FileHandling as handle
 
 import numpy as np
 from scipy.spatial.distance import pdist
