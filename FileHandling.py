@@ -9,7 +9,7 @@ Collected from various driver and analysis scripts authored by myself and @AlexY
 """
 
 import numpy as np
-import json, yaml
+import json#, yaml
 
 """
 code for dumping the relevant dictionaries into files
@@ -21,10 +21,10 @@ def dumpDictionaryJSON(dic, name):
 	file.write(json.dumps(dic,indent=2))
 	file.close()
 
-def dumpDictionaryYAML(dic, name):
-	file = open(name+".yaml","w")
-	yaml.dump(dic,file,sort_keys=False)
-	file.close()
+# def dumpDictionaryYAML(dic, name):
+# 	file = open(name+".yaml","w")
+# 	yaml.dump(dic,file,sort_keys=False)
+# 	file.close()
 
 """
 Reads xyz coordinates from a .xyz file. Expected format:

@@ -62,7 +62,7 @@ if __name__=="__main__":
     kT = params['temperature']*kb
     a_eff = getAEff(params)
 
-    pnum = multiple.shape[1]
+    fnum,pnum,_ = multiple.shape
     # dt = lammps_params['timestep']*tau # [s]
 
     #kappa = lammps_params['kappa_2a']/(2*a_hc)
@@ -97,15 +97,15 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
-    samples = 2000
+    samples = 5e7
+    n_frames = min(fnum,int(samples/pnum**2))
     for bw in [0.001]:
 
         #getting random sample frames
-        fnum = multiple.shape[0]
         rng = np.random.default_rng()
         idx = np.arange(fnum)
         rng.shuffle(idx)
-        curr_idx = idx[:samples]
+        curr_idx = idx[:n_frames]
         reduced = multiple[sorted(curr_idx)]
 
         #get g(r)
@@ -115,6 +115,7 @@ if __name__=="__main__":
         np.save(path+f'RDF_bw{bw}.npy',np.array([mids,vals]))
         fig,ax = plt.subplots()
         ax.set_title(title)
+        ax.set_ylim([0,10])
         ax.set_xlabel(r"Arclength [$\sigma$]")
         ax.set_ylabel(r"$g(r)$")
         ax.plot(mids,vals,label=f"Bin Width = {bw}")
