@@ -13,6 +13,7 @@ import numpy as np
 
 from .OrderParameters import Vc, Nc, findScars
 from scipy.signal import find_peaks
+from scipy.spatial.distance import pdist
 
 #icosohedral angles
 r_ico = np.sin(2*np.pi/5)
