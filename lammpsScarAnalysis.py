@@ -9,17 +9,15 @@ Analyzes a lammps run for clusters of charge, as a well as the spatial coordinat
 
 import glob, os, sys
 import numpy as np
-from timeit import default_timer as timer
 
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-sys.path.append(os.path.realpath(pwd+"/../edison"))
-import UnitConversions as units
-import FileHandling as handle
-from MCBatchAnalyzer import scar_correlation
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
+from main_lib import UnitConversions as units
+from main_lib import FileHandling as handle
+from main_lib.Correlation import scar_correlation
+
+from timeit import default_timer as timer
 
 # load data
 start = timer()

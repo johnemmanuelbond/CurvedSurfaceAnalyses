@@ -7,6 +7,9 @@ __pycache__/
 *~
 *#*#*
 
+#testingscript
+testscript.py
+
 #testbatch output
 testbatch/
 
@@ -17,8 +20,6 @@ testbatch/
 #any frames
 *.xyz
 *.atom
-
-FourierMovieMaker.py
 
 # C extensions
 *.so

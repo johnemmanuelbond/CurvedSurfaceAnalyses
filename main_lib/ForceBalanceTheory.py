@@ -13,8 +13,10 @@ force balance continuum theory.
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import UnitConversions as units
 from timeit import default_timer as timer
+
+
+from .UnitConversions import getSimInputTerms, getAEff
 
 # Thermodynamic critical points for hard disc systems
 eta_cp = 0.906  # close packed
@@ -87,7 +89,7 @@ The energy can then be related to a distance via the functional form and strengt
 of the external field, in this case it is quadratic.
 """
 def rFromUpf(u, params, extent = np.inf):
-	_, field_k, _ = units.getSimInputTerms(params) #units of kT/(2a)^2
+	_, field_k, _ = getSimInputTerms(params) #units of kT/(2a)^2
 	assert field_k > 0, "field must be positive"
 	rs = np.sqrt(u/field_k)
 
@@ -111,6 +113,19 @@ def integrate_profile(rhos, rs, shellRadius=None):
 	return counts.sum()
 
 """
+Given a density profile calculates the total number of particles in the field
+Assumes the particles are on a flat surface unless otherwise specified, in which
+case the bin areas need to change dramatically
+"""
+def integrate_histogram(rhos, rho_bin, shellRadius = None):
+	if shellRadius == None:
+		areas = np.pi*(rho_bin[1:]**2-rho_bin[:-1]**2)
+	else:
+		areas = (2*np.pi*shellRadius**2)*(np.cos(rho_bin[:-1]/shellRadius)-np.cos(rho_bin[1:]/shellRadius))
+	counts = areas * rhos
+	return counts.sum()
+
+"""
 By specifying a field strength and a target number of particles, we can
 guess central densities until the resultant density distribution yields
 a particle number consistent with the target.
@@ -120,7 +135,7 @@ def profileFromFieldStrength(params, target_N, tol_e=-3, aeff=None, shellRadius=
 	
 	a = params['particle_radius']
 	if(aeff==None):
-		aeff = units.getAEff(params)
+		aeff = getAEff(params)
 	
 #     stepsize = 1e-5
 #     all_etas = np.linspace(eta_cp-stepsize,1e-3,num = int((eta_cp-stepsize-1e-3)/stepsize))
@@ -178,7 +193,7 @@ def profileFromCentralDensity(eta_c, params, target_N, tol_e=-3, aeff=None, shel
 	
 	a = params['particle_radius']
 	if(aeff==None):
-		aeff = units.getAEff(params)
+		aeff = getAEff(params)
 
 	eta_in = np.linspace(eta_c,0.001,num=400)
 	U = energyFromForceBalance(eta_in)
@@ -217,6 +232,71 @@ def profileFromCentralDensity(eta_c, params, target_N, tol_e=-3, aeff=None, shel
 	return eta_in, rs, guess_N, pcopy
 
 
+"""calculates particle number density projected onto xy-plane
+given a N x M x d array"""
+def rho_hist(frames, furthest=None, bin_width=2):
+	projected = frames[:,:,:2]
+	fnum, pnum, _ = projected.shape #get number of frames and particles
+
+	# converts projected coords into distances from center across sample
+	dists = np.linalg.norm(projected, axis=-1).flatten()
+
+	# if furthest is not defined, include 20% beyond farthest excursion
+	if furthest is None:
+		furthest = max(dists)*1.2
+
+	hbin_edge = np.histogram_bin_edges(dists,
+								   bins=int(furthest/bin_width),
+								   range=(0, furthest))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+
+	#annular area formula as defined below:
+	#https://en.wikipedia.org/wiki/Annulus_(mathematics)
+	area = np.pi*(hbin_edge[1:]**2 - hbin_edge[:-1]**2)
+	#get count within each bin
+	hval, hbin = np.histogram(dists, bins=hbin_edge)
+
+	rho = hval / (fnum * area)
+	return mids, rho, hbin
+
+"""
+calculates particle number density as a function of arclength on a sphere
+given a N x M x d array and that sphere's radius--which is necessary for computing
+bin areas.
+"""
+def spherical_rho_hist(frames, shellRadius, furthest=None, bin_width=2):
+	fnum, pnum, _ = frames.shape #get number of frames and particles
+	
+	zcoords = frames[:,:,-1].flatten()
+	zcoords[zcoords>shellRadius]=shellRadius
+	zcoords[zcoords<-1*shellRadius] = -1*shellRadius
+	
+	arc_from_top = shellRadius*np.arccos(zcoords/shellRadius)
+	#arc_from_bot = shellRadius*np.arccos(-1*zcoords/shellRadius)
+	arclengths = arc_from_top#np.minimum(arc_from_top,arc_from_bot)
+	
+	# if furthest is not defined, include 20% beyond farthest arclength
+	if furthest is None:
+		furthest = max(arclengths)*1.2
+	
+	hbin_edge = np.histogram_bin_edges(arclengths,
+								   bins=int(furthest/bin_width),
+								   range=(0, furthest))
+
+	widths = hbin_edge[1:] - hbin_edge[:-1]
+	mids = hbin_edge[:-1] + widths/2
+	
+	#so I did this calculus on paper, it would be helpful to find a reference for it.
+	area = (2*np.pi*shellRadius**2)*(np.cos(hbin_edge[:-1]/shellRadius)-np.cos(hbin_edge[1:]/shellRadius))
+	
+	hval, hbin = np.histogram(arclengths, bins=hbin_edge)
+	
+	rho = hval / (fnum * area)
+	
+	return mids, rho, hbin
+
 """
 Main method runs a few theortical calculations
 """
@@ -236,7 +316,7 @@ if __name__=="__main__":
 			'dg': 100e-6,           # [m]
 			}
 
-	print(units.getAEff(params))
+	print(getAEff(params))
 
 	testN = 300
 

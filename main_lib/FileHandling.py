@@ -81,6 +81,14 @@ def save_xyz(coords, filename, comment=None):
                              *part))
 
 """
+chops the first N particles (usually also the top N) out from a frame and saves it
+as a new file.
+"""
+def chopCap(frame, newN, name = "N_n_R_r_V_v"):
+	top = frame[np.argsort(frame[:,2])][-newN:]
+	handle.save_xyz(top,f"{os.getcwd()}/{name}.xyz")
+
+"""
 given a Nx3 frame and an Nx3 array of rgb colors, outputs a pretty visualization for your viewing pleasure in Ovito.
 See OrderParameters.voronoi_colors for an example coloring.
 source: some driver, 8/10/22

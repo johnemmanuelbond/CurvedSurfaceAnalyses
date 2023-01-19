@@ -1,8 +1,6 @@
 import os, sys, glob, json
-sys.path.append(os.path.dirname(__file__))
 
-import UnitConversions as units
-from FileHandling import read_xyz_frame
+from .FileHandling import read_xyz_frame
 
 import numpy as np
 import scipy as sp
@@ -78,45 +76,6 @@ def radialDistributionFunction(frame, info=None):
 	info["first_coordination_shell"] = shellRadius
 
 	return hist, info
-
-"""
-Given a frame or set of frames, computed the average radial distribution function
-source: general_analysis, 7/23/22
-author: Alex yeh, Jack Bond
-"""
-def g_r(coords, shell_radius=None, bin_width=0.1):
-    """calculates the pair distribution function from the given coordinates"""
-    if shell_radius is None:
-        # get mean radius over run
-        shell_radius = np.linalg.norm(coords, axis=-1).mean()
-        
-    fnum, pnum, _ = coords.shape
-    
-    allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
-    for t, frame in enumerate(coords):
-        cos_dists = 1-pdist(frame,metric='cosine')
-        cos_dists[cos_dists>1] = 1
-        cos_dists[cos_dists<-1]=-1
-        allrs[t,:] = shell_radius*np.arccos(cos_dists)
-        # pdist does this better
-        # for i, p1 in enumerate(frame):
-        #     for j in range(i+1, pnum):
-        #         flat_idx = pnum*i - i*(i+1)//2 + j - i - 1
-        #         cos_dist = np.dot(frame[i], frame[j])/(shell_radius**2)
-        #         if cos_dist>1: cos_dist=1
-        #         if cos_dist<-1: cos_dist=-1
-        #         allrs[t, flat_idx] = shell_radius*np.arccos(cos_dist)
-    bins = np.histogram_bin_edges(allrs[0],
-                                  bins = int(np.pi*shell_radius/bin_width),
-                                  range = (0, np.pi*shell_radius))
-    angle_bins = bins/shell_radius
-    width = bins[1] - bins[0]
-    mids = bins[:-1] + width/2
-    hval = np.zeros_like(mids)
-    
-    counts, _ = np.histogram(allrs, bins=bins)
-    vals = counts/(fnum*allrs.shape[1]) * 2/(np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))
-    return vals, mids, bins
 
 def firstCoordinationShell(frame, info=None):
 	if(info == None):
@@ -566,3 +525,65 @@ if __name__=="__main__":
 # 		C6 = np.array([(1/6)*np.sum(neighbors[n]*(chi6[n]>0.32)) for n in range(npart)])
 
 # 	return C6, Nc
+
+def Fourier_Transform_2D(coordinates,pointnumber=100,filename="Fourier_Test_2D.png"):
+	N = coordinates.shape[0]
+	coordinates[coordinates==0]=0.000001
+	voronoiNumber = Vc(coordinates)
+
+	Rs = np.linalg.norm(coordinates,axis=-1)
+	l = Rs*np.arccos(coordinates[:,2]/Rs)
+	phi = np.arctan(coordinates[:,1]/coordinates[:,0])+np.pi*(coordinates[:,0]<0)
+	x,y = l*np.cos(phi), l*np.sin(phi)
+	
+	R = np.mean(Rs)
+	h = (N*(np.pi*0.5**2)/0.65)/(2*np.pi*R)
+	extent = R*np.arccos((R-h)/R)
+	if np.isnan(extent):
+		extent = np.pi*R
+
+	fig,[ax1,ax2] = plt.subplots(1,2, figsize = (8,4))
+	plt.tight_layout()#rect=[0, 0.03, 1, 1.2])
+	ax1.set_aspect('equal', 'box')
+	ax1.set_xlim([-1*extent,extent])
+	ax1.set_ylim([-1*extent,extent])
+	ax2.set_aspect('equal', 'box')
+
+	plt.suptitle(f"Projected snapshot and Fourier Transform for R={R:.2f}[2a]")
+	ax1.set_xlabel("[2a]")
+	ax1.set_ylabel("[2a]")
+
+	ax1.scatter(x,y,color=[getRGB(v) for v in voronoiNumber])
+	#ax.scatter(coordinates[:,0],coordinates[:,1],marker = 'x')
+	
+
+	mesh = np.linspace(-1*np.pi,np.pi,num=pointnumber,endpoint=True)
+	kx, ky = np.meshgrid(mesh,mesh)
+	
+	#mesh = np.linspace(0,np.pi,num=pointnumber,endpoint=True)
+	#kl, kphi = np.meshgrid(mesh,2*mesh)
+	#kx, ky = kl*np.cos(kphi), kl*np.sin(kphi)
+
+	jacobian = Rs*np.sin(l/Rs)
+	dot = np.einsum("i,jk,i->ijk",jacobian,kx,np.cos(phi)) + np.einsum("i,jk,i->ijk",jacobian,ky,np.sin(phi))
+	#dot = np.einsum("i,jk,i,jk->ijk",jacobian,kl,np.cos(phi),np.cos(kphi)) + np.einsum("i,jk,i,jk->ijk",jacobian,kl,np.sin(phi),np.sin(kphi))
+
+	integrand = np.einsum('ijk,i->ijk',np.exp(-2j*np.pi*dot),jacobian)
+	F = 1/(2*np.pi)*np.sum(integrand,axis=0)
+
+	#ax = plt.axes(projection='3d')
+	sigma = np.std(np.abs(F))
+	zval = np.abs(F)
+	#zval[zval<sigma]=0
+	zval[zval>4*sigma]=4*sigma
+	ax2.contourf(kx,ky,zval,cmap='Greys')
+	#ax2.contourf(kl,kphi,zval,cmap='Greys')
+
+
+	# ax2.xaxis.set_major_formatter(tck.FormatStrFormatter('%g $\pi$'))
+	# ax2.xaxis.set_major_locator(tck.MultipleLocator(base=1.0))
+	# ax2.yaxis.set_major_formatter(tck.FormatStrFormatter('%g $\pi$'))
+	# ax2.yaxis.set_major_locator(tck.MultipleLocator(base=1.0))
+
+	fig.savefig(filename, bbox_inches='tight')
+	plt.close()

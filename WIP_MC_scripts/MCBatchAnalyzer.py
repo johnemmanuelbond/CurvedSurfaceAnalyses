@@ -33,7 +33,7 @@ as a new file.
 """
 def chopCap(frame, newN, name = "N_n_R_r_V_v"):
 	top = frame[np.argsort(frame[:,2])][-newN:]
-	handle.save_xyz(top,f"{os.getcwd()}/{name}.xyz")	
+	handle.save_xyz(top,f"{os.getcwd()}/{name}.xyz")
 
 """calculates particle number density projected onto xy-plane
 given a N x M x d array"""

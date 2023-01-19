@@ -9,23 +9,21 @@ Also performs fits to find the diffusivities
 @author: Jack Bond, Alex Yeh
 """
 
-import glob, os, sys, json
 import numpy as np
-
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
-from UnitConversions import kb, getAEff
 from numpy.random import default_rng
-import matplotlib.pyplot as plt
 
-from timeit import default_timer as timer
-
-from scipy.optimize import curve_fit
-
+"""
+Theoretical expression for the diffusive mean-squared displacement on a spherical surface
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
 def sphere_msd(taus, damp, shell_radius = 10):
     return 2*(shell_radius**2)*(1-np.exp(-2*damp*taus*shell_radius**-2))
 
+"""
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
 def mto_msd(coords, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd up to the given max_step, defaulting to the maximum number of 
@@ -63,6 +61,10 @@ def mto_msd(coords, max_lag, skips=None):
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
     return msd_comp/(pnum*orig_num), msd_w/(pnum*orig_num)
 
+"""
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
 def mto_msd_part(coords, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd per particle up to the given max_step, defaulting to the maximum 
@@ -91,6 +93,10 @@ def mto_msd_part(coords, max_lag, skips=None):
     
     return msd/orig_num
 
+"""
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
 def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd per particle up to the given max_step, defaulting to the maximum 
@@ -140,6 +146,10 @@ def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     norm = orig_num
     return msd5/norm, msd6/norm, msd7/norm
 
+"""
+source: MSDPlotter, 1/19/23
+author: Jack Bond
+"""
 def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd per particle up to the given max_step, defaulting to the maximum 
@@ -183,6 +193,10 @@ def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     norm = orig_num
     return msdelse/norm, msdzero/norm
 
+"""
+source: general_analysis, 7/23/22
+author: Alex yeh
+"""
 def bootstrap_mto_msd(msd_part, trials, 
                       skips=None, confidence=95, rng=default_rng()):
     summed_msd = np.sum(msd_part, axis=-1)
@@ -206,187 +220,207 @@ def bootstrap_mto_msd(msd_part, trials,
 
 if __name__=="__main__":
 
-    allstart = timer()
-
-    # load data
-    path = './'
-    print(path)
-    #%% read dump file
-    reset = False
-
-    '''reading infiles'''
+    from timeit import default_timer as timer
 
     start = timer()
-    infile = glob.glob(path+'*.in')
-    assert len(infile) == 1, "need to have one specified input file"
 
-    lammps_params = read_infile(infile[0])
-    thermo_header, thermo = read_thermo(path+'log.lammps')
-    time_str = get_thermo_time(path+'log.lammps')
-
-    filename = path+'out.dump'
-    if os.path.exists(path+'datapts.npy'):
-        multiple = np.load(path+'datapts.npy')
-        ts = np.load(path+'times.npy')
-    else:
-        multiple, ts = read_dump(filename)
-        np.save(path+'datapts.npy',multiple)
-        np.save(path+'times.npy',ts)
-
-    config = json.load(open('config.json','r'))
-    params = config['params']
-
-    a_hc = params['particle_radius']
-    a_eff = getAEff(params)
-    kT = params['temperature']*kb
-    visc = params['viscosity']
-    D_SI = kT/(6*np.pi*visc*a_hc)
-
-    pnum = multiple.shape[1]
-    # dt = lammps_params['timestep']*tau # [s]
-
-    damp = lammps_params['damp']
-    mass = config['arg']['xxxmassxxx']
-    temp = config['arg']['xxxtempxxx']
-    D0 = temp*damp/mass
-
-    tau_D = 1/(4*D0)
-    tau_D_SI = (a_hc**2)/(D_SI)
-
-    #kappa = lammps_params['kappa_2a']/(2*a_hc)
-    #bpp = lammps_params['bpp']
-    dt = lammps_params['timestep']
-
-    times = ts*dt
-
-    if lammps_params['rad'] is None:
-        shell_radii = np.linalg.norm(multiple,axis=-1).mean(axis=-1)
-        shell_radius = shell_radii.min() #get stand in value for rough approximation
-        all_eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radii**2)
-        eta_eff = all_eta_eff.max() #get stand in value for rough approximation
-        title = (f"N: {pnum}, "
-                 +f"R: {shell_radii.max():0.3f}-{shell_radii.min():0.3f} "
-                 +r"[2a], $\eta_{eff}$:" 
-                 + f"{all_eta_eff.max():0.3f}-{all_eta_eff.min():0.3f}")
-    else:
-        shell_radius = lammps_params['rad']
-        eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radius**2)
-        title = (f"N: {pnum}, "
-                 +f"R: {shell_radius:0.3f} "
-                 +r"[2a], $\eta_{eff}$:" 
-                 + f"{eta_eff:0.3f}")
 
     end = timer()
-    interval = end - start
-    print(f"read and process files {interval:.2f}s")
+    print(f"{end-start}s runtime")
 
-    #%% obtaining theoretical diffusivities
-    start = timer()
-    taus = thermo[:,0]-thermo[:,0].min()
-    all_taus = np.linspace(0, thermo[:,0].max(), num=150)
-    theo = sphere_msd(all_taus, D0, shell_radius)
+    # TO PRUNE
 
-    msd_func = lambda x, D0: sphere_msd(x, D0, shell_radius=shell_radius)
+    # import glob, os, sys, json
+    # import numpy as np
+
+    # from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
+    # from UnitConversions import kb, getAEff
+    # from numpy.random import default_rng
+    # import matplotlib.pyplot as plt
+
+    # from scipy.optimize import curve_fit
+
+    # allstart = timer()
+
+    # # load data
+    # path = './'
+    # print(path)
+    # #%% read dump file
+    # reset = False
+
+    # '''reading infiles'''
+
+    # start = timer()
+    # infile = glob.glob(path+'*.in')
+    # assert len(infile) == 1, "need to have one specified input file"
+
+    # lammps_params = read_infile(infile[0])
+    # thermo_header, thermo = read_thermo(path+'log.lammps')
+    # time_str = get_thermo_time(path+'log.lammps')
+
+    # filename = path+'out.dump'
+    # if os.path.exists(path+'datapts.npy'):
+    #     multiple = np.load(path+'datapts.npy')
+    #     ts = np.load(path+'times.npy')
+    # else:
+    #     multiple, ts = read_dump(filename)
+    #     np.save(path+'datapts.npy',multiple)
+    #     np.save(path+'times.npy',ts)
+
+    # config = json.load(open('config.json','r'))
+    # params = config['params']
+
+    # a_hc = params['particle_radius']
+    # a_eff = getAEff(params)
+    # kT = params['temperature']*kb
+    # visc = params['viscosity']
+    # D_SI = kT/(6*np.pi*visc*a_hc)
+
+    # pnum = multiple.shape[1]
+    # # dt = lammps_params['timestep']*tau # [s]
+
+    # damp = lammps_params['damp']
+    # mass = config['arg']['xxxmassxxx']
+    # temp = config['arg']['xxxtempxxx']
+    # D0 = temp*damp/mass
+
+    # tau_D = 1/(4*D0)
+    # tau_D_SI = (a_hc**2)/(D_SI)
+
+    # #kappa = lammps_params['kappa_2a']/(2*a_hc)
+    # #bpp = lammps_params['bpp']
+    # dt = lammps_params['timestep']
+
+    # times = ts*dt
+
+    # if lammps_params['rad'] is None:
+    #     shell_radii = np.linalg.norm(multiple,axis=-1).mean(axis=-1)
+    #     shell_radius = shell_radii.min() #get stand in value for rough approximation
+    #     all_eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radii**2)
+    #     eta_eff = all_eta_eff.max() #get stand in value for rough approximation
+    #     title = (f"N: {pnum}, "
+    #              +f"R: {shell_radii.max():0.3f}-{shell_radii.min():0.3f} "
+    #              +r"[2a], $\eta_{eff}$:" 
+    #              + f"{all_eta_eff.max():0.3f}-{all_eta_eff.min():0.3f}")
+    # else:
+    #     shell_radius = lammps_params['rad']
+    #     eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radius**2)
+    #     title = (f"N: {pnum}, "
+    #              +f"R: {shell_radius:0.3f} "
+    #              +r"[2a], $\eta_{eff}$:" 
+    #              + f"{eta_eff:0.3f}")
+
+    # end = timer()
+    # interval = end - start
+    # print(f"read and process files {interval:.2f}s")
+
+    # #%% obtaining theoretical diffusivities
+    # start = timer()
+    # taus = thermo[:,0]-thermo[:,0].min()
+    # all_taus = np.linspace(0, thermo[:,0].max(), num=150)
+    # theo = sphere_msd(all_taus, D0, shell_radius)
+
+    # msd_func = lambda x, D0: sphere_msd(x, D0, shell_radius=shell_radius)
         
-    totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
+    # totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
-    #%% calculate msd
-    msd_time_scale = 750
-    msd_comp, msd_w = mto_msd(multiple, msd_time_scale)
-    msd_part = mto_msd_part(multiple, msd_time_scale)
-    msd = msd_comp.sum(axis=-1)
-    msd_times = times[:msd_time_scale]
-    np.savetxt(path+f'msd_{msd_time_scale}frames.txt',
-               (msd_times, msd), header='tau msd[2a]^2')
+    # #%% calculate msd
+    # msd_time_scale = 750
+    # msd_comp, msd_w = mto_msd(multiple, msd_time_scale)
+    # msd_part = mto_msd_part(multiple, msd_time_scale)
+    # msd = msd_comp.sum(axis=-1)
+    # msd_times = times[:msd_time_scale]
+    # np.savetxt(path+f'msd_{msd_time_scale}frames.txt',
+    #            (msd_times, msd), header='tau msd[2a]^2')
 
-    #%% get bootstrap error
-    trials = 1000
-    rng = default_rng()
+    # #%% get bootstrap error
+    # trials = 1000
+    # rng = default_rng()
         
-    #get confidence intervals
-    msd_ci = bootstrap_mto_msd(msd_part, trials, rng=rng)
+    # #get confidence intervals
+    # msd_ci = bootstrap_mto_msd(msd_part, trials, rng=rng)
 
-    diff_coef, diff_cov = curve_fit(msd_func, msd_times, msd, p0=[1e-1])
-    theo = sphere_msd(msd_times, D0, shell_radius)
+    # diff_coef, diff_cov = curve_fit(msd_func, msd_times, msd, p0=[1e-1])
+    # theo = sphere_msd(msd_times, D0, shell_radius)
 
-    fig, ax = plt.subplots(figsize=(5,5))
-    ax.plot(msd_times, msd, label='mto msd')
-    #ax.plot(msd_times, msd_w, label='mto msd arclength')
-    ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
-                    alpha=0.3, label='95% bootstrap ci')
-    ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
-    ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
-            color='C0', ls='-.',
-            label=f'D={diff_coef[0]:0.3f} (fit)')
+    # fig, ax = plt.subplots(figsize=(5,5))
+    # ax.plot(msd_times, msd, label='mto msd')
+    # #ax.plot(msd_times, msd_w, label='mto msd arclength')
+    # ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
+    #                 alpha=0.3, label='95% bootstrap ci')
+    # ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
+    # ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
+    #         color='C0', ls='-.',
+    #         label=f'D={diff_coef[0]:0.3f} (fit)')
 
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, msd_times[-1]])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlim([0, msd_times[-1]])
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
-    ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
-    #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
+    # ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
+    # #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
 
-    ax.set_title(title)
+    # ax.set_title(title)
 
-    ax.legend()
-    fig.savefig(path+"msd.jpg", bbox_inches='tight')
-    # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
-    # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
+    # ax.legend()
+    # fig.savefig(path+"msd.jpg", bbox_inches='tight')
+    # # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
+    # # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
 
-    short_time = 5*damp
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, short_time])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title("Self-Diffusion over Damping Timescale")
+    # short_time = 5*damp
+    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlim([0, short_time])
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylim([0, 1.1*4*D0*short_time])
+    # ax.set_title("Self-Diffusion over Damping Timescale")
 
-    ax.legend()
-    fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
+    # ax.legend()
+    # fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
 
-    short_time = (0.5**2)/(4*D0)
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, short_time])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title("Self-Diffusion over Particle Radius")
+    # short_time = (0.5**2)/(4*D0)
+    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlim([0, short_time])
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylim([0, 1.1*4*D0*short_time])
+    # ax.set_title("Self-Diffusion over Particle Radius")
 
-    ax.legend()
-    fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
+    # ax.legend()
+    # fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
-    #if the voronoi tesselation is already done we'll do the charge-weighted msd too
-    if os.path.exists(path+'vor_coord.npy'):
+    # #if the voronoi tesselation is already done we'll do the charge-weighted msd too
+    # if os.path.exists(path+'vor_coord.npy'):
         
-        coordination = np.load(path+'vor_coord.npy')
-        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
+    #     coordination = np.load(path+'vor_coord.npy')
+    #     msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
 
-        fig, ax = plt.subplots()
-        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-        ax.set_xlabel("[$\\tau$]", fontsize=12)
-        ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
-        ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
-        ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
-        ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
-        ax.set_title(title)
-        ax.legend()
+    #     fig, ax = plt.subplots()
+    #     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    #     ax.set_xlabel("[$\\tau$]", fontsize=12)
+    #     ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
+    #     ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
+    #     ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
+    #     ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
+    #     ax.set_title(title)
+    #     ax.legend()
 
-        fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
+    #     fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
 
-    end = timer()
-    print(f"msd calculation {end - start:.2f}s")
+    # end = timer()
+    # print(f"msd calculation {end - start:.2f}s")
 
-    config = json.load(open('config.json', 'r'))
+    # config = json.load(open('config.json', 'r'))
 
-    output = {
-            'D_0_fit': diff_coef[0],
-            'D_0': D0,
-            'D_SI': D_SI,
-            'a_hc_SI': a_hc,
-            'tau_SI': tau_D_SI/tau_D,
-            'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
-    }
+    # output = {
+    #         'D_0_fit': diff_coef[0],
+    #         'D_0': D0,
+    #         'D_SI': D_SI,
+    #         'a_hc_SI': a_hc,
+    #         'tau_SI': tau_D_SI/tau_D,
+    #         'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
+    # }
 
-    dumpDictionaryJSON(output, 'diffusion')
+    # dumpDictionaryJSON(output, 'diffusion')
 
-    allend = timer()
-    print(f"full runtime {allend-allstart:.2f}s")
+    # allend = timer()
+    # print(f"full runtime {allend-allstart:.2f}s")

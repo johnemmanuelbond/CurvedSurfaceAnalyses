@@ -7,20 +7,18 @@ Plots several useful quantities--T, mean nearest-neighbot distance, etc--against
 @author: Jack Bond, Alex Yeh
 """
 
-import glob, os, sys
+import glob, os
 import numpy as np
-
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time
-
 from numpy.random import default_rng
-import matplotlib.pyplot as plt
-
-from timeit import default_timer as timer
 
 from scipy.optimize import curve_fit
 from scipy.spatial.distance import pdist, squareform
+
+import matplotlib.pyplot as plt
+
+from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time
+
+from timeit import default_timer as timer
 
 def plot_thermo(header, data, path):
     for i, item in enumerate(header):

@@ -19,7 +19,13 @@ from FileHandling import read_xyz_frame
 from OrderParameters import radialDistributionFunction
 from OrderParameters import C6, Vc
 from MCBatchAnalyzer import categorize_batch, sample_frames
-from MCBatchAnalyzer import BoltzmannInversion
+
+#given a histogram of something, takes the negative log of the probability
+#distribution in order to get an 'energy'
+def BoltzmannInversion(mids,widths,hval):
+	norm = np.sum(widths*hval)
+	Ukt = -1*np.log(hval/norm)
+	return mids, Ukt
 
 configs, seedFoldersList = categorize_batch()
 

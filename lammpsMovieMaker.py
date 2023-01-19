@@ -8,15 +8,13 @@ Mostly copied from a version of Alex's 'visualizing.py' circa 8/25/22
 @author: Alex Yeh, Jack Bond
 """
 
-import glob, os, sys
+import glob, os
 import numpy as np
 from collections import defaultdict
 from timeit import default_timer as timer
 from scipy import integrate
 
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-from FileHandling import read_infile, get_thermo_time, output_vis
+from main_lib.FileHandling import read_infile, get_thermo_time, output_vis
 
 def int_a_eff(radius, Bpp, kappa):
     integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
@@ -28,6 +26,7 @@ def int_a_eff(radius, Bpp, kappa):
         
     return radius + 1/2*(first+second)
 
+#Move to file handling/order parameters? Move voronoi and charge coloring to File Handling?
 def coord_colors():
     """returns dictionary with colormap for coordination number coloring"""
     colmap = defaultdict(lambda: (1., 1., 0.42745098, 1)) #defaults to yellow

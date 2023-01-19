@@ -15,11 +15,10 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-import FileHandling as handle
-#from OrderParameters import radialDistributionFunction
-from OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
+
+import main_lib.FileHandling as handle
+#from main_lib.OrderParameters import radialDistributionFunction
+from main_lib.OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
 
 
 def int_a_eff(radius, Bpp, kappa):

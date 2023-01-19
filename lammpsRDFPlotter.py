@@ -9,25 +9,21 @@ Also performs fits to find the peak heights
 @author: Jack Bond, Alex Yeh
 """
 
-import glob, os, sys, json
+import glob, os, json
 import numpy as np
-
-pwd = os.path.dirname(__file__)
-sys.path.append(os.path.realpath(pwd+'/..'))
-from UnitConversions import getAEff, kb
-from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
-from OrderParameters import g_r
-
 from numpy.random import default_rng
-import matplotlib.pyplot as plt
-
-from timeit import default_timer as timer
-
 from scipy.optimize import curve_fit
 
+import matplotlib.pyplot as plt
+
+from main_lib.UnitConversions import getAEff, kb
+from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
+from main_lib.Correlation import g_r
 
 
 if __name__=="__main__":
+
+    from timeit import default_timer as timer
 
     allstart = timer()
 

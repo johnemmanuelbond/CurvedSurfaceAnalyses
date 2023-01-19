@@ -1,1 +1,0 @@
-__all__ = ["FileHandling","UnitConversions","OrderParameters","ForceBalanceTheory","IcosahedralShell"]
