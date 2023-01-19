@@ -15,7 +15,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from main_lib import UnitConversions as units
 from main_lib import FileHandling as handle
-from main_lib.Correlation import scar_correlation
+from main_lib.Correlation import scar_correlation, theta1, theta2
 
 from timeit import default_timer as timer
 
@@ -78,11 +78,6 @@ scarTotalCharges = []
 last_section = 1/3
 desired_samples = 100
 idx = np.arange(int((1-last_section)*fnum),fnum,int((last_section*fnum)/desired_samples))
-
-#Spatial correlation of scars
-r_ico = np.sin(2*np.pi/5)
-theta1 = 2*np.arcsin(1/2/r_ico)
-theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
 
 figScar,axScar = plt.subplots()
 axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")

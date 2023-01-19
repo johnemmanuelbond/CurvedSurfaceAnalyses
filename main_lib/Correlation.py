@@ -14,6 +14,11 @@ import numpy as np
 from .OrderParameters import Vc, Nc, findScars
 from scipy.signal import find_peaks
 
+#icosohedral angles
+r_ico = np.sin(2*np.pi/5)
+theta1 = 2*np.arcsin(1/2/r_ico)
+theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
+
 """
 Given a frame or set of frames, computed the average radial distribution function
 source: general_analysis, 7/23/22

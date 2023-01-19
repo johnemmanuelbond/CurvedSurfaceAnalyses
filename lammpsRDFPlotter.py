@@ -18,8 +18,7 @@ import matplotlib.pyplot as plt
 
 from main_lib.UnitConversions import getAEff, kb
 from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
-from main_lib.Correlation import g_r
-
+from main_lib.Correlation import g_r, theta1,theta2
 
 if __name__=="__main__":
 
@@ -117,6 +116,8 @@ if __name__=="__main__":
         ax.set_xlabel(r"Arclength [$\sigma$]")
         ax.set_ylabel(r"$g(r)$")
         ax.plot(mids,vals,label=f"Bin Width = {bw}")
+        ax.axvline(x=shell_radius*theta1,lw=0.6,c="black")#
+        ax.axvline(x=shell_radius*theta2,lw=0.6,c="red")#
         ax.legend()
         fig.savefig(path+f"g(r)_bw{bw}.jpg",bbox_inches='tight')
         ax.set_xlim([0,4])
