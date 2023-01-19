@@ -1,6 +1,6 @@
 import os, sys, glob, json
 
-from .FileHandling import read_xyz_frame
+from FileHandling import read_xyz_frame
 
 import numpy as np
 import scipy as sp
