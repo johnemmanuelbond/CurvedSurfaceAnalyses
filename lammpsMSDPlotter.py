@@ -113,10 +113,10 @@ if __name__=="__main__":
     #%% calculate msd
     msd_time_scale = 2000
 
-    s = 100 - 50*(pnum<300) - 25*(pnum<50) - 15*(pnum<10)
+    s = 100 - 50*(pnum<300) #- 25*(pnum<50) - 15*(pnum<10)
 
-    msd_comp, msd_w = mto_msd(multiple, msd_time_scale,skips = 100)
-    msd_part = mto_msd_part(multiple, msd_time_scale, skips = 100)
+    msd_comp, msd_w = mto_msd(multiple, msd_time_scale,skips = s)
+    msd_part = mto_msd_part(multiple, msd_time_scale, skips = s)
     msd = msd_comp.sum(axis=-1)
     msd_times = times[:msd_time_scale]
     np.savetxt(path+f'msd_{msd_time_scale}frames.txt',
@@ -181,7 +181,7 @@ if __name__=="__main__":
     if os.path.exists(path+'vor_coord.npy'):
         
         coordination = np.load(path+'vor_coord.npy')
-        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale,skips=100)
+        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale,skips=s)
 
         fig, ax = plt.subplots(figsize=(5,5))
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
