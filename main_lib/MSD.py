@@ -41,7 +41,7 @@ def mto_msd(coords, max_lag, skips=None):
     orig_num = int(total_steps/(skips))
     time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
     final_step = time_origins[-1]+max_lag
-    assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     
     # origins = np.arange(orig_num)*skips
@@ -81,7 +81,7 @@ def mto_msd_part(coords, max_lag, skips=None):
     orig_num = int(total_steps/(skips))
     time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
     final_step = time_origins[-1]+max_lag
-    assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
@@ -114,7 +114,7 @@ def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     orig_num = int(total_steps/(skips))
     time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
     final_step = time_origins[-1]+max_lag
-    assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
@@ -168,7 +168,7 @@ def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     orig_num = int(total_steps/(skips))
     time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
     final_step = time_origins[-1]+max_lag
-    assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
