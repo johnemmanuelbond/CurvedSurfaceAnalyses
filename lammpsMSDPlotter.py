@@ -111,9 +111,10 @@ if __name__=="__main__":
     totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
     #%% calculate msd
-    msd_time_scale = 750
-    msd_comp, msd_w = mto_msd(multiple, msd_time_scale)
-    msd_part = mto_msd_part(multiple, msd_time_scale)
+    msd_time_scale = 1000
+
+    msd_comp, msd_w = mto_msd(multiple, msd_time_scale,skips = 100)
+    msd_part = mto_msd_part(multiple, msd_time_scale, skips = 100)
     msd = msd_comp.sum(axis=-1)
     msd_times = times[:msd_time_scale]
     np.savetxt(path+f'msd_{msd_time_scale}frames.txt',
@@ -178,7 +179,7 @@ if __name__=="__main__":
     if os.path.exists(path+'vor_coord.npy'):
         
         coordination = np.load(path+'vor_coord.npy')
-        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
+        msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale,skips=100)
 
         fig, ax = plt.subplots()
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
