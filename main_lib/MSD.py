@@ -39,7 +39,8 @@ def mto_msd(coords, max_lag, skips=None):
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
     orig_num = int(total_steps/(skips))
-    final_step = (orig_num-1)*skips + (max_lag-1) #last necessary timestep
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
     assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     
@@ -49,7 +50,7 @@ def mto_msd(coords, max_lag, skips=None):
     msd_w = np.zeros((max_lag, 1))
     
     for t in range(max_lag):
-        for tstart in range(0, orig_num*skips, skips):
+        for tstart in time_origins:
             tend = tstart + t
             allmsd = (coords[tend]-coords[tstart])**2 #Nx3
 
@@ -78,7 +79,8 @@ def mto_msd_part(coords, max_lag, skips=None):
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
     orig_num = int(total_steps/(skips))
-    final_step = (orig_num-1)*skips + (max_lag-1) #last necessary timestep
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
     assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
@@ -86,7 +88,7 @@ def mto_msd_part(coords, max_lag, skips=None):
     msd = np.zeros((max_lag, pnum, 3))
     
     for t in range(max_lag):
-        for tstart in range(0, orig_num*skips, skips):
+        for tstart in time_origins:
             tend = tstart + t
             msd[t] += (coords[tend] - coords[tstart])**2
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
@@ -110,7 +112,8 @@ def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
     orig_num = int(total_steps/(skips))
-    final_step = (orig_num-1)*skips + (max_lag-1) #last necessary timestep
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
     assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
@@ -119,7 +122,7 @@ def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     msd6 = np.zeros((max_lag))
     msd7 = np.zeros((max_lag))
     
-    for tstart in range(0, orig_num*skips, skips):
+    for tstart in time_origins:
         skip_coord_nums = coord_nums[tstart:(tstart+max_lag)]
         mask5 = skip_coord_nums==5
         mask6 = skip_coord_nums==6
@@ -163,7 +166,8 @@ def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
     orig_num = int(total_steps/(skips))
-    final_step = (orig_num-1)*skips + (max_lag-1) #last necessary timestep
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
     assert final_step<total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
     # origins = np.arange(orig_num)*skips
@@ -171,7 +175,7 @@ def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     msdelse = np.zeros((max_lag))
     msdzero = np.zeros((max_lag))
     
-    for tstart in range(0, orig_num*skips, skips):
+    for tstart in time_origins:
         skip_scar_nums = scar_nums[tstart:(tstart+max_lag)]
         maskelse = (skip_scar_nums !=0)*(skip_scar_nums != None)
         maskzero = skip_scar_nums==0
