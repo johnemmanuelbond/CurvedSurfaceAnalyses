@@ -113,6 +113,8 @@ if __name__=="__main__":
     #%% calculate msd
     msd_time_scale = 1000
 
+    s = 100 - 50*(pnum<300)
+
     msd_comp, msd_w = mto_msd(multiple, msd_time_scale,skips = 100)
     msd_part = mto_msd_part(multiple, msd_time_scale, skips = 100)
     msd = msd_comp.sum(axis=-1)
@@ -181,7 +183,7 @@ if __name__=="__main__":
         coordination = np.load(path+'vor_coord.npy')
         msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale,skips=100)
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(5,5))
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
         ax.set_xlabel("[$\\tau$]", fontsize=12)
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
