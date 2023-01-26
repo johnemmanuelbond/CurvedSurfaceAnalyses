@@ -63,6 +63,47 @@ def mto_msd(coords, max_lag, skips=None):
     return msd_comp/(pnum*orig_num), msd_w/(pnum*orig_num)
 
 """
+author: Jack Bond
+"""
+def mto_msd_pbc(coords, max_lag, box_length=10, skips=None):
+    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the msd up to the given max_step, defaulting to the maximum number of 
+    non-overlapping multiple time origins. Overlapping time orgins can be
+    given by specifying a skip param less than 2*max_lag.
+    Returns a [T x 3] array of msds.
+    pbc: periodic boundary conditions. Sometimes a particle will jump over the bounding box and come over to the other side. This introduces erroneous displacements that are much larger than they should be and complicates fitting.
+    """
+    if skips is None:
+        skips = 2*max_lag #non-overlapping mtos
+
+    shell_radius = np.linalg.norm(coords, axis=-1).mean()
+    
+    pnum = coords.shape[1]
+    total_steps = coords.shape[0]
+    orig_num = int(total_steps/(skips))
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    
+    
+    # origins = np.arange(orig_num)*skips
+    # print("(j,t) | tstart | tend | diff ")
+    msd_comp = np.zeros((max_lag, 3))
+    msd_w = np.zeros((max_lag, 1))
+    
+    for t in range(max_lag):
+        for tstart in time_origins:
+            tend = tstart + t
+            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
+
+            filtered = allmsd[np.sum(allmsd,axis=-1)<box_length]
+
+            #still need to figure out the statistics on this since there may be different numbers of trajectories contributing to the mean per timestep per origin
+            msd_comp[t] += np.mean(filtered,axis=0) #3
+
+    return msd_comp/(orig_num)
+
+"""
 source: general_analysis, 7/23/22
 author: Alex yeh
 """
