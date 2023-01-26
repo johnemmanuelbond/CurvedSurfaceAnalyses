@@ -96,7 +96,7 @@ def mto_msd_pbc(coords, max_lag, box_length=10, skips=None):
             tend = tstart + t
             allmsd = (coords[tend]-coords[tstart])**2 #Nx3
 
-            filtered = allmsd[np.sum(allmsd,axis=-1)<box_length]
+            filtered = allmsd[np.sqrt(np.sum(allmsd,axis=-1))<box_length]
 
             #still need to figure out the statistics on this since there may be different numbers of trajectories contributing to the mean per timestep per origin
             msd_comp[t] += np.mean(filtered,axis=0) #3
