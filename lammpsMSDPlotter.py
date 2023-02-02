@@ -193,15 +193,19 @@ if __name__=="__main__":
         ax.set_title(title)
         ax.legend()
 
-        msdhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s)
+
+        frac=0.9
+        msdhex,nhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s,min_six_frac=frac)
 
         fig, ax = plt.subplots(figsize=(5,5))
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
         ax.set_xlabel("[$\\tau$]", fontsize=12)
-        ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
-        ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.6,ls='--')
-        ax.set_title(title)
-        ax.legend()
+        ax.plot(msd_times, msd, label='overall', color='k', zorder=5,lw=0.6)
+        ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.8)
+        axn = ax1.twinx()
+        axn.plot(msd_times,nhex, label='number of applicable particles', color='blue',lw=0.6,ls='--')
+        ax.set_title(f"MSD for particles which spend {100*frac:.1f}% as 6-coordinated")
+        fig.legend()
 
         fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
 

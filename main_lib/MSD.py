@@ -159,6 +159,7 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
     # origins = np.arange(orig_num)*skips
     # print("(j,t) | tstart | tend | diff ")
     msd = np.zeros((max_lag))
+    num_hex = np.zeros((max_lag))
     
     for tstart in time_origins:
         skip_coord_nums = coord_nums[tstart:(tstart+max_lag)]
@@ -173,10 +174,11 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
             msd_subset = (coords[tend,hex_subset,:] - coords[tstart,hex_subset,:])**2
             if np.any(hex_subset):
                 msd[t+1] += np.mean(msd_subset,axis=0).sum() #ensemble average
+                num_hex[t+1] += np.sum(hex_subset)
 
 
     norm = orig_num
-    return msd/norm
+    return msd/norm, hum_hex/norm
 
 """
 source: general_analysis, 7/23/22
