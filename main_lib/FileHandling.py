@@ -216,8 +216,9 @@ def read_infile(filename):
 
 	starts = [['unit', 1, 'unit'],
 	          ['timestep', 1, 'timestep'],  # split idx for timestep
-	          ['fix temp all langevin', 6, 'damp'],  # split idx for damp
-	          ['pair_coeff 1 1', 3, 'bpp'], # [kT]
+	          ['fix temp most langevin', 6, 'damp'],  # split idx for damp
+                  ['fix temp most langevin', 6, 'damp'],  # split idx for damp
+                  ['pair_coeff 1 1', 3, 'bpp'], # [kT]
 	          ['pair_style yukawa/colloid', 2, 'kappa_2a'], # [1/(2a)]
 	          ['fix step all nve/manifold/rattle', -1, 'rad'], #get shell radius
 	          ]
