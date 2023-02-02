@@ -144,7 +144,7 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
     """Given a set of T timesteps of N particles ([T x N x 3]), determines
     which particles spend most of the runtime as 6-coordinated, computes 
     the msd per each of these particles up to the given max_step, defaulting to the maximum number of non-overlapping multiple time origins.
-    Overlapping time orgins  can be given by specifying a skip param less than 2*max_lag. Returns a [T x 3] array of ensemble-averaged msds
+    Overlapping time orgins  can be given by specifying a skip param less than 2*max_lag. Returns a [T] array of ensemble-averaged msds
     """
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
@@ -169,10 +169,10 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
         for t in range(0, max_lag-1):
             tend = tstart + (t + 1)
             six_frac = six_coord_counts[t]/(t+1)
-            hex_subset = coords[six_frac >= max_six_frac]
-            msd = (hex_subset[tend] - hex_subset[tstart])**2
-            if len(hex_subset)>0:
-                msd[t+1] += np.mean(hex_subset,axis=-2) #ensemble average
+            hex_subset = six_frac >= min_six_frac
+            msd_subset = (coords[tend,hex_subset,:] - coords[tstart,hex_subset,:])**2
+            if np.any(hex_subset):
+                msd[t+1] += np.mean(msd_subset,axis=0).sum() #ensemble average
 
 
     norm = orig_num
