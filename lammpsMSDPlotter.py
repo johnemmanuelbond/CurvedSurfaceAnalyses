@@ -193,7 +193,17 @@ if __name__=="__main__":
         ax.set_title(title)
         ax.legend()
 
-        fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
+        msdhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s)
+
+        fig, ax = plt.subplots(figsize=(5,5))
+        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+        ax.set_xlabel("[$\\tau$]", fontsize=12)
+        ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
+        ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.6,ls='--')
+        ax.set_title(title)
+        ax.legend()
+
+        fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
 
     end = timer()
     print(f"msd calculation {end - start:.2f}s")

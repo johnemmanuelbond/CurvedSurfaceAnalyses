@@ -137,6 +137,48 @@ def mto_msd_part(coords, max_lag, skips=None):
     return msd/orig_num
 
 """
+source: MSD, 2/2/23
+author: Jack Bond
+"""
+def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
+    """Given a set of T timesteps of N particles ([T x N x 3]), determines
+    which particles spend most of the runtime as 6-coordinated, computes 
+    the msd per each of these particles up to the given max_step, defaulting to the maximum number of non-overlapping multiple time origins.
+    Overlapping time orgins  can be given by specifying a skip param less than 2*max_lag. Returns a [T x 3] array of ensemble-averaged msds
+    """
+    if skips is None:
+        skips = 2*max_lag #non-overlapping mtos
+    
+    pnum = coords.shape[1]
+    total_steps = coords.shape[0]
+    orig_num = int(total_steps/(skips))
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    
+    # origins = np.arange(orig_num)*skips
+    # print("(j,t) | tstart | tend | diff ")
+    msd = np.zeros((max_lag))
+    
+    for tstart in time_origins:
+        skip_coord_nums = coord_nums[tstart:(tstart+max_lag)]
+        mask6 = skip_coord_nums==6
+        six_coord_counts = np.cumsum(mask6, axis=0) #sum over time
+        # print('-'*40)
+        # print(six_coord_counts)
+        for t in range(0, max_lag-1):
+            tend = tstart + (t + 1)
+            six_frac = six_coord_counts[t]/(t+1)
+            hex_subset = coords[six_frac >= max_six_frac]
+            msd = (hex_subset[tend] - hex_subset[tstart])**2
+            if len(hex_subset)>0:
+                msd[t+1] += np.mean(hex_subset,axis=-2) #ensemble average
+
+
+    norm = orig_num
+    return msd/norm
+
+"""
 source: general_analysis, 7/23/22
 author: Alex yeh
 """
