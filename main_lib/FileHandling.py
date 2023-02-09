@@ -94,14 +94,15 @@ See OrderParameters.voronoi_colors for an example coloring.
 source: some driver, 8/10/22
 author: Jack Bond
 """
-def save_vis_xyz(frame, colors, filename="visual", comment="A colored visualization"):
+def save_vis_xyz(frame, colors, filename="visual", comment="A colored visualization",show_shell=True):
     N = frame.shape[0]
     R=np.linalg.norm(frame,axis=-1).mean()
 
     vFile = open(filename, "w")
-    vFile.write(f"{N+1} \n")
+    vFile.write(f"{N+show_shell} \n")
     vFile.write(f"{N} real particles {comment} \n")
-    vFile.write(f"{R-0.5} 0.0 0.0 0.0 0.8, 0.8, 0.9 \n")
+    if show_shell: #can choose not to visualize the central spherical shell by setting the kwarg to false
+        vFile.write(f"{R-0.5} 0.0 0.0 0.0 0.8, 0.8, 0.9 \n")
     for i in range(N):
         vFile.write("0.5 ")
         for c in frame[i]:
@@ -117,7 +118,7 @@ outputs dump file in format to be used by OVITO for visualization
 source: general_analysis, 7/23/22
 author: Alex Yeh, Jack Bond
 """
-def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None):
+def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, show_shell = True):
     pnum = frames.shape[1]
     
     if radii is None: # calculate average radius at each frame
@@ -139,10 +140,11 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None):
     with open(filename, 'w') as outfile:
         for i, frame in enumerate(frames):
             outfile.write(f"ITEM: TIMESTEP\n{ts[i]}\n")
-            outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+1}\n") #add in sphere
+            outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+show_shell}\n") #add in sphere
             outfile.write(f"ITEM: BOX BOUNDS ff ff ff" + box)
             outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color\n")
-            outfile.write(f"0 {radii[i]:0.5f} 0 0 0 1.0 1.0 1.0\n")
+            if show_shell: #Can choose not to print the spherical shell with the kwarg.
+                outfile.write(f"0 {radii[i]-0.5:0.5f} 0 0 0 1.0 1.0 1.0\n")
             for p, part in enumerate(frame):
                 line = f"{p+1} 0.5 "
                 coords = " ".join([f"{val:0.5f}" for val in part]) + " "

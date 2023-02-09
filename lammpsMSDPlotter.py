@@ -111,7 +111,7 @@ if __name__=="__main__":
     totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
     #%% calculate msd
-    msd_time_scale = 2000
+    msd_time_scale = 2000#2000
 
     s = 100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 
@@ -202,10 +202,11 @@ if __name__=="__main__":
         ax.set_xlabel("[$\\tau$]", fontsize=12)
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5,lw=0.6)
         ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.8)
-        axn = ax1.twinx()
-        axn.plot(msd_times,nhex, label='number of applicable particles', color='blue',lw=0.6,ls='--')
+        axn = ax.twinx()
+        axn.set_ylabel("Number of Applicable Particles")
+        axn.plot(msd_times,nhex, color='blue',lw=0.6,ls='--')
         ax.set_title(f"MSD for particles which spend {100*frac:.1f}% as 6-coordinated")
-        fig.legend()
+        ax.legend()
 
         fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
 

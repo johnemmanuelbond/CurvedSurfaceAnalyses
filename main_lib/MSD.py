@@ -178,7 +178,7 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
 
 
     norm = orig_num
-    return msd/norm, hum_hex/norm
+    return msd/norm, num_hex/norm
 
 """
 source: general_analysis, 7/23/22
