@@ -112,7 +112,7 @@ if __name__=="__main__":
     totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
     #%% calculate msd
-    msd_time_scale = min(2000,times[-1]//2)
+    msd_time_scale = min(2000,int(times.shape[0]/2))
 
     s = 100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 

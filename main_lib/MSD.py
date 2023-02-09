@@ -183,7 +183,7 @@ def mto_com_msd(coords,max_lag,skips=None, masses=None):
 source MSD, 2/9/23
 author: Jack Bond
 """
-def mto_com_solid_angle_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_angle=theta1/2,shell_radius=None):
+def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_angle=theta1/2,shell_radius=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the center-of-mass msd for a subset of particles within a subtended angle
     of some point on the sphere (given by theta and phi), up to the given
