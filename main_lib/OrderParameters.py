@@ -19,7 +19,7 @@ in polar coordinates where the radius is the arclength from the pole and
 the angle is the azimuthal angle. Also returns said coordinates in a
 cartesian representation, and the jacobian at each point for considering length
 scales"""
-def capPolarProjection(frame):
+def cap_polar_projection(frame):
 	Rs = np.linalg.norm(frame,axis=-1)
 	l = Rs*np.arccos(frame[:,2]/Rs)
 	phi = np.arctan(frame[:,1]/(frame[:,0]+0.000001))+np.pi*(frame[:,0]<0)

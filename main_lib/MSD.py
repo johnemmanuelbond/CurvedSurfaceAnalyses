@@ -2,15 +2,14 @@
 """
 Created on Sat, Sep 10, 2022
 
-Plots the mean squared displacement, and several variations thereof for a lammps run
-
-Also performs fits to find the diffusivities
+Contains lots of methods to compute msds and variatons thereof for particles on flat and curved surfaces.
 
 @author: Jack Bond, Alex Yeh
 """
 
 import numpy as np
 from numpy.random import default_rng
+from Correlation import theta1,theta2
 
 """
 Theoretical expression for the diffusive mean-squared displacement on a spherical surface
@@ -19,6 +18,18 @@ author: Alex yeh
 """
 def sphere_msd(taus, damp, shell_radius = 10):
     return 2*(shell_radius**2)*(1-np.exp(-2*damp*taus*shell_radius**-2))
+
+
+"""
+source MSD, 2/9/23
+author: Jack Bond
+"""
+def minimum_image(coords, wraps, basis):
+    """
+    uses the minumum image convention to correctly account for perodic boundary conditions when calculating coordinates by using the basis vectors of the periodic box.
+    """
+    return coords + np.einsum("ij,anj->ani",basis,wraps)
+
 
 """
 source: general_analysis, 7/23/22
@@ -31,10 +42,10 @@ def mto_msd(coords, max_lag, skips=None):
     given by specifying a skip param less than 2*max_lag.
     Returns a [T x 3] array of msds
     """
+
+    #set up multiple time origins
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
-
-    shell_radius = np.linalg.norm(coords, axis=-1).mean()
     
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
@@ -43,65 +54,17 @@ def mto_msd(coords, max_lag, skips=None):
     final_step = time_origins[-1]+max_lag
     assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
-    
-    # origins = np.arange(orig_num)*skips
-    # print("(j,t) | tstart | tend | diff ")
+    #compute msds
     msd_comp = np.zeros((max_lag, 3))
-    msd_w = np.zeros((max_lag, 1))
-    
     for t in range(max_lag):
         for tstart in time_origins:
             tend = tstart + t
             allmsd = (coords[tend]-coords[tstart])**2 #Nx3
 
             msd_comp[t] += np.sum(allmsd,axis=0) #3
-
-            arg = np.sqrt(allmsd.sum(axis=-1))/(2*shell_radius) #N
-            arg[arg>1] = 1
-            msd_w[t] += np.sum((2*shell_radius*np.arcsin(arg))**2) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_comp/(pnum*orig_num), msd_w/(pnum*orig_num)
+    return msd_comp/(pnum*orig_num)
 
-"""
-author: Jack Bond
-"""
-def mto_msd_pbc(coords, max_lag, box_length=10, skips=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the msd up to the given max_step, defaulting to the maximum number of 
-    non-overlapping multiple time origins. Overlapping time orgins can be
-    given by specifying a skip param less than 2*max_lag.
-    Returns a [T x 3] array of msds.
-    pbc: periodic boundary conditions. Sometimes a particle will jump over the bounding box and come over to the other side. This introduces erroneous displacements that are much larger than they should be and complicates fitting.
-    """
-    if skips is None:
-        skips = 2*max_lag #non-overlapping mtos
-
-    shell_radius = np.linalg.norm(coords, axis=-1).mean()
-    
-    pnum = coords.shape[1]
-    total_steps = coords.shape[0]
-    orig_num = int(total_steps/(skips))
-    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
-    final_step = time_origins[-1]+max_lag
-    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
-    
-    
-    # origins = np.arange(orig_num)*skips
-    # print("(j,t) | tstart | tend | diff ")
-    msd_comp = np.zeros((max_lag, 3))
-    msd_w = np.zeros((max_lag, 1))
-    
-    for t in range(max_lag):
-        for tstart in time_origins:
-            tend = tstart + t
-            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
-
-            filtered = allmsd[np.sqrt(np.sum(allmsd,axis=-1))<box_length]
-
-            #still need to figure out the statistics on this since there may be different numbers of trajectories contributing to the mean per timestep per origin
-            msd_comp[t] += np.mean(filtered,axis=0) #3
-
-    return msd_comp/(orig_num)
 
 """
 source: general_analysis, 7/23/22
@@ -114,6 +77,8 @@ def mto_msd_part(coords, max_lag, skips=None):
     can be given by specifying a skip param less than 2*max_lag.
     Returns a [T x N x 3] array of msds
     """
+
+    #set up the multiple time origins
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
     
@@ -124,8 +89,7 @@ def mto_msd_part(coords, max_lag, skips=None):
     final_step = time_origins[-1]+max_lag
     assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
-    # origins = np.arange(orig_num)*skips
-    # print("(j,t) | tstart | tend | diff ")
+    #compute msd
     msd = np.zeros((max_lag, pnum, 3))
     
     for t in range(max_lag):
@@ -135,6 +99,143 @@ def mto_msd_part(coords, max_lag, skips=None):
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
     
     return msd/orig_num
+
+
+"""
+source: general_analysis, 7/23/22
+author: Jack Bond
+"""
+def mto_msd_arc(coords, max_lag, skips=None):
+    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the msd in the arclength coordinate up to the given max_step, defaulting
+    to the maximum number of non-overlapping multiple time origins.
+    Overlapping time orgins can be given by specifying a skip param less than
+    2*max_lag. Returns a [T x 3] array of msds
+    """
+
+    #set up multiple time origins
+    if skips is None:
+        skips = 2*max_lag #non-overlapping mtos
+    
+    pnum = coords.shape[1]
+    total_steps = coords.shape[0]
+    orig_num = int(total_steps/(skips))
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+
+    #compute msds
+    msd_w = np.zeros((max_lag, 1))
+    shell_radius = np.linalg.norm(coords, axis=-1).mean()
+    for t in range(max_lag):
+        for tstart in time_origins:
+            tend = tstart + t
+            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
+
+            arg = np.sqrt(allmsd.sum(axis=-1))/(2*shell_radius) #N
+            arg[arg>1] = 1
+            
+            msd_w[t] += np.sum((2*shell_radius*np.arcsin(arg))**2) #1
+            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
+    return msd_w/(pnum*orig_num)
+
+
+"""
+source MSD, 2/9/23
+author: Jack Bond
+"""
+def mto_com_msd(coords,max_lag,skips=None, masses=None)
+    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the center-of-mass msd up to the given max_step, defaulting to the maximum
+    number of non-overlapping multiple time origins. Overlapping time orgins
+    can be given by specifying a skip param less than 2*max_lag.
+    Returns a [T x 3] array of msds, as well as the center of mass coordinates.
+    """
+
+    #set up the multiple time origins
+    if skips is None:
+        skips = 2*max_lag #non-overlapping mtos
+
+    pnum = coords.shape[1]
+    total_steps = coords.shape[0]
+    orig_num = int(total_steps/(skips))
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    
+    #compute the center of mass of every frame
+    if masses is None:
+        masses = np.ones(pnum)
+    com = np.einsum("n,fni->fi",masses,coords)/masses.sum()
+    
+    #compute msd
+    msd_comp = np.zeros((max_lag, 3))
+
+    for t in range(max_lag):
+        for tstart in time_origins:
+            tend = tstart + t
+            msd_comp[t] +=  (com[tend]-com[tstart])**2#3
+            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
+    return msd_comp/(orig_num), com
+
+
+"""
+source MSD, 2/9/23
+author: Jack Bond
+"""
+def mto_com_solid_angle_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_angle=theta1/2,shell_radius=None)
+    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the center-of-mass msd for a subset of particles within a subtended angle
+    of some point on the sphere (given by theta and phi), up to the given
+    max_step, defaulting to the maximum number of non-overlapping multiple
+    time origins. Overlapping time orgins can be given by specifying a skip
+    param less than 2*max_lag.
+    Returns a [T x 3] array of msds
+    """
+
+    #picking the central point around which we track particles
+    if theta_c is None:
+        theta_c = np.pi*np.random.random()
+    if phi_c is None:
+        phi_c = 2*np.pi*np.random.random()
+    if shell_radius is None:
+        shell_radius = np.linalg.norm(coords,axis=-1).mean()
+    central_vec = np.array([shell_radius*np.sin(theta_c)*np.cos(phi_c),shell_radius*np.sin(theta_c)*np.sin(phi_c),shell_radius*np.cos(theta_c)])
+
+    # setting up multiple time origins
+    if skips is None:
+        skips = 2*max_lag #non-overlapping mtos
+
+    shell_radius = np.linalg.norm(coords, axis=-1).mean()
+    
+    pnum = coords.shape[1]
+    total_steps = coords.shape[0]
+    orig_num = int(total_steps/(skips))
+    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
+    final_step = time_origins[-1]+max_lag
+    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
+    
+    if masses is None:
+        masses = np.ones(pnum)
+
+    msd_comp = np.zeros((max_lag, 3))
+    
+    for tstart in time_origins:
+        
+        #define subset of tracked particles by taking the arcos of the dot product between each point and the central vector
+        #notably, once we choose particles at each time origin, we keep them throughout the whole of each time window.
+        args = np.array([np.dot(c,central_vec) / (np.linalg.norm(c)*np.linalg.norm(central_vec)) for c in coords[tstart]])
+        idx = np.arccos(args) < subtended_angle
+        
+        #find the center of mass of those particles
+        com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/masses[idx].sum()
+        
+        for t in range(max_lag):
+            tend = tstart + t
+            msd_comp[t] +=  (com[tend]-com[tstart])**2#3
+            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
+    return msd_comp/(orig_num), central_vec
+
 
 """
 source: MSD, 2/2/23
@@ -146,6 +247,8 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
     the msd per each of these particles up to the given max_step, defaulting to the maximum number of non-overlapping multiple time origins.
     Overlapping time orgins  can be given by specifying a skip param less than 2*max_lag. Returns a [T] array of ensemble-averaged msds
     """
+
+    #set up multiple time origins
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
     
@@ -156,8 +259,8 @@ def mto_msd_hex(coords, coord_nums, max_lag, skips=None,min_six_frac=0.90):
     final_step = time_origins[-1]+max_lag
     assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
-    # origins = np.arange(orig_num)*skips
-    # print("(j,t) | tstart | tend | diff ")
+
+    #select 6-fold ptcls and compute msds
     msd = np.zeros((max_lag))
     num_hex = np.zeros((max_lag))
     
@@ -187,10 +290,13 @@ author: Alex yeh
 def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd per particle up to the given max_step, defaulting to the maximum 
-    number of non-overlapping multiple time origins. Overlapping time orgins 
+    number of non-overlapping multiple time origins. Msds are weighted by 
+    time spent per coordination number. Overlapping time orgins 
     can be given by specifying a skip param less than 2*max_lag.
     Returns a [T x N x 3] array of msds
     """
+
+    #set up multiple time origins
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
     
@@ -201,8 +307,7 @@ def mto_msd_part_Vcweight(coords, coord_nums, max_lag, skips=None):
     final_step = time_origins[-1]+max_lag
     assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
     
-    # origins = np.arange(orig_num)*skips
-    # print("(j,t) | tstart | tend | diff ")
+    #compute weighted msds
     msd5 = np.zeros((max_lag))
     msd6 = np.zeros((max_lag))
     msd7 = np.zeros((max_lag))
@@ -241,8 +346,9 @@ author: Jack Bond
 def mto_msd_part_Scarweight(coords, scar_nums, max_lag, skips=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the msd per particle up to the given max_step, defaulting to the maximum 
-    number of non-overlapping multiple time origins. Overlapping time orgins 
-    can be given by specifying a skip param less than 2*max_lag.
+    number of non-overlapping multiple time origins. MSDs are weighted by time
+    spent in various classifications of defect clusters. Overlapping time
+    orgins can be given by specifying a skip param less than 2*max_lag.
     Returns a [T x N x 3] array of msds
     """
     if skips is None:
@@ -316,200 +422,3 @@ if __name__=="__main__":
 
     end = timer()
     print(f"{end-start}s runtime")
-
-    # TO PRUNE
-
-    # import glob, os, sys, json
-    # import numpy as np
-
-    # from FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
-    # from UnitConversions import kb, getAEff
-    # from numpy.random import default_rng
-    # import matplotlib.pyplot as plt
-
-    # from scipy.optimize import curve_fit
-
-    # allstart = timer()
-
-    # # load data
-    # path = './'
-    # print(path)
-    # #%% read dump file
-    # reset = False
-
-    # '''reading infiles'''
-
-    # start = timer()
-    # infile = glob.glob(path+'*.in')
-    # assert len(infile) == 1, "need to have one specified input file"
-
-    # lammps_params = read_infile(infile[0])
-    # thermo_header, thermo = read_thermo(path+'log.lammps')
-    # time_str = get_thermo_time(path+'log.lammps')
-
-    # filename = path+'out.dump'
-    # if os.path.exists(path+'datapts.npy'):
-    #     multiple = np.load(path+'datapts.npy')
-    #     ts = np.load(path+'times.npy')
-    # else:
-    #     multiple, ts = read_dump(filename)
-    #     np.save(path+'datapts.npy',multiple)
-    #     np.save(path+'times.npy',ts)
-
-    # config = json.load(open('config.json','r'))
-    # params = config['params']
-
-    # a_hc = params['particle_radius']
-    # a_eff = getAEff(params)
-    # kT = params['temperature']*kb
-    # visc = params['viscosity']
-    # D_SI = kT/(6*np.pi*visc*a_hc)
-
-    # pnum = multiple.shape[1]
-    # # dt = lammps_params['timestep']*tau # [s]
-
-    # damp = lammps_params['damp']
-    # mass = config['arg']['xxxmassxxx']
-    # temp = config['arg']['xxxtempxxx']
-    # D0 = temp*damp/mass
-
-    # tau_D = 1/(4*D0)
-    # tau_D_SI = (a_hc**2)/(D_SI)
-
-    # #kappa = lammps_params['kappa_2a']/(2*a_hc)
-    # #bpp = lammps_params['bpp']
-    # dt = lammps_params['timestep']
-
-    # times = ts*dt
-
-    # if lammps_params['rad'] is None:
-    #     shell_radii = np.linalg.norm(multiple,axis=-1).mean(axis=-1)
-    #     shell_radius = shell_radii.min() #get stand in value for rough approximation
-    #     all_eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radii**2)
-    #     eta_eff = all_eta_eff.max() #get stand in value for rough approximation
-    #     title = (f"N: {pnum}, "
-    #              +f"R: {shell_radii.max():0.3f}-{shell_radii.min():0.3f} "
-    #              +r"[2a], $\eta_{eff}$:" 
-    #              + f"{all_eta_eff.max():0.3f}-{all_eta_eff.min():0.3f}")
-    # else:
-    #     shell_radius = lammps_params['rad']
-    #     eta_eff = (pnum*(a_eff/(2*a_hc))**2)/(4*shell_radius**2)
-    #     title = (f"N: {pnum}, "
-    #              +f"R: {shell_radius:0.3f} "
-    #              +r"[2a], $\eta_{eff}$:" 
-    #              + f"{eta_eff:0.3f}")
-
-    # end = timer()
-    # interval = end - start
-    # print(f"read and process files {interval:.2f}s")
-
-    # #%% obtaining theoretical diffusivities
-    # start = timer()
-    # taus = thermo[:,0]-thermo[:,0].min()
-    # all_taus = np.linspace(0, thermo[:,0].max(), num=150)
-    # theo = sphere_msd(all_taus, D0, shell_radius)
-
-    # msd_func = lambda x, D0: sphere_msd(x, D0, shell_radius=shell_radius)
-        
-    # totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
-        
-    # #%% calculate msd
-    # msd_time_scale = 750
-    # msd_comp, msd_w = mto_msd(multiple, msd_time_scale)
-    # msd_part = mto_msd_part(multiple, msd_time_scale)
-    # msd = msd_comp.sum(axis=-1)
-    # msd_times = times[:msd_time_scale]
-    # np.savetxt(path+f'msd_{msd_time_scale}frames.txt',
-    #            (msd_times, msd), header='tau msd[2a]^2')
-
-    # #%% get bootstrap error
-    # trials = 1000
-    # rng = default_rng()
-        
-    # #get confidence intervals
-    # msd_ci = bootstrap_mto_msd(msd_part, trials, rng=rng)
-
-    # diff_coef, diff_cov = curve_fit(msd_func, msd_times, msd, p0=[1e-1])
-    # theo = sphere_msd(msd_times, D0, shell_radius)
-
-    # fig, ax = plt.subplots(figsize=(5,5))
-    # ax.plot(msd_times, msd, label='mto msd')
-    # #ax.plot(msd_times, msd_w, label='mto msd arclength')
-    # ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
-    #                 alpha=0.3, label='95% bootstrap ci')
-    # ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
-    # ax.plot(msd_times, msd_func(msd_times, *diff_coef), 
-    #         color='C0', ls='-.',
-    #         label=f'D={diff_coef[0]:0.3f} (fit)')
-
-    # ax.set_xlabel("[$\\tau$]", fontsize=12)
-    # ax.set_xlim([0, msd_times[-1]])
-    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
-
-    # ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
-    # #ax.plot(msd_times, np.ones(msd_times.size)*np.pi*shell_radius**2,ls='-',label=r'$\pi R^2$')
-
-    # ax.set_title(title)
-
-    # ax.legend()
-    # fig.savefig(path+"msd.jpg", bbox_inches='tight')
-    # # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
-    # # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
-
-    # short_time = 5*damp
-    # ax.set_xlabel("[$\\tau$]", fontsize=12)
-    # ax.set_xlim([0, short_time])
-    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    # ax.set_ylim([0, 1.1*4*D0*short_time])
-    # ax.set_title("Self-Diffusion over Damping Timescale")
-
-    # ax.legend()
-    # fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
-
-    # short_time = (0.5**2)/(4*D0)
-    # ax.set_xlabel("[$\\tau$]", fontsize=12)
-    # ax.set_xlim([0, short_time])
-    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    # ax.set_ylim([0, 1.1*4*D0*short_time])
-    # ax.set_title("Self-Diffusion over Particle Radius")
-
-    # ax.legend()
-    # fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
-
-    # #if the voronoi tesselation is already done we'll do the charge-weighted msd too
-    # if os.path.exists(path+'vor_coord.npy'):
-        
-    #     coordination = np.load(path+'vor_coord.npy')
-    #     msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple, coordination, msd_time_scale)
-
-    #     fig, ax = plt.subplots()
-    #     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    #     ax.set_xlabel("[$\\tau$]", fontsize=12)
-    #     ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
-    #     ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
-    #     ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
-    #     ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
-    #     ax.set_title(title)
-    #     ax.legend()
-
-    #     fig.savefig(f"./msd_charge.jpg", bbox_inches='tight')
-
-    # end = timer()
-    # print(f"msd calculation {end - start:.2f}s")
-
-    # config = json.load(open('config.json', 'r'))
-
-    # output = {
-    #         'D_0_fit': diff_coef[0],
-    #         'D_0': D0,
-    #         'D_SI': D_SI,
-    #         'a_hc_SI': a_hc,
-    #         'tau_SI': tau_D_SI/tau_D,
-    #         'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
-    # }
-
-    # dumpDictionaryJSON(output, 'diffusion')
-
-    # allend = timer()
-    # print(f"full runtime {allend-allstart:.2f}s")

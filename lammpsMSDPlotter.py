@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 
 from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
 from main_lib.UnitConversions import kb, getAEff
+from main_lib.Correlation import theta1,theta2
 from main_lib.MSD import *
 
 
@@ -111,12 +112,12 @@ if __name__=="__main__":
     totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
     #%% calculate msd
-    msd_time_scale = 2000#2000
+    msd_time_scale = min(2000,times[-1]//2)
 
     s = 100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 
     #recall we have one frozen particle now, so we simply disregard the frozen particle when calculating displacements
-    msd_comp, msd_w = mto_msd(multiple[:,1:,:], msd_time_scale,skips = s)
+    msd_comp = mto_msd(multiple[:,1:,:], msd_time_scale,skips = s)
     msd_part = mto_msd_part(multiple[:,1:,:], msd_time_scale, skips = s)
     msd = msd_comp.sum(axis=-1)
     msd_times = times[:msd_time_scale]
@@ -177,6 +178,8 @@ if __name__=="__main__":
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
+
+
     #if the voronoi tesselation is already done we'll do the charge-weighted msd too
     if os.path.exists(path+'vor_coord.npy'):
         
@@ -194,21 +197,21 @@ if __name__=="__main__":
         ax.legend()
 
 
-        frac=0.9
-        msdhex,nhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s,min_six_frac=frac)
+        # frac=0.9
+        # msdhex,nhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s,min_six_frac=frac)
 
-        fig, ax = plt.subplots(figsize=(5,5))
-        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-        ax.set_xlabel("[$\\tau$]", fontsize=12)
-        ax.plot(msd_times, msd, label='overall', color='k', zorder=5,lw=0.6)
-        ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.8)
-        axn = ax.twinx()
-        axn.set_ylabel("Number of Applicable Particles")
-        axn.plot(msd_times,nhex, color='blue',lw=0.6,ls='--')
-        ax.set_title(f"MSD for particles which spend {100*frac:.1f}% as 6-coordinated")
-        ax.legend()
+        # fig, ax = plt.subplots(figsize=(5,5))
+        # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+        # ax.set_xlabel("[$\\tau$]", fontsize=12)
+        # ax.plot(msd_times, msd, label='overall', color='k', zorder=5,lw=0.6)
+        # ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.8)
+        # axn = ax.twinx()
+        # axn.set_ylabel("Number of Applicable Particles")
+        # axn.plot(msd_times,nhex, color='blue',lw=0.6,ls='--')
+        # ax.set_title(f"MSD for particles which spend {100*frac:.1f}% as 6-coordinated")
+        # ax.legend()
 
-        fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
+        # fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
 
     end = timer()
     print(f"msd calculation {end - start:.2f}s")
