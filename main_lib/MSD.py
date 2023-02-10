@@ -224,9 +224,11 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         
         #define subset of tracked particles by taking the arcos of the dot product between each point and the central vector
         #notably, once we choose particles at each time origin, we keep them throughout the whole of each time window.
-        args = np.einsum("ni,i->n",coords[tstart],central_vec)/(np.linalg.norm(central_vec)*np.linalg.norm(coords[tstart],axis=-1))
+        unit_vecs = np.array([c/np.linalg.norm(c) for c in coords[tstart]])
+        unit_center = central_vec/np.linalg.norm(central_vec)
+        args = np.einsum("ni,i->n",unit_vecs,unit_center)
         
-        idx = np.arccos(args) < subtended_halfangle
+        idx = np.abs(np.arccos(args)) < subtended_halfangle
         mean_n += np.sum(idx)
         
         #find the center of mass of those particles
