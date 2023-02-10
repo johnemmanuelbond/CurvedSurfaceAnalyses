@@ -185,7 +185,7 @@ if __name__=="__main__":
     phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
     theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
 
-    thetas = np.array([theta_c_1, theta_c_1 + np.pi/4, theta_c + np.pi/2]) % np.pi
+    thetas = np.array([theta_c_1, theta_c_1 + np.pi/4, theta_c_1 + np.pi/2]) % np.pi
 
     #first we vary the location of the subtended sector
 
