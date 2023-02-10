@@ -180,10 +180,10 @@ if __name__=="__main__":
     pin = multiple[0,0,:]
     phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
     theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
-    msd_com_1, vec1, n1 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = phi_c_1)
+    msd_com_1, vec1, n1 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = phi_c_1,subtended_halfangle = theta2/2)
     
-    msd_com_2, vec2, n2 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+theta1)%(np.pi), phi_c = phi_c_1)
-    msd_com_3, vec3, n3 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+theta1)%(np.pi), phi_c = (phi_c_1+theta1)%(2*np.pi))
+    msd_com_2, vec2, n2 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/4)%(np.pi), phi_c = phi_c_1,subtended_halfangle = theta2/2)
+    msd_com_3, vec3, n3 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = (phi_c_1+np.pi/3)%(2*np.pi),subtended_halfangle = theta2/2)
 
 
     fig, ax = plt.subplots(figsize=(5,5))
