@@ -195,8 +195,8 @@ if __name__=="__main__":
     for i, theta in enumerate(thetas):
         msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1)
         
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(vec,2)}\n(~{n:.1f} ptcls)", color=i+1,lw=0.8)
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(vec,2)}", color=i+1,lw=0.6, ls="-.")
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\n(~{n:.1f} ptcls)", color=i+1,lw=0.8)
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(c_vec,2)}", color=i+1,lw=0.6, ls="-.")
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
