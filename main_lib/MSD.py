@@ -218,6 +218,7 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         masses = np.ones(pnum)
 
     msd_comp = np.zeros((max_lag, 3))
+    msd_rad = np.zeros((max_lag, 1))
     mean_n = 0
     
     for tstart in time_origins:
@@ -236,12 +237,16 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
 
         #adjust the com to keep it on the spehere center
         com_adj = shell_radius*np.array([f/np.linalg.norm(f) for f in com])
+
+        rel_rad = np.linalg.norm(com,axis=-1)
         
         for t in range(max_lag):
             tend = tstart + t
             msd_comp[t] +=  (com_adj[tend]-com_adj[tstart])**2#3
+            msd_rad[t] +=  (rel_rad[tend]-rel_rad[tstart])**2#1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_comp/(orig_num), central_vec, mean_n/orig_num
+            
+    return msd_comp/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
 
 
 """

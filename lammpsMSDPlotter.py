@@ -177,31 +177,26 @@ if __name__=="__main__":
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
+    ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
+
+    #locate the pinned particle
+
     pin = multiple[0,0,:]
     phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
     theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
-    msd_com_1, vec1, n1 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = phi_c_1,subtended_halfangle = theta2/2)
-    
-    msd_com_2, vec2, n2 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/4)%(np.pi), phi_c = phi_c_1,subtended_halfangle = theta2/2)
-    msd_com_3, vec3, n3 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = (phi_c_1+np.pi/3)%(2*np.pi),subtended_halfangle = theta2/2)
 
+    thetas = np.array([theta_c_1, theta_c_1 + np.pi/4, theta_c + np.pi/2]) % np.pi
+
+    #first we vary the location of the subtended sector
 
     fig, ax = plt.subplots(figsize=(5,5))
     ax.plot(msd_times, msd, label='ensemble mto msd')
     
-    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {np.round(vec1,2)} (~{n1:.1f} ptcls)", color='blue')
-    ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {np.round(vec2,2)} (~{n2:.1f} ptcls)",color='purple')
-    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {np.round(vec3,2)} (~{n3:.1f} ptcls)", color = 'green')
-
-    # def projections(msd_com_sector, vec):
-    #     u = vec/np.linalg.norm(vec)
-    #     t_proj = msd_com_sector - np.einsum("ni,i,j->nj",msd_com_sector,u,u)
-    #     r_proj = np.einsum("ni,i,j->nj",msd_com_sector,u,u)
-    #     return t_proj, r_proj
-
-    # ax.plot(msd_times,projections(msd_com_1,vec1)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec1,2)}", color='blue',ls='-.')
-    # ax.plot(msd_times,projections(msd_com_2,vec2)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec2,2)}",color='purple',ls='-.')
-    # ax.plot(msd_times,projections(msd_com_3,vec3)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec3,2)}", color = 'green',ls='-.')
+    for i, theta in enumerate(thetas):
+        msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1)
+        
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(vec,2)}\n(~{n:.1f} ptcls)", color=i+1,lw=0.8)
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(vec,2)}", color=i+1,lw=0.6, ls="-.")
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
@@ -210,8 +205,29 @@ if __name__=="__main__":
 
     ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
     ax.legend()
-    fig.savefig(path+"msd_com.jpg", bbox_inches='tight')
+    fig.savefig(path+"msd_com_location.jpg", bbox_inches='tight')
 
+    #Now we vary the size of the subtended sector
+
+    fig, ax = plt.subplots(figsize=(5,5))
+    ax.plot(msd_times, msd, label='ensemble mto msd')
+    
+    subtends = np.linspace(theta1/4,theta2/2,5)
+
+    for i, subtend in enumerate(subtends):
+        msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/2) % np.pi, phi_c = phi_c_1,subtended_halfangle = subtend)
+        
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = rf"com msd about {np.round(vec,2)}\nsubtended angle: {2*subtend:.2f/np.pi}$\pi$ rad", color=i+1,lw=0.8)
+        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(vec,2)}\nsubtended angle: {2*subtend:.2f/np.pi}$\pi$ rad", color=i+1,lw=0.6, ls="-.")
+
+    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlim([0, msd_times[-1]])
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+
+    ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
+    ax.legend()
+    fig.savefig(path+"msd_com_size.jpg", bbox_inches='tight')
 
 
     #if the voronoi tesselation is already done we'll do the charge-weighted msd too
