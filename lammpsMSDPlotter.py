@@ -191,7 +191,17 @@ if __name__=="__main__":
     
     ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {np.round(vec1,2)} (~{n1:.1f} ptcls)", color='blue')
     ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {np.round(vec2,2)} (~{n2:.1f} ptcls)",color='purple')
-    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {np.round(vec3,2)} (~{n4:.1f} ptcls)", color = 'green')
+    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {np.round(vec3,2)} (~{n3:.1f} ptcls)", color = 'green')
+
+    def projections(msd_com_sector, vec):
+        u = vec/np.linalg.norm(vec)
+        t_proj = msd_com_sector - np.einsum("ni,i,j->nj"msd_com_sector,u,u)
+        r_proj = np.einsum("ni,i,j->nj"msd_com_sector,u,u)
+        return t_proj, r_proj
+
+    ax.plot(msd_times,projections(msd_com_1,vec1)[0], label = f"tangential com msd about {np.round(vec1,2)}", color='blue')
+    ax.plot(msd_times,projections(msd_com_2,vec2)[0], label = f"tangential com msd about {np.round(vec2,2)}",color='purple',ls='-.')
+    ax.plot(msd_times,projections(msd_com_3,vec3)[0], label = f"tangential com msd about {np.round(vec3,2)}", color = 'green',ls='-.')
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
