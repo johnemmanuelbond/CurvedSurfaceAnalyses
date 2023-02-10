@@ -187,8 +187,8 @@ if __name__=="__main__":
 
 
     fig, ax = plt.subplots((5,5))
-    ax.plot(msd_times, msd, label='mto msd')
-    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about pin (~{n1:.1f} ptcls)")
+    ax.plot(msd_times, msd, label='ensemble mto msd')
+    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {vec1:.2f} (~{n1:.1f} ptcls)")
     ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {vec2:.2f} (~{n2:.1f} ptcls)")
     ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {vec3:.2f} (~{n4:.1f} ptcls)")
 
