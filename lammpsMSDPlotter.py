@@ -178,7 +178,7 @@ if __name__=="__main__":
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
     pin = multiple[0,0,:]
-    phi_c_1 = np.arctan(pin[1]/pin[0])
+    phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
     theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
     msd_com_1, vec1, n1 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = phi_c_1)
     

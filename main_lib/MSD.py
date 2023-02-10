@@ -183,7 +183,7 @@ def mto_com_msd(coords,max_lag,skips=None, masses=None):
 source MSD, 2/9/23
 author: Jack Bond
 """
-def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_angle=theta1/2,shell_radius=None):
+def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
     """Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the center-of-mass msd for a subset of particles within a subtended angle
     of some point on the sphere (given by theta and phi), up to the given
@@ -200,13 +200,12 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         phi_c = 2*np.pi*np.random.random()
     if shell_radius is None:
         shell_radius = np.linalg.norm(coords,axis=-1).mean()
+    
     central_vec = np.array([shell_radius*np.sin(theta_c)*np.cos(phi_c),shell_radius*np.sin(theta_c)*np.sin(phi_c),shell_radius*np.cos(theta_c)])
 
     # setting up multiple time origins
     if skips is None:
         skips = 2*max_lag #non-overlapping mtos
-
-    shell_radius = np.linalg.norm(coords, axis=-1).mean()
     
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
@@ -225,8 +224,9 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         
         #define subset of tracked particles by taking the arcos of the dot product between each point and the central vector
         #notably, once we choose particles at each time origin, we keep them throughout the whole of each time window.
-        args = np.array([np.dot(c,central_vec) / (np.linalg.norm(c)*np.linalg.norm(central_vec)) for c in coords[tstart]])
-        idx = np.arccos(args) < subtended_angle
+        args = np.einsum("ni,i->n",coords[tstart],central_vec)/(np.linalg.norm(central_vec)*np.linalg.norm(coords[tstart],axis=-1))
+        
+        idx = np.arccos(args) < subtended_halfangle
         mean_n += np.sum(idx)
         
         #find the center of mass of those particles
