@@ -195,11 +195,11 @@ if __name__=="__main__":
 
     def projections(msd_com_sector, vec):
         u = vec/np.linalg.norm(vec)
-        t_proj = msd_com_sector - np.einsum("ni,i,j->nj"msd_com_sector,u,u)
-        r_proj = np.einsum("ni,i,j->nj"msd_com_sector,u,u)
+        t_proj = msd_com_sector - np.einsum("ni,i,j->nj",msd_com_sector,u,u)
+        r_proj = np.einsum("ni,i,j->nj",msd_com_sector,u,u)
         return t_proj, r_proj
 
-    ax.plot(msd_times,projections(msd_com_1,vec1)[0], label = f"tangential com msd about {np.round(vec1,2)}", color='blue')
+    ax.plot(msd_times,projections(msd_com_1,vec1)[0], label = f"tangential com msd about {np.round(vec1,2)}", color='blue',ls='-.')
     ax.plot(msd_times,projections(msd_com_2,vec2)[0], label = f"tangential com msd about {np.round(vec2,2)}",color='purple',ls='-.')
     ax.plot(msd_times,projections(msd_com_3,vec3)[0], label = f"tangential com msd about {np.round(vec3,2)}", color = 'green',ls='-.')
 
