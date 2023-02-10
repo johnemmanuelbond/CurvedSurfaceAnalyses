@@ -196,7 +196,7 @@ if __name__=="__main__":
         msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1)
         
         ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.8)
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(c_vec,2)}", color=f"C{i+1}",lw=0.6, ls="-.")
+        ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}", color=f"C{i+1}",lw=1.1, ls="-.")
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
@@ -218,7 +218,7 @@ if __name__=="__main__":
         msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/2) % np.pi, phi_c = phi_c_1,subtended_halfangle = subtend)
         
         ax.plot(msd_times,msd_com.sum(axis=-1), label = rf"com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.8)
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"radial com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.6, ls="-.")
+        ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.6, ls="-.")
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
