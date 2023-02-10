@@ -232,11 +232,14 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         mean_n += np.sum(idx)
         
         #find the center of mass of those particles
-        com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/masses[idx].sum()
+        com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/(masses[idx].sum())
+
+        #adjust the com to keep it on the spehere center
+        com_adj = shell_radius*np.array([f/np.linalg.norm(f) for f in com])
         
         for t in range(max_lag):
             tend = tstart + t
-            msd_comp[t] +=  (com[tend]-com[tstart])**2#3
+            msd_comp[t] +=  (com_adj[tend]-com_adj[tstart])**2#3
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
     return msd_comp/(orig_num), central_vec, mean_n/orig_num
 
