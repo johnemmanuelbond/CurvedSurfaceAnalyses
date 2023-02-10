@@ -188,17 +188,17 @@ if __name__=="__main__":
 
     fig, ax = plt.subplots(figsize=(5,5))
     ax.plot(msd_times, msd, label='ensemble mto msd')
-    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {vec1:.2f} (~{n1:.1f} ptcls)")
-    ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {vec2:.2f} (~{n2:.1f} ptcls)")
-    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {vec3:.2f} (~{n4:.1f} ptcls)")
-
+    
+    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {np.round(vec1,2)} (~{n1:.1f} ptcls)", color='blue')
+    ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {np.round(vec2,2)} (~{n2:.1f} ptcls)",color='purple')
+    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {np.round(vec3,2)} (~{n4:.1f} ptcls)", color = 'green')
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
-    ax.set_title(f"Pinned Particle at {pin:.2f}")
+    ax.set_title(f"Pinned Particle at {np.round(pin,2)}")
     ax.legend()
     fig.savefig(path+"msd_com.jpg", bbox_inches='tight')
 
