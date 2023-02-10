@@ -135,7 +135,6 @@ if __name__=="__main__":
 
     fig, ax = plt.subplots(figsize=(5,5))
     ax.plot(msd_times, msd, label='mto msd')
-    #ax.plot(msd_times, msd_w, label='mto msd arclength')
     ax.fill_between(msd_times, msd-msd_ci[0], msd+msd_ci[1],
                     alpha=0.3, label='95% bootstrap ci')
     ax.plot(msd_times, theo, color='k', ls=':', label=f'D={D0:0.1e}')
@@ -163,20 +162,45 @@ if __name__=="__main__":
     ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title("Self-Diffusion over Damping Timescale")
+    ax.set_title(title)
 
     ax.legend()
     fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
 
-    short_time = (0.5**2)/(4*D0)
+    short_time = 0.03
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, short_time])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, 1.1*4*D0*short_time])
-    ax.set_title("Self-Diffusion over Particle Radius")
+    ax.set_title(title)
 
     ax.legend()
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
+
+    pin = multiple[0,0,:]
+    phi_c_1 = np.arctan(pin[1]/pin[0])
+    theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
+    msd_com_1, vec1, n1 = mto_com_sector(multiple,msd_time_scale,skips=s, theta_c = theta_c_1, phi_c = phi_c_1)
+    
+    msd_com_2, vec2, n2 = to_com_sector(multiple,msd_time_scale,skips=s, theta_c = theta_c_1+theta1, phi_c = phi_c_1)
+    msd_com_3, vec3, n3 = mto_com_sector(multiple,msd_time_scale,skips=s, theta_c = theta_c_1+theta1, phi_c = phi_c_1+theta1)
+
+
+    fig, ax = plt.subplots((5,5))
+    ax.plot(msd_times, msd, label='mto msd')
+    ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about pin (~{n1:.1f} ptcls)")
+    ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {vec2:.2f} (~{n2:.1f} ptcls)")
+    ax.plot(msd_times,msd_com_3.sum(axis=-1), label = f"com msd about {vec3:.2f} (~{n4:.1f} ptcls)")
+
+
+    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlim([0, msd_times[-1]])
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+
+    ax.set_title(f"Pinned Particle at {pin:.2f}")
+    ax.legend()
+    fig.savefig(path+"msd_com.jpg", bbox_inches='tight')
 
 
 

@@ -219,6 +219,7 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         masses = np.ones(pnum)
 
     msd_comp = np.zeros((max_lag, 3))
+    mean_n = 0
     
     for tstart in time_origins:
         
@@ -226,6 +227,7 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         #notably, once we choose particles at each time origin, we keep them throughout the whole of each time window.
         args = np.array([np.dot(c,central_vec) / (np.linalg.norm(c)*np.linalg.norm(central_vec)) for c in coords[tstart]])
         idx = np.arccos(args) < subtended_angle
+        mean_n += np.sum(idx)
         
         #find the center of mass of those particles
         com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/masses[idx].sum()
@@ -234,7 +236,7 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
             tend = tstart + t
             msd_comp[t] +=  (com[tend]-com[tstart])**2#3
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_comp/(orig_num), central_vec
+    return msd_comp/(orig_num), central_vec, mean_n/orig_num
 
 
 """
