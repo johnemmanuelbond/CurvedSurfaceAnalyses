@@ -186,7 +186,7 @@ if __name__=="__main__":
     msd_com_3, vec3, n3 = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta_c_1+theta1, phi_c = phi_c_1+theta1)
 
 
-    fig, ax = plt.subplots((5,5))
+    fig, ax = plt.subplots(figsize=(5,5))
     ax.plot(msd_times, msd, label='ensemble mto msd')
     ax.plot(msd_times,msd_com_1.sum(axis=-1), label = f"com msd about {vec1:.2f} (~{n1:.1f} ptcls)")
     ax.plot(msd_times,msd_com_2.sum(axis=-1), label = f"com msd about {vec2:.2f} (~{n2:.1f} ptcls)")
