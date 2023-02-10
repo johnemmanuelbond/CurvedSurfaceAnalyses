@@ -199,16 +199,16 @@ if __name__=="__main__":
         r_proj = np.einsum("ni,i,j->nj",msd_com_sector,u,u)
         return t_proj, r_proj
 
-    ax.plot(msd_times,projections(msd_com_1,vec1)[0], label = f"tangential com msd about {np.round(vec1,2)}", color='blue',ls='-.')
-    ax.plot(msd_times,projections(msd_com_2,vec2)[0], label = f"tangential com msd about {np.round(vec2,2)}",color='purple',ls='-.')
-    ax.plot(msd_times,projections(msd_com_3,vec3)[0], label = f"tangential com msd about {np.round(vec3,2)}", color = 'green',ls='-.')
+    ax.plot(msd_times,projections(msd_com_1,vec1)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec1,2)}", color='blue',ls='-.')
+    ax.plot(msd_times,projections(msd_com_2,vec2)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec2,2)}",color='purple',ls='-.')
+    ax.plot(msd_times,projections(msd_com_3,vec3)[0].sum(axis=-1), label = f"tangential com msd about {np.round(vec3,2)}", color = 'green',ls='-.')
 
     ax.set_xlabel("[$\\tau$]", fontsize=12)
     ax.set_xlim([0, msd_times[-1]])
     ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
     ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
-    ax.set_title(f"Pinned Particle at {np.round(pin,2)}")
+    ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
     ax.legend()
     fig.savefig(path+"msd_com.jpg", bbox_inches='tight')
 
