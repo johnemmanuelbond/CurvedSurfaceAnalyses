@@ -204,7 +204,7 @@ if __name__=="__main__":
     ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
-    ax.legend(loc='upper left',bbox_to_anchor=(1,0))
+    ax.legend(loc='upper left',bbox_to_anchor=(1,1))
     fig.savefig(path+"msd_com_location.jpg", bbox_inches='tight')
 
     #Now we vary the size of the subtended sector
@@ -212,7 +212,7 @@ if __name__=="__main__":
     fig, ax = plt.subplots(figsize=(5,5))
     ax.plot(msd_times, msd, label='ensemble mto msd')
     
-    subtends = np.linspace(theta1/4,theta2/2,5)
+    subtends = np.array([np.pi/10,theta1/2,np.pi/4,theta1,theta2/2,np.pi/2])
 
     for i, subtend in enumerate(subtends):
         msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/2) % np.pi, phi_c = phi_c_1,subtended_halfangle = subtend)
@@ -226,7 +226,7 @@ if __name__=="__main__":
     ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
-    ax.legend(loc='upper left',bbox_to_anchor=(1,0))
+    ax.legend(loc='upper left',bbox_to_anchor=(1,1))
     fig.savefig(path+"msd_com_size.jpg", bbox_inches='tight')
 
 
