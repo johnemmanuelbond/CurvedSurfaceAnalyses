@@ -178,19 +178,52 @@ def mto_com_msd(coords,max_lag,skips=None, masses=None):
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
     return msd_comp/(orig_num), com
 
+"""
+source MSD, 2/14/23
+author: Jack Bond
+"""
+def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes the center-of-mass msd for a subset of particles within a subtended angle of some point on the sphere (given by theta and phi). Returns a [T x 3] array of msds
+    """
+
+    #picking the central point around which we track particles
+    if theta_c is None:
+        theta_c = np.pi*np.random.random()
+    if phi_c is None:
+        phi_c = 2*np.pi*np.random.random()
+    if shell_radius is None:
+        shell_radius = np.linalg.norm(coords,axis=-1).mean()
+    
+    central_vec = np.array([shell_radius*np.sin(theta_c)*np.cos(phi_c),shell_radius*np.sin(theta_c)*np.sin(phi_c),shell_radius*np.cos(theta_c)])
+
+    pnum = coords.shape[1]
+
+    unit_vecs = np.array([c/np.linalg.norm(c) for c in coords[0]])
+    unit_center = central_vec/np.linalg.norm(central_vec)
+    args = np.einsum("ni,i->n",unit_vecs,unit_center)
+
+    idx = np.abs(np.arccos(args)) < subtended_halfangle
+
+    subset = coords[:,idx]
+    com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/(masses[idx].sum())
+
+    disp_ens = subset-subset[0]
+    disp_com = com-com[0]
+
+    msd_ens = np.mean((disp_ens)**2, axis=1)
+    msd_com = (com_ens)**2
+    rel_rad = np.linalg.norm(com,axis=-1)
+
+    return msd_ens, msd_com, rel_rad, idx, central_vec
 
 """
 source MSD, 2/9/23
 author: Jack Bond
 """
-def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the center-of-mass msd for a subset of particles within a subtended angle
-    of some point on the sphere (given by theta and phi), up to the given
-    max_step, defaulting to the maximum number of non-overlapping multiple
-    time origins. Overlapping time orgins can be given by specifying a skip
-    param less than 2*max_lag.
-    Returns a [T x 3] array of msds
+def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes the ensemble and center-of-mass msd for a subset of particles within a subtended angle of some point on the sphere (given by theta and phi), up to the given max_step, defaulting to the maximum number of non-overlapping multiple time origins. Overlapping time orgins can be given by specifying a skip param less than 2*max_lag. Returns a [T x 3] array of msds
     """
 
     #picking the central point around which we track particles
@@ -217,7 +250,8 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
     if masses is None:
         masses = np.ones(pnum)
 
-    msd_comp = np.zeros((max_lag, 3))
+    msd_com = np.zeros((max_lag, 3))
+    msd_ens = np.zeros((max_lag, 3))
     msd_rad = np.zeros((max_lag, 1))
     mean_n = 0
     
@@ -242,11 +276,12 @@ def mto_com_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c
         
         for t in range(max_lag):
             tend = tstart + t
-            msd_comp[t] +=  (com_adj[tend]-com_adj[tstart])**2#3
-            msd_rad[t] +=  (rel_rad[tend]-rel_rad[tstart])**2#1
+            msd_com[t] += (com_adj[tend]-com_adj[tstart])**2 #3
+            msd_ens[t] += np.mean((coords[:,idx,tend]-coords[:,idx,tstart])**2,axis=0) #3
+            msd_rad[t] += (rel_rad[tend]-rel_rad[tstart]) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-            
-    return msd_comp/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
+
+    return msd_com/orig_num, ,msd_ens/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
 
 
 """

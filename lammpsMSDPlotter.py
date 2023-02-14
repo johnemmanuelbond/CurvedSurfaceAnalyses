@@ -17,7 +17,7 @@ from scipy.optimize import curve_fit
 
 import matplotlib.pyplot as plt
 
-from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON
+from main_lib.FileHandling import read_infile, read_dump, read_thermo, get_thermo_time, dumpDictionaryJSON, output_vis
 from main_lib.UnitConversions import kb, getAEff
 from main_lib.Correlation import theta1,theta2
 from main_lib.MSD import *
@@ -116,9 +116,9 @@ if __name__=="__main__":
 
     s = 100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 
-    #recall we have one frozen particle now, so we simply disregard the frozen particle when calculating displacements
-    msd_comp = mto_msd(multiple[:,1:,:], msd_time_scale,skips = s)
-    msd_part = mto_msd_part(multiple[:,1:,:], msd_time_scale, skips = s)
+    #recall we sometimes one frozen particle now, so we simply disregard the frozen particle when calculating displacements, use multiple[:,1:,:] to do that
+    msd_comp = mto_msd(multiple, msd_time_scale,skips = s)
+    msd_part = mto_msd_part(multiple, msd_time_scale, skips = s)
     msd = msd_comp.sum(axis=-1)
     msd_times = times[:msd_time_scale]
     #np.savetxt(path+f'msd_{msd_time_scale}frames.txt', (msd_times, msd), header='tau msd[2a]^2')
@@ -179,55 +179,90 @@ if __name__=="__main__":
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
 
+    sector_centers = shell_radius*np.array([0,0,1],[0,1,0])#,[])
+    subtended_angles = np.array(theta_1,theta_1)#,np.pi/5,np.pi,1.5*np.pi)
+
+    for i, center, sub_ang in enumerate(zip(sector_centers,subtended_angles)):
+
+        phi = np.arctan(center[1]/c_vec[0]) + np.pi*(center[0]<0)
+        theta = np.arccos(center[2]/np.linalg.norm(center))
+
+        _,_,_,subset,_ = sector_msd(multiple,theta_c = theta, phi_c = phi_c_1,subtended_halfangle=sub_ang/2)
+        output_vis(f"sector_{i}.atom",multiple[:,idx,:])
+
+        msd_com, msd_ens, msd_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1,subtended_halfangle=sub_ang/2)
+        
+        fig,ax=plt.subplots(figsize=(5,5))
+        ax.plot(msd_times,msd, label="Full ensemble mto msd",lw=0.8)
+        ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
+        ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
+        ax.plot(msd_times,msd_rad, label="Subset radial C.O.M. msd",lw=0.8)
+
+        ax.set_xlabel("[$\\tau$]", fontsize=12)
+        ax.set_xlim([0, msd_times[-1]])
+        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+        ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+        ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\theta_{{sub}}$={2*subtend/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
+
+        ax.legend()
+        fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
+
+    # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
+    # ax.legend(loc='upper left',bbox_to_anchor=(1,1))
+    # fig.savefig(path+"msd_com_location.jpg", bbox_inches='tight')
+
+    #### For viewing several sectors on the same plot
+
+    #sometimes we pin particles, heres how to acount for that
     #locate the pinned particle
 
-    pin = multiple[0,0,:]
-    phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
-    theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
+    # pin = multiple[0,0,:]
+    # phi_c_1 = np.arctan(pin[1]/pin[0]) + np.pi*(pin[0]<0)
+    # theta_c_1 = np.arccos(pin[2]/np.linalg.norm(pin))
 
-    thetas = np.array([theta_c_1, theta_c_1 + np.pi/4, theta_c_1 + np.pi/2]) % np.pi
+    # thetas = np.array([theta_c_1, theta_c_1 + np.pi/4, theta_c_1 + np.pi/2]) % np.pi
 
     #first we vary the location of the subtended sector
 
-    fig, ax = plt.subplots(figsize=(5,5))
-    ax.plot(msd_times, msd, label='ensemble mto msd')
+    # fig, ax = plt.subplots(figsize=(5,5))
+    # ax.plot(msd_times, msd, label='ensemble mto msd')
     
-    for i, theta in enumerate(thetas):
-        msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1)
+    # for i, theta in enumerate(thetas):
+    #     msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1)
         
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.8)
-        ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}", color=f"C{i+1}",lw=1.1, ls="-.")
+    #     ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.8)
+    #     ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}", color=f"C{i+1}",lw=1.1, ls="-.")
 
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, msd_times[-1]])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlim([0, msd_times[-1]])
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
-    ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
-    ax.legend(loc='upper left',bbox_to_anchor=(1,1))
-    fig.savefig(path+"msd_com_location.jpg", bbox_inches='tight')
+    # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
+    # ax.legend(loc='upper left',bbox_to_anchor=(1,1))
+    # fig.savefig(path+"msd_com_location.jpg", bbox_inches='tight')
 
-    #Now we vary the size of the subtended sector
+    # #Now we vary the size of the subtended sector
 
-    fig, ax = plt.subplots(figsize=(5,5))
-    ax.plot(msd_times, msd, label='ensemble mto msd')
+    # fig, ax = plt.subplots(figsize=(5,5))
+    # ax.plot(msd_times, msd, label='ensemble mto msd')
     
-    subtends = np.array([np.pi/10,theta1/2,np.pi/4,theta2/2,np.pi/2])
+    # subtends = np.array([np.pi/10,theta1/2,np.pi/4,theta2/2,np.pi/2])
 
-    for i, subtend in enumerate(subtends):
-        msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/2) % np.pi, phi_c = phi_c_1,subtended_halfangle = subtend)
+    # for i, subtend in enumerate(subtends):
+    #     msd_com, msd_rad, mean_n, c_vec = mto_com_sector_msd(multiple,msd_time_scale,skips=s, theta_c = (theta_c_1+np.pi/2) % np.pi, phi_c = phi_c_1,subtended_halfangle = subtend)
         
-        ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.8)
-        ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.6, ls="-.")
+    #     ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.8)
+    #     ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.6, ls="-.")
 
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
-    ax.set_xlim([0, msd_times[-1]])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-    ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
+    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlim([0, msd_times[-1]])
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
-    ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
-    ax.legend(loc='upper left',bbox_to_anchor=(1,1))
-    fig.savefig(path+"msd_com_size.jpg", bbox_inches='tight')
+    # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
+    # ax.legend(loc='upper left',bbox_to_anchor=(1,1))
+    # fig.savefig(path+"msd_com_size.jpg", bbox_inches='tight')
 
 
     #if the voronoi tesselation is already done we'll do the charge-weighted msd too
