@@ -206,13 +206,17 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
     idx = np.abs(np.arccos(args)) < subtended_halfangle
 
     subset = coords[:,idx]
-    com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/(masses[idx].sum())
+    
+    #compute the center of mass of every frame
+    if masses is None:
+        masses = np.ones(pnum)[idx]
+    com = np.einsum("n,fni->fi",masses,subset)/(masses.sum())
 
     disp_ens = subset-subset[0]
     disp_com = com-com[0]
 
     msd_ens = np.mean((disp_ens)**2, axis=1)
-    msd_com = (com_ens)**2
+    msd_com = (disp_com)**2
     rel_rad = np.linalg.norm(com,axis=-1)
 
     return msd_ens, msd_com, rel_rad, idx, central_vec
@@ -277,11 +281,11 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
         for t in range(max_lag):
             tend = tstart + t
             msd_com[t] += (com_adj[tend]-com_adj[tstart])**2 #3
-            msd_ens[t] += np.mean((coords[:,idx,tend]-coords[:,idx,tstart])**2,axis=0) #3
+            msd_ens[t] += np.mean((coords[tend,idx,:]-coords[tstart,idx,:])**2,axis=0) #3
             msd_rad[t] += (rel_rad[tend]-rel_rad[tstart]) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
 
-    return msd_com/orig_num, ,msd_ens/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
+    return msd_com/orig_num, msd_ens/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
 
 
 """

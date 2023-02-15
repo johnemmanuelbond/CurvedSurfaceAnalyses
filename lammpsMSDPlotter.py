@@ -179,18 +179,20 @@ if __name__=="__main__":
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
 
-    sector_centers = shell_radius*np.array([0,0,1],[0,1,0])#,[])
-    subtended_angles = np.array(theta_1,theta_1)#,np.pi/5,np.pi,1.5*np.pi)
+    sector_centers = shell_radius*np.array([[0,0,1],[0,1,0]])#,[])
+    subtended_angles = np.array([theta1,theta1])#,np.pi/5,np.pi,1.5*np.pi)
 
-    for i, center, sub_ang in enumerate(zip(sector_centers,subtended_angles)):
+    for i, (center, sub_ang) in enumerate(zip(sector_centers,subtended_angles)):
 
-        phi = np.arctan(center[1]/c_vec[0]) + np.pi*(center[0]<0)
+        center[0] = max(center[0],1e-7)
+        
+        phi = np.arctan(center[1]/center[0]) + np.pi*(center[0]<0)
         theta = np.arccos(center[2]/np.linalg.norm(center))
 
-        _,_,_,subset,_ = sector_msd(multiple,theta_c = theta, phi_c = phi_c_1,subtended_halfangle=sub_ang/2)
-        output_vis(f"sector_{i}.atom",multiple[:,idx,:])
+        _,_,_,subset,_ = sector_msd(multiple,theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
+        output_vis(f"sector_{i}.atom",multiple[:,subset,:])
 
-        msd_com, msd_ens, msd_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi_c_1,subtended_halfangle=sub_ang/2)
+        msd_com, msd_ens, msd_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
         
         fig,ax=plt.subplots(figsize=(5,5))
         ax.plot(msd_times,msd, label="Full ensemble mto msd",lw=0.8)
@@ -202,7 +204,7 @@ if __name__=="__main__":
         ax.set_xlim([0, msd_times[-1]])
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
-        ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\theta_{{sub}}$={2*subtend/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
+        ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
         ax.legend()
         fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
