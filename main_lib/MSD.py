@@ -256,7 +256,7 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
 
     msd_com = np.zeros((max_lag, 3))
     msd_ens = np.zeros((max_lag, 3))
-    msd_rad = np.zeros((max_lag, 1))
+    md_rad = np.zeros((max_lag, 1))
     mean_n = 0
     
     for tstart in time_origins:
@@ -282,10 +282,10 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
             tend = tstart + t
             msd_com[t] += (com_adj[tend]-com_adj[tstart])**2 #3
             msd_ens[t] += np.mean((coords[tend,idx,:]-coords[tstart,idx,:])**2,axis=0) #3
-            msd_rad[t] += (rel_rad[tend]-rel_rad[tstart]) #1
+            md_rad[t] += (rel_rad[tend]-rel_rad[tstart]) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
 
-    return msd_com/orig_num, msd_ens/orig_num, msd_rad/orig_num, mean_n/orig_num, central_vec
+    return msd_com/orig_num, msd_ens/orig_num, md_rad/orig_num, mean_n/orig_num, central_vec
 
 
 """

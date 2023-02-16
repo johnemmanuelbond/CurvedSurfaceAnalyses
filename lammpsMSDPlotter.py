@@ -22,7 +22,7 @@ from main_lib.UnitConversions import kb, getAEff
 from main_lib.Correlation import theta1,theta2
 from main_lib.MSD import *
 
-FONT = 24
+FONT = 20
 
 if __name__=="__main__":
 
@@ -205,16 +205,16 @@ if __name__=="__main__":
         ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
         ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
         ax2 = ax.twinx()
-        ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8,color=f"C{4}")
+        ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8,color=f"C{3}",ls="-.")
 
         ax.set_xlabel("[$\\tau$]", fontsize=FONT)
         ax.set_xlim([0, msd_times[-1]])
         ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
-        ax2.set_ylabel("[$\sigma$]", fontsize=FONT)
+        ax2.set_ylabel("[$\sigma$]", fontsize=FONT,color=f"C{3}")
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
-        fig.legend(fontsize=FONT//2)
+        fig.legend(fontsize=FONT//2,loc='upper left',bbox_to_anchor=(1,1))
         fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
