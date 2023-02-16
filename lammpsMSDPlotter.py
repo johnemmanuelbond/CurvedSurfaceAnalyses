@@ -180,8 +180,8 @@ if __name__=="__main__":
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
 
-    sector_centers = shell_radius*np.array([[0,0,1],[0,1,0]])#,[])
-    subtended_angles = np.array([theta1,theta1])#,np.pi/5,np.pi,1.5*np.pi)
+    sector_centers = shell_radius*np.array([[0,0,1],[0,1,0],[1,0,0]])#,[])
+    subtended_angles = np.array([theta1,theta1,2*np.pi-theta2])#,np.pi/5,np.pi,1.5*np.pi)
 
     for i, (center, sub_ang) in enumerate(zip(sector_centers,subtended_angles)):
 
@@ -214,7 +214,7 @@ if __name__=="__main__":
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
-        fig.legend(fontsize=FONT//2,loc='upper left',bbox_to_anchor=(1,1))
+        fig.legend(fontsize=FONT//2,loc='upper left',bbox_to_anchor=(-0.2,0))
         fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
