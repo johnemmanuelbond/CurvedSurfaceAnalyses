@@ -19,6 +19,8 @@ from main_lib.Correlation import scar_correlation, theta1, theta2
 
 from timeit import default_timer as timer
 
+FONT=20
+
 # load data
 start = timer()
 path = os.getcwd()+"/"
@@ -80,11 +82,11 @@ desired_samples = 100
 idx = np.arange(int((1-last_section)*fnum),fnum,int((last_section*fnum)/desired_samples))
 
 figScar,axScar = plt.subplots()
-axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]")
+axScar.set_xlabel(r"Geodesic Distance [rad/$\pi$]",fontsize=FONT)
 axScar.set_title(pltlab)
 axScar.set_ylim([0,2])
 axScar.set_xlim([0,1])
-axScar.set_ylabel(r"$g_{{scar-scar}}$")
+axScar.set_ylabel(r"$g_{{scar-scar}}$",fontsize=FONT)
 axScar.axvline(x=theta1/np.pi,ymax=2,lw=0.6,c="black")#,label=r"$\theta_{{1}}$",ls='--',")
 axScar.axvline(x=theta2/np.pi,ymax=2,lw=0.6,c="red")#,label=r"$\theta_{{2}}$",ls='--')
 
@@ -108,7 +110,7 @@ axScar.plot(midsScar, gScar,lw = 0.5,label = r"$\sum q = 1$")
 #midsBackground = np.mean(np.array(midssBackground),axis=0)
 #gBackground = np.mean(np.array(gsBackground),axis=0)
 #axScar.plot(midsBackground, gBackground,lw = 0.5,label = r"$\sum q = 0$")
-axScar.legend()
+axScar.legend(fontsize=FONT)
 figScar.savefig("Scar-Scar Pair Correlation.jpg", bbox_inches='tight')
 
 scarSizes = np.array(scarSizes)
@@ -117,11 +119,11 @@ scarTotalCharges = np.array(scarTotalCharges)
 
 #Histograms of each scar quality: net cahrge, total charge, size
 figHist,(ax1,ax2,ax3) = plt.subplots(1,3)
-ax1.set_ylabel("Counts")
-ax1.set_xlabel("Cluster Size")
-ax2.set_xlabel("Cluster Net Charge")
-ax3.set_xlabel("Cluster Total Charge")
-ax2.set_title(pltlab)
+ax1.set_ylabel("Counts",fontsize=FONT)
+ax1.set_xlabel("Cluster Size",fontsize=FONT)
+ax2.set_xlabel("Cluster Net Charge",fontsize=FONT)
+ax3.set_xlabel("Cluster Total Charge",fontsize=FONT)
+ax2.set_title(pltlab,fontsize=FONT)
 
 def bins(arr):
 	start = min(arr) - 0.5
@@ -136,9 +138,9 @@ figHist.savefig("Cluster Histrograms.jpg")
 #complete 3D histogram of net charge and cluster size
 fig3D = plt.figure()
 ax3D = fig3D.add_subplot(projection='3d')
-ax3D.set_xlabel("Cluster Net Charge")
-ax3D.set_ylabel("Cluster Size")
-ax3D.set_title(pltlab)
+ax3D.set_xlabel("Cluster Net Charge",fontsize=FONT)
+ax3D.set_ylabel("Cluster Size",fontsize=FONT)
+ax3D.set_title(pltlab,fontsize=FONT)
 
 hist, xedges, yedges = np.histogram2d(scarNetCharges,scarSizes,bins=[bins(scarNetCharges),bins(scarTotalCharges)])
 
@@ -158,8 +160,8 @@ fig3D.savefig("3DHistogram.jpg",bbox_inches='tight')
 
 #Stacked histograms of cluster size per each net charge
 figHists, axHists = plt.subplots()
-axHists.set_xlabel("Cluster Size")
-axHists.set_ylabel("Counts")
+axHists.set_xlabel("Cluster Size",fontsize=FONT)
+axHists.set_ylabel("Counts",fontsize=FONT)
 axHists.set_title(pltlab)
 
 cs = plt.rcParams['axes.prop_cycle'].by_key()['color']
@@ -176,14 +178,14 @@ for i, x in enumerate(ymids):
 			axHists.bar(x,y,2/3,label=rf"$\sum$q={q}",color=c)
 		else: axHists.bar(x,y,2/3,color=c)
 
-axHists.legend()
+axHists.legend(fontsize=FONT)
 figHists.savefig("BarChart.jpg")
 
 # 2D projection of the complete 3D histogram plus a boltzmann inversion
 figgrid, axgrid = plt.subplots(figsize=(5,5))
-axgrid.set_xlabel("Cluster Net Charge")
-axgrid.set_ylabel("Cluster Size")
-axgrid.set_title(pltlab)
+axgrid.set_xlabel("Cluster Net Charge",fontsize=FONT)
+axgrid.set_ylabel("Cluster Size",fontsize=FONT)
+axgrid.set_title(pltlab,fontsize=FONT)
 
 X,Y = np.meshgrid(xedges,yedges,indexing='ij')
 p = hist/(hist.sum().sum())

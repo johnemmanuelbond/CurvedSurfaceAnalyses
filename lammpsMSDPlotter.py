@@ -214,7 +214,7 @@ if __name__=="__main__":
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
-        fig.legend(fontsize=FONT//2,loc='upper left',bbox_to_anchor=(-0.2,0))
+        fig.legend(fontsize=FONT//2,loc='upper left',bbox_to_anchor=(0,0))
         fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
