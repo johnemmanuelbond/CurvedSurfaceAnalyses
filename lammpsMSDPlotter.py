@@ -22,6 +22,7 @@ from main_lib.UnitConversions import kb, getAEff
 from main_lib.Correlation import theta1,theta2
 from main_lib.MSD import *
 
+FONT = 24
 
 if __name__=="__main__":
 
@@ -142,9 +143,9 @@ if __name__=="__main__":
             color='C0', ls='-.',
             label=f'D={diff_coef[0]:0.3f} (fit)')
 
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlabel("[$\\tau$]", fontsize=FONT)
     ax.set_xlim([0, msd_times[-1]])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
     ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     ax.plot(msd_times, np.ones(msd_times.size)*2*shell_radius**2,ls='-',label=r'$2R^2$')
@@ -152,29 +153,29 @@ if __name__=="__main__":
 
     ax.set_title(title)
 
-    ax.legend()
+    ax.legend(fontsize=FONT//2)
     fig.savefig(path+"msd.jpg", bbox_inches='tight')
     # ax.plot(thermo[:msd_time_scale,0], thermo[:msd_time_scale,-1], label='lammps msd')
     # fig.savefig(path+"mto_msd_comparison.jpg", bbox_inches='tight')
 
     short_time = 5*damp
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlabel("[$\\tau$]", fontsize=FONT)
     ax.set_xlim([0, short_time])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
     ax.set_ylim([0, 1.1*4*D0*short_time])
     ax.set_title(title)
 
-    ax.legend()
+    ax.legend(fontsize=FONT//2)
     fig.savefig(path+"msd_damp.jpg", bbox_inches='tight')
 
     short_time = 0.03
-    ax.set_xlabel("[$\\tau$]", fontsize=12)
+    ax.set_xlabel("[$\\tau$]", fontsize=FONT)
     ax.set_xlim([0, short_time])
-    ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
     ax.set_ylim([0, 1.1*4*D0*short_time])
     ax.set_title(title)
 
-    ax.legend()
+    ax.legend(fontsize=FONT//2)
     fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
@@ -204,16 +205,16 @@ if __name__=="__main__":
         ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
         ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
         ax2 = ax1.twinx()
-        ax2.plot(msd_times,msd_rad, label="Subset C.O.M. mean radial disp.",lw=0.8)
+        ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8)
 
-        ax.set_xlabel("[$\\tau$]", fontsize=12)
+        ax.set_xlabel("[$\\tau$]", fontsize=FONT)
         ax.set_xlim([0, msd_times[-1]])
-        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-        ax2.set_ylabel("[$\sigma$]", fontsize=12)
+        ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
+        ax2.set_ylabel("[$\sigma$]", fontsize=FONT)
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
-        ax.legend()
+        ax.legend(fontsize=FONT//2)
         fig.savefig(path+f"msd_sector_{i}.jpg", bbox_inches='tight')
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
@@ -242,9 +243,9 @@ if __name__=="__main__":
     #     ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.8)
     #     ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}", color=f"C{i+1}",lw=1.1, ls="-.")
 
-    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlabel("[$\\tau$]", fontsize=FONT)
     # ax.set_xlim([0, msd_times[-1]])
-    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
     # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
@@ -264,9 +265,9 @@ if __name__=="__main__":
     #     ax.plot(msd_times,msd_com.sum(axis=-1), label = f"com msd about {np.round(c_vec,2)}\nsubtended angle: {2*subtend/np.pi:.2f}$\pi$ rad", color=f"C{i+1}",lw=0.8)
     #     ax.plot(msd_times,msd_rad, label = f"radial com msd about {np.round(c_vec,2)}\n(~{mean_n:.1f} ptcls)", color=f"C{i+1}",lw=0.6, ls="-.")
 
-    # ax.set_xlabel("[$\\tau$]", fontsize=12)
+    # ax.set_xlabel("[$\\tau$]", fontsize=FONT)
     # ax.set_xlim([0, msd_times[-1]])
-    # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+    # ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
     # ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
 
     # ax.set_title(f"{title}\nPinned Particle at {np.round(pin,2)}")
@@ -281,29 +282,29 @@ if __name__=="__main__":
         msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s)
 
         fig, ax = plt.subplots(figsize=(5,5))
-        ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-        ax.set_xlabel("[$\\tau$]", fontsize=12)
+        ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
+        ax.set_xlabel("[$\\tau$]", fontsize=FONT)
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
         ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
         ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
         ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
         ax.set_title(title)
-        ax.legend()
+        ax.legend(fontsize=FONT//2)
 
 
         # frac=0.9
         # msdhex,nhex = mto_msd_hex(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s,min_six_frac=frac)
 
         # fig, ax = plt.subplots(figsize=(5,5))
-        # ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
-        # ax.set_xlabel("[$\\tau$]", fontsize=12)
+        # ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
+        # ax.set_xlabel("[$\\tau$]", fontsize=FONT)
         # ax.plot(msd_times, msd, label='overall', color='k', zorder=5,lw=0.6)
         # ax.plot(msd_times, msdhex, label='mostly 6-fold', color='blue',lw=0.8)
         # axn = ax.twinx()
         # axn.set_ylabel("Number of Applicable Particles")
         # axn.plot(msd_times,nhex, color='blue',lw=0.6,ls='--')
         # ax.set_title(f"MSD for particles which spend {100*frac:.1f}% as 6-coordinated")
-        # ax.legend()
+        # ax.legend(fontsize=FONT//2)
 
         # fig.savefig(f"./msd_local.jpg", bbox_inches='tight')
 
