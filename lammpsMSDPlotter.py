@@ -204,7 +204,7 @@ if __name__=="__main__":
         ax.plot(msd_times,msd, label="Full ensemble mto msd",lw=0.8)
         ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
         ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
-        ax2 = ax1.twinx()
+        ax2 = ax.twinx()
         ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8,color=f"C{4}")
 
         ax.set_xlabel("[$\\tau$]", fontsize=FONT)
