@@ -63,7 +63,7 @@ if __name__=="__main__":
     visc = params['viscosity']
     D_SI = kT/(6*np.pi*visc*a_hc)
 
-    pnum = multiple.shape[1]
+    fnum, pnum, _ = multiple.shape
     # dt = lammps_params['timestep']*tau # [s]
 
     damp = lammps_params['damp']
@@ -190,19 +190,26 @@ if __name__=="__main__":
         theta = np.arccos(center[2]/np.linalg.norm(center))
 
         _,_,_,subset,_ = sector_msd(multiple,theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
-        output_vis(f"sector_{i}.atom",multiple[:,subset,:])
+        movie_rate = 4
+        movie = multiple[np.arange(fnum)%movie_rate==0]
+        output_vis(f"sector_{i}.atom",movie[:,subset,:])
 
-        msd_com, msd_ens, msd_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
+        msd_com_3, msd_ens_3, md_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
+
+        msd_com = msd_com_3.sum(axis=-1)
+        msd_ens = msd_ens_3.sum(axis=-1)
         
         fig,ax=plt.subplots(figsize=(5,5))
         ax.plot(msd_times,msd, label="Full ensemble mto msd",lw=0.8)
         ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
         ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
-        ax.plot(msd_times,msd_rad, label="Subset radial C.O.M. msd",lw=0.8)
+        ax2 = ax1.twinx()
+        ax2.plot(msd_times,msd_rad, label="Subset C.O.M. mean radial disp.",lw=0.8)
 
         ax.set_xlabel("[$\\tau$]", fontsize=12)
         ax.set_xlim([0, msd_times[-1]])
         ax.set_ylabel("[$\sigma ^2$]", fontsize=12)
+        ax2.set_ylabel("[$\sigma$]", fontsize=12)
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
