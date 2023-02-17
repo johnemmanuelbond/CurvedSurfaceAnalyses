@@ -197,7 +197,7 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
     
     central_vec = np.array([shell_radius*np.sin(theta_c)*np.cos(phi_c),shell_radius*np.sin(theta_c)*np.sin(phi_c),shell_radius*np.cos(theta_c)])
 
-    pnum = coords.shape[1]
+    fnum, pnum, _ = coords.shape
 
     unit_vecs = np.array([c/np.linalg.norm(c) for c in coords[0]])
     unit_center = central_vec/np.linalg.norm(central_vec)
@@ -209,15 +209,22 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
     
     #compute the center of mass of every frame
     if masses is None:
-        masses = np.ones(pnum)[idx]
-    com = np.einsum("n,fni->fi",masses,subset)/(masses.sum())
+        masses = np.ones(pnum)
+
+    if masses[idx].sum()==0:
+        com_adj = np.zeros((fnum,3))
+        rel_rad = np.zeros(fnum)
+    else:
+        com = np.einsum("n,fni->fi",masses[idx],subset)/(masses[idx].sum())
+        #adjust the com to keep it on the spehere surface
+        com_adj = shell_radius*np.array([f/np.linalg.norm(f) for f in com])
+        rel_rad = np.linalg.norm(com,axis=-1)
 
     disp_ens = subset-subset[0]
-    disp_com = com-com[0]
+    disp_com = com_adj-com_adj[0]
 
     msd_ens = np.mean((disp_ens)**2, axis=1)
     msd_com = (disp_com)**2
-    rel_rad = np.linalg.norm(com,axis=-1)
 
     return msd_ens, msd_com, rel_rad, idx, central_vec
 
@@ -271,12 +278,14 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
         mean_n += np.sum(idx)
         
         #find the center of mass of those particles
-        com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/(masses[idx].sum())
-
-        #adjust the com to keep it on the spehere center
-        com_adj = shell_radius*np.array([f/np.linalg.norm(f) for f in com])
-
-        rel_rad = np.linalg.norm(com,axis=-1)
+        if masses[idx].sum()==0:
+            com_adj = np.zeros((total_steps,3))
+            rel_rad = np.zeros(total_steps)
+        else:
+            com = np.einsum("n,fni->fi",masses[idx],coords[:,idx,:])/(masses[idx].sum())
+            #adjust the com to keep it on the spehere surface
+            com_adj = shell_radius*np.array([f/np.linalg.norm(f) for f in com])
+            rel_rad = np.linalg.norm(com,axis=-1)
         
         for t in range(max_lag):
             tend = tstart + t

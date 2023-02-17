@@ -115,7 +115,7 @@ if __name__=="__main__":
     #%% calculate msd
     msd_time_scale = min(2000,int(times.shape[0]/2))
 
-    s = 100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
+    s = 20 #100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 
     #recall we sometimes one frozen particle now, so we simply disregard the frozen particle when calculating displacements, use multiple[:,1:,:] to do that
     msd_comp = mto_msd(multiple, msd_time_scale,skips = s)
@@ -180,8 +180,13 @@ if __name__=="__main__":
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
 
-    sector_centers = shell_radius*np.array([[0,0,1],[0,1,0],[1,0,0]])#,[])
-    subtended_angles = np.array([theta1,theta1,2*np.pi-theta2])#,np.pi/5,np.pi,1.5*np.pi)
+    sector_centers = shell_radius*np.array([[0,0,1],[0,0,1],[0,1,0],[0,1,0]])#,[])
+    subtended_angles = np.array([theta1,2*np.pi-theta2,theta1,2*np.pi-theta2])#,np.pi/5,np.pi,1.5*np.pi)
+    Ds_com = []
+    dDs_com = []
+    Ds_diff = []
+    dDs_diff = []
+    mean_ns = []
 
     for i, (center, sub_ang) in enumerate(zip(sector_centers,subtended_angles)):
 
@@ -196,21 +201,31 @@ if __name__=="__main__":
         output_vis(f"sector_{i}.atom",movie[:,subset,:])
 
         msd_com_3, msd_ens_3, md_rad, mean_n, c_vec = mto_sector_msd(multiple,msd_time_scale,skips=s, theta_c = theta, phi_c = phi,subtended_halfangle=sub_ang/2)
+        
+        mean_ns.append(mean_n)
 
         msd_com = msd_com_3.sum(axis=-1)
         msd_ens = msd_ens_3.sum(axis=-1)
+
+        diff_coef_com, diff_cov_com = curve_fit(msd_func, msd_times, msd_com, p0=[1e-1])
+        Ds_com.append(diff_coef_com[0])
+        dDs_com.append(np.sqrt(diff_cov_com[0,0]))
+        diff_coef_diff, diff_cov_diff = curve_fit(msd_func, msd_times, msd_ens-msd_com, p0=[1e-1])
+        Ds_diff.append(diff_coef_diff[0])
+        dDs_diff.append(np.sqrt(diff_cov_diff[0,0]))
         
         fig,ax=plt.subplots(figsize=(5,5))
         ax.plot(msd_times,msd, label="Full ensemble mto msd",lw=0.8)
         ax.plot(msd_times,msd_ens, label="Subset ensemble mto msd")
         ax.plot(msd_times,msd_com, label="Subset C.O.M. mto msd")
-        ax2 = ax.twinx()
-        ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8,color=f"C{3}",ls="-.")
+        ax.plot(msd_times,msd_ens-msd_com, label="Subset difference")
+        #ax2 = ax.twinx()
+        #ax2.plot(msd_times,md_rad, label="Subset C.O.M. mean radial disp.",lw=0.8,color=f"C{3}",ls="-.")
 
         ax.set_xlabel("[$\\tau$]", fontsize=FONT)
         ax.set_xlim([0, msd_times[-1]])
         ax.set_ylabel("[$\sigma ^2$]", fontsize=FONT)
-        ax2.set_ylabel("[$\sigma$]", fontsize=FONT,color=f"C{3}")
+        #ax2.set_ylabel("[$\sigma$]", fontsize=FONT,color=f"C{3}")
         ax.set_ylim([0, min(1.1*msd_func(msd_times[-1], *diff_coef),1.2*2*shell_radius**2)])
         ax.set_title(title + f"\n Sector: {np.round(c_vec,2)}, $\\theta_{{sub}}$={2*sub_ang/np.pi:.2f}$\pi$ rad, $N_s$~{mean_n:.1f}")
 
@@ -314,12 +329,17 @@ if __name__=="__main__":
     config = json.load(open('config.json', 'r'))
 
     output = {
-            'D_0_fit': diff_coef[0],
+            'D_L_fit': diff_coef[0],
+            'dD_L_fit': np.sqrt(diff_cov[0,0]),
+            'Ds_com': Ds_com,
+            'dDs_com': dDs_com,
+            'Ds_diff': Ds_diff,
+            'dDs_diff': dDs_diff,
             'D_0': D0,
-            'D_SI': D_SI,
-            'a_hc_SI': a_hc,
-            'tau_SI': tau_D_SI/tau_D,
-            'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
+            #'D_SI': D_SI,
+            #'a_hc_SI': a_hc,
+            #'tau_SI': tau_D_SI/tau_D,
+            #'D_SI_conv': diff_coef[0]*(2*a_hc)**2/(tau_D_SI/tau_D)
     }
 
     dumpDictionaryJSON(output, 'diffusion')
