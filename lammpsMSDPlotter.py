@@ -65,6 +65,9 @@ if __name__=="__main__":
     D_SI = kT/(6*np.pi*visc*a_hc)
 
     fnum, pnum, _ = multiple.shape
+    if pnum > 1500:
+        multiple = multiple[int(fnum//5):]
+        fnum, pnum, _ = multiple.shape
     # dt = lammps_params['timestep']*tau # [s]
 
     damp = lammps_params['damp']

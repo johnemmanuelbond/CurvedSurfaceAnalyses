@@ -96,7 +96,7 @@ if __name__=="__main__":
 
     samples = 5e7
     n_frames = min(fnum,int(samples/pnum**2))
-    for bw in [0.001]:
+    for bw in [0.001,0.005,0.01,0.02]:
 
         #getting random sample frames
         rng = np.random.default_rng()
