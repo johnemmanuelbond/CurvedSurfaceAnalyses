@@ -94,8 +94,18 @@ if __name__=="__main__":
     taus = thermo[:,0]-thermo[:,0].min()
     all_taus = np.linspace(0, thermo[:,0].max(), num=150)
 
+    #set up plots:
+    fig,ax = plt.subplots()
+    ax.set_title(title)
+    ax.set_ylim([0,10])
+    ax.set_xlabel(r"Arclength [$\sigma$]")
+    ax.set_ylabel(r"$g(r)$")
+    ax.axvline(x=shell_radius*theta1,lw=0.6,c="black")#
+    ax.axvline(x=shell_radius*theta2,lw=0.6,c="red")#  
+
     samples = 5e7
     n_frames = min(fnum,int(samples/pnum**2))
+    output = dict()
     for bw in [0.001,0.005,0.01,0.02]:
 
         #getting random sample frames
@@ -110,26 +120,22 @@ if __name__=="__main__":
         
         #save images and numpy arrays
         np.save(path+f'RDF_bw{bw}.npy',np.array([mids,vals]))
-        fig,ax = plt.subplots()
-        ax.set_title(title)
-        ax.set_ylim([0,10])
-        ax.set_xlabel(r"Arclength [$\sigma$]")
-        ax.set_ylabel(r"$g(r)$")
         ax.plot(mids,vals,label=f"Bin Width = {bw}")
-        ax.axvline(x=shell_radius*theta1,lw=0.6,c="black")#
-        ax.axvline(x=shell_radius*theta2,lw=0.6,c="red")#
-        ax.legend()
-        fig.savefig(path+f"g(r)_bw{bw}.jpg",bbox_inches='tight')
-        ax.set_xlim([0,4])
-        fig.savefig(path+f"g(r)_close_bw{bw}.jpg",bbox_inches='tight')
         # code to integrate the first peak and also get the peak height by multiple methods
 
-        output = {
+        output[f"bw={bw}"] = {
+                "bw": bw,
                 "gr_peak_simple": np.max(vals[mids<3]),
                 "gr_peak_fit": None,
                 "gr_area": None,
         }
-        dumpDictionaryJSON(output,"RDF")
     
+    ax.legend()
+    fig.savefig(path+f"g(r).jpg",bbox_inches='tight')
+    ax.set_xlim([0,4])
+    fig.savefig(path+f"g(r)_close.jpg",bbox_inches='tight')
+
+    dumpDictionaryJSON(output,"RDF")
+
     allend = timer()
     print(f"full runtime {allend-allstart:.2f}s")
