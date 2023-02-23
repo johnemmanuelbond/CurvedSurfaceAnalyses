@@ -102,3 +102,45 @@ def getAEff(params):
 
 def R_for_etaeff(pnum, eta_eff, aeff_a_ratio):
     return (1/4)*np.sqrt(pnum/eta_eff)*aeff_a_ratio
+
+if __name__=="__main__":
+
+        params = {#solution characteristics
+                'temperature': 298,             # [K]
+                'rel_permittivity': 78,         # unitless
+                'ion_multiplicity': 1,       # unitless
+                'debye_length': 10e-9,          # [m]
+                'viscosity': 0.8931e-3,             # [Pa*s]
+                #particle characteristics
+                'particle_radius': 1.4e-6,      # [m]
+                'particle_density': 1980,        # [kg/m^3]
+                'surface_potential': -75e-3,    # [V]
+                'fcm':  -0.2287,                # unitless
+                #field characteristics
+                'vpp': 0.0,#1.0                 # [V]
+                'dg': 100e-6,                   # [m]
+        }
+
+        Ypf, _, debye = getSimInputTerms(params)
+        kappa = 1/debye
+        a_hc, a_eff_app = params['particle_radius'], getAEff(params)
+        
+        print(f"Energy Prefactor: {Ypf:.2f}[kT]")
+        print(f"aeff: {a_eff_app:.5e}[um]\n2aeff: {a_eff_app/a_hc:.5f}[2a]")
+
+        #what happens if we assume Ypf is divided by kappa in lammps to get the energy:
+        params_adj = params
+        params_adj['rel_permittivity']*=1/kappa #Ypf ~ rel_perm without affecting other parts of the calculation
+        Ypf, _, _ = getSimInputTerms(params_adj)
+        a_hc, a_eff_corr = params['particle_radius'], getAEff(params)
+        
+        print(f"Energy Prefactor: {Ypf:.2f}[kT]")
+        print(f"aeff: {a_eff_corr:.5e}[um]\n2aeff: {a_eff_corr/a_hc:.5f}[2a]")
+
+        print(f"area fraction correction factor: {(a_eff_corr/a_eff_app)**2:.3f}")
+
+        etas_app = np.array([0.1,0.3,0.5,0.6,0.65,0.69,0.73,0.75])
+        etas_corr = (a_eff_corr/a_eff_app)**2*etas_app
+
+        print(etas_app)
+        print(etas_corr)

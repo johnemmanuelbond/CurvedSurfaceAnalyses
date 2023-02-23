@@ -126,6 +126,7 @@ if __name__=="__main__":
         output[f"bw={bw}"] = {
                 "bw": bw,
                 "gr_peak_simple": np.max(vals[mids<3]),
+                "contact_simple": mids[mids<3][np.argmax(vals[mids<3])],
                 "gr_peak_fit": None,
                 "gr_area": None,
         }
