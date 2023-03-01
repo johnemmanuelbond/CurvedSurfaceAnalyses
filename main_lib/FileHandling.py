@@ -69,7 +69,7 @@ def save_xyz(coords, filename, comment=None):
         comment = "idx x(um)   y(um)   z(um)   token\n"
     if len(coords.shape) == 2:
         coords = coords[np.newaxis,:] #make single frames correct size
-    print(filename)
+    #print(filename)
     with open(filename, 'w', newline='') as output:        
         for i, frame in enumerate(coords):
             #print number of particles in frame
