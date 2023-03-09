@@ -28,7 +28,8 @@ def minimum_image(coords, wraps, basis):
     """
     uses the minumum image convention to correctly account for perodic boundary conditions when calculating coordinates by using the basis vectors of the periodic box.
     """
-    return coords + np.einsum("ij,anj->ani",basis,wraps)
+    disp = np.einsum("ij,anj->ani",basis,wraps)
+    return coords + disp
 
 
 """
@@ -275,6 +276,11 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
         args = np.einsum("ni,i->n",unit_vecs,unit_center)
         
         idx = np.abs(np.arccos(args)) < subtended_halfangle
+        
+        #if no particles are in the sector we can't use this time origin
+        if np.sum(idx)==0:
+            orig_num-=1
+            continue
         mean_n += np.sum(idx)
         
         #find the center of mass of those particles
@@ -294,6 +300,10 @@ def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=Non
             md_rad[t] += (rel_rad[tend]-rel_rad[tstart]) #1
             # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
 
+    #if no particles ever get recorded in the sector, return zeros
+    if orig_num==0:
+        return np.zeros(max_lag,3), np.zeros(max_lag,pnum,3), np.zeros(max_lag), np.zeros(max_lag), central_vec
+    
     return msd_com/orig_num, msd_ens/orig_num, md_rad/orig_num, mean_n/orig_num, central_vec
 
 

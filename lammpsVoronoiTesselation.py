@@ -41,7 +41,7 @@ if os.path.exists(path+'datapts.npy'):
 else:
     multiple, ts = read_dump(filename)
     np.save(path+'datapts.npy',multiple)
-    np.save(path+'times.npy',ts)
+    np.save(path+'times.npy',ts-ts[0])
 
 
 if (not reset) and os.path.exists(path+'vor_coord.npy'):

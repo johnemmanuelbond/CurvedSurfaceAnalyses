@@ -55,7 +55,7 @@ if os.path.exists(path+'datapts.npy'):
 else:
     multiple, ts = read_dump(filename)
     np.save(path+'datapts.npy',multiple)
-    np.save(path+'times.npy',ts)
+    np.save(path+'times.npy',ts-ts[0])
 
 mass = 2.53e-14
 a_hc = 1.4

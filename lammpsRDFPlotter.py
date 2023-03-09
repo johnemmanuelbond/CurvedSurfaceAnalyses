@@ -49,7 +49,7 @@ if __name__=="__main__":
     else:
         multiple, ts = read_dump(filename)
         np.save(path+'datapts.npy',multiple)
-        np.save(path+'times.npy',ts)
+        np.save(path+'times.npy',ts-ts[0])
 
 
     config = json.load(open('config.json','r'))

@@ -1,7 +1,6 @@
 import os, sys, glob, json
 
 from FileHandling import read_xyz_frame
-from Correlation import g_r
 
 import numpy as np
 import scipy as sp
@@ -29,31 +28,7 @@ def cap_polar_projection(frame):
     return np.array([x,y]).T, np.array([l,phi]).T, jacobian
 
 
-""" From a set of particle coordinates find the minimum in the radial distribution for the purposes of finding neighbors.
-"""
-def firstCoordinationShell(frame, flat=False, peak_pos=1):
-    vals, mids, _ = g_r(frame, flat=flat)
-    peaks, _ = find_peaks(hval,prominence=10)
-    spacing = mids[peaks[0]]
 
-    relevant = (mids>spacing)*(mids<2*spacing)
-    relevantMids = mids[relevant]
-    relevantHval = hval[relevant]
-    shellRadius = relevantMids[np.argmin(relevantHval)]
-
-    return shell_radius
-
-#a simple coordination number 
-def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
-    npart = frame.shape[0]
-    i,j = np.mgrid[0:npart,0:npart]
-    dr_norm = sp.spatial.distance.squareform(pdist(frame))
-    
-    neighbors = dr_norm<shellradius
-    neighbors[i==j]=False
-    Nc = np.sum(neighbors,axis=-1)
-
-    return Nc, neighbors
 
 #coordination number based of voronoi triangulation
 def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
@@ -77,6 +52,10 @@ def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
                     Vc[i]+=-1
                     #Vc[i]=-1
     return Vc
+
+def shareVoronoiVertex(sv, i, j):
+    vertices_i = sv.regions[i]
+    vertices_j = sv.regions[j]
 
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
 def voronoi_colors(frame,v=None,tol=1e-6):
@@ -110,7 +89,7 @@ def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
     return V_rho
 
 #point-density based on the area of voronoi polygons INCLUDING NEAREST NEIGHBORS on a frame
-def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat):
+def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False):
     minZ = min(frame[:,2])
     
     if flat:
@@ -122,7 +101,7 @@ def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat):
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
     
-    coord_shell = firstCoordinationShell(frame)
+    coord_shell = firstCoordinationShell(frame, flat=flat)
     _, neighbors = Nc(frame,shellradius=coord_shell)
 
     V_rho = np.zeros(frame.shape[0])
@@ -147,12 +126,20 @@ def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
     colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
     return colors
 
+    
+#a simple coordination number 
+def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    npart = frame.shape[0]
+    i,j = np.mgrid[0:npart,0:npart]
+    dr_norm = sp.spatial.distance.squareform(pdist(frame))
+    
+    neighbors = dr_norm<shellradius
+    neighbors[i==j]=False
+    Nc = np.sum(neighbors,axis=-1)
 
-def shareVoronoiVertex(sv, i, j):
-    vertices_i = sv.regions[i]
-    vertices_j = sv.regions[j]
-
-#scar methods DO not work for flat systems
+    return Nc, neighbors
+    
+#scar methods DO NOT WORK for flat systems
 
 def findScarsCarefully(frame,tol=1e-6):
     N = frame.shape[0]
@@ -186,9 +173,8 @@ def findScarsCarefully(frame,tol=1e-6):
     return scars, scarCharges
 
 
-def findScars(frame,tol=1e-6,coordinationShells=1.1):
+def findScars(frame,tol=1e-6,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
 
-    coord_shell = firstCoordinationShell(frame)
     _, neighbors = Nc(frame,shellradius=coord_shell)
     charge = 6-Vc(frame,tol=tol)
     
@@ -267,10 +253,9 @@ def c6_hex(pnum):
     s = shells(pnum)
     return 6*(3*s**2 + s)/pnum
 
-def Psi6(frame, reference = np.array([0,1,0])):
+def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     N = frame.shape[0]
     i,j = np.mgrid[0:N,0:N]
-    coord_shell = firstCoordinationShell(frame)
     _, n = Nc(frame,shellradius=coord_shell)
     vc = Vc(frame)
 
@@ -337,9 +322,10 @@ def Psi6(frame, reference = np.array([0,1,0])):
 
     return psi6, np.mean(np.abs(psi6))
 
-def C6(frame):
+#CURRENTLY BROKEN
+def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     N = frame.shape[0]
-    n, vc = findNeighbors(frame)
+    n, vc = Nc(frame,shell_radius=coord_shell)
     
     psi6, psi6global = Psi6(frame)
     C6 = 0*vc
@@ -392,6 +378,7 @@ if __name__=="__main__":
 
     elif nargs == 2:
 
+        from Correlation import firstCoordinationShell
         framepath = sys.argv[1]
         frame = np.array(read_xyz_frame(framepath))
         coord_shell = firstCoordinationShell(frame)

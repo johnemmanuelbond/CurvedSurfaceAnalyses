@@ -53,7 +53,7 @@ if __name__=="__main__":
     else:
         multiple, ts = read_dump(filename)
         np.save(path+'datapts.npy',multiple)
-        np.save(path+'times.npy',ts)
+        np.save(path+'times.npy',ts-ts[0])
 
     config = json.load(open('config.json','r'))
     params = config['params']
@@ -65,10 +65,10 @@ if __name__=="__main__":
     D_SI = kT/(6*np.pi*visc*a_hc)
 
     fnum, pnum, _ = multiple.shape
-    if pnum > 1500:
-        multiple = multiple[int(fnum//5):]
-        fnum, pnum, _ = multiple.shape
-    # dt = lammps_params['timestep']*tau # [s]
+    #if pnum > 1500:
+    #    multiple = multiple[int(fnum//5):]
+    #    fnum, pnum, _ = multiple.shape
+    #dt = lammps_params['timestep']*tau # [s]
 
     damp = lammps_params['damp']
     mass = config['arg']['xxxmassxxx']
@@ -116,7 +116,7 @@ if __name__=="__main__":
     totmsd_coef, totmsd_cov = curve_fit(msd_func, taus, thermo[:,-1], p0=[1e-3])
         
     #%% calculate msd
-    msd_time_scale = min(2000,int(times.shape[0]/2))
+    msd_time_scale = int(times.shape[0]/2)
 
     s = 20 #100 - 50*(pnum<300)- 25*(pnum<50) #- 15*(pnum<10)
 

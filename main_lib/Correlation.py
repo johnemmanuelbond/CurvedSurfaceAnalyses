@@ -11,9 +11,10 @@ and examine potential order parameters
 
 import numpy as np
 
-from OrderParameters import Vc, Nc, findScars
 from scipy.signal import find_peaks
 from scipy.spatial.distance import pdist
+
+from OrderParameters import Vc, Nc, findScars
 
 #icosohedral angles
 r_ico = np.sin(2*np.pi/5)
@@ -21,11 +22,11 @@ theta1 = 2*np.arcsin(1/2/r_ico)
 theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
 
 """
-Given a frame or set of frames, computed the average radial distribution function
+Given a set of frames, computed the average radial distribution function
 source: general_analysis, 7/23/22
 author: Alex yeh, Jack Bond
 """
-def g_r(coords, shell_radius=None, bin_width=0.1, flat = False):
+def g_r(coords, shell_radius=None, bin_width=0.01, flat = False):
     """calculates the pair distribution function from the given coordinates"""
     if flat:
         return g_r_flat(coords,bin_width=bin_width)
@@ -60,20 +61,18 @@ Given a frame or set of frames, computed the average radial distribution functio
 source: Correlation, 3/3/23
 author: Jack Bond
 """
-def g_r_flat(coords bin_width=0.01):
-        """calculates the pair distribution function from the given coordinates"""
+def g_r_flat(coords, bin_width=0.01):
+    """calculates the pair distribution function from the given coordinates"""
     fnum, pnum, _ = coords.shape
     
     extent = max(pdist(coords[0]))
-
+    
     allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
     for t, frame in enumerate(coords):
         dists = pdist(frame)
         allrs[t,:] = dists
-
-    bins = np.histogram_bin_edges(allrs[0],
-                                  bins = int(extent/bin_width),
-                                  range = (0, extent))
+        
+    bins = np.histogram_bin_edges(allrs[0], bins = int(extent/bin_width), range = (0, extent))
     width = bins[1] - bins[0]
     mids = bins[:-1] + width/2
     hval = np.zeros_like(mids)
@@ -83,6 +82,20 @@ def g_r_flat(coords bin_width=0.01):
 
     return vals, mids, bins
 
+""" From a set of particle coordinates find the minimum in the radial distribution for the purposes of finding neighbors.
+"""
+def firstCoordinationShell(frame, flat=False):
+    vals, mids, _ = g_r(np.array([frame]), flat=flat)
+    peaks, _ = find_peaks(vals,prominence=5)
+    spacing = mids[peaks[0]]
+
+    relevant = (mids>spacing)*(mids<2*spacing)
+    relevantMids = mids[relevant]
+    relevantHval = vals[relevant]
+    shell_radius = relevantMids[np.argmin(relevantHval)]
+
+    return shell_radius
+
 #WIP: CODE FOR SMOOTHING AND FINDING THE PEAK OF A g(r)
 
 """
@@ -90,7 +103,7 @@ Given a frame, spatially correlate a set of topological charges (or, more simply
 source: MCBatchAnalyzer, 12/19/23
 author: Jack Bond
 """
-def pair_charge_correlation(q1,q2,frame, shellRadius, bin_width=2): 
+def pair_charge_correlation(q1,q2,frame, shellRadius, bin_width=2):
     qs = 6-Vc(frame,R=shellRadius)
     #qs = 6-Nc(frame,shellradius=order.firstCoordinationShell(frame)) #DEPRECATED 
 
@@ -125,8 +138,9 @@ Given a frame, spatially correlate scars, i.e. linked sets of topological charge
 source: MCBatchAnalyzer, 12/19/23
 author: Jack Bond
 """
-def scar_correlation(frame, shellRadius,charge_to_correlate = 1, bin_width=2,tol=1e-6): 
-    scars, scarCharges =findScars(frame,tol=tol)
+def scar_correlation(frame, shellRadius,charge_to_correlate = 1, bin_width=2,tol=1e-6):
+    coord_shell = firstCoordinationShell(frame)
+    scars, scarCharges =findScars(frame,tol=tol,coord_shell=coord_shell)
 
     hbin_edge = np.histogram_bin_edges(range(10),
                                bins=int(np.pi*shellRadius/bin_width),
