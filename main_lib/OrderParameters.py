@@ -8,6 +8,7 @@ import scipy as sp
 from scipy.spatial.distance import pdist
 from scipy.spatial import SphericalVoronoi, Voronoi#, geometric_slerp
 from scipy.signal import find_peaks
+from scipy.integrate import quad
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt

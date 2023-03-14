@@ -7,7 +7,7 @@ Analyzes a lammps run for clusters of charge, as a well as the spatial coordinat
 @author: Jack Bond
 """
 
-import glob, os, sys
+import glob, os, sys, json
 import numpy as np
 
 import matplotlib.pyplot as plt
@@ -29,9 +29,8 @@ print(path)
 infile = glob.glob(path+'*.in')
 assert len(infile) == 1, "need to have one specified input file"
 
-a_hc = 1.4
-
 lammps_params = handle.read_infile(infile[0])
+config = json.load(open('config.json','r'))
 time_str = handle.get_thermo_time(path+'log.lammps')
 multiple = np.load(path+'datapts.npy')
 ts = np.load(path+'times.npy')
@@ -40,24 +39,13 @@ pnum = multiple.shape[1]
 coordination = np.load(path+'vor_coord.npy')
 # dt = lammps_params['timestep']*tau # [s]
 
-damp = lammps_params['damp']
-kappa = lammps_params['kappa_2a']/(2*a_hc)
-bpp = lammps_params['bpp']
-dt = lammps_params['timestep']
-R = lammps_params['rad']
+simarg = config['arg']
+params = config['params']
+R = simarg['xxxradiusxxx']
+dt = simarg['xxxtimestepxxx']
+a_hc = params['particle_radius']
+aeff = units.getAEff(params)
 
-from scipy import integrate
-def int_a_eff(radius, Bpp, kappa):
-	integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
-
-	debye_points = np.arange(5)/(kappa)
-
-	first, fErr = integrate.quad(integrand, 0, 1000/kappa, points=debye_points)
-	second, sErr = integrate.quad(integrand, 1000/kappa, np.inf)
-
-	return radius + 1/2*(first+second)
-
-aeff = int_a_eff(a_hc, bpp, kappa)
 eta_eff = pnum*(aeff/(2*a_hc))**2/(4*R**2)
 lab = f"eta_eff={eta_eff:.3f},R={R:.2f},N={pnum}"
 pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={pnum}"

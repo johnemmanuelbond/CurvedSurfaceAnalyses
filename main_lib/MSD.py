@@ -9,6 +9,7 @@ Contains lots of methods to compute msds and variatons thereof for particles on 
 
 import numpy as np
 from numpy.random import default_rng
+from scipy.optimize import curve_fit
 from Correlation import theta1,theta2
 
 """
@@ -51,6 +52,7 @@ def mto_msd(coords, max_lag, skips=None):
     pnum = coords.shape[1]
     total_steps = coords.shape[0]
     orig_num = int(total_steps/(skips))
+    print(f"time origins: {orig_num}")
     time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
     final_step = time_origins[-1]+max_lag
     assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
@@ -482,6 +484,32 @@ def bootstrap_mto_msd(msd_part, trials,
     msd_ci[0] = ave_msd - np.percentile(boot_msd, low, axis=1)
     msd_ci[1] = np.percentile(boot_msd, high, axis=1) - ave_msd
     return msd_ci
+
+"""
+source:MSD 3/14/23
+author: Jack Bond
+"""
+def find_DL(lagtime, msd, dim=2, window=100):
+
+    msd_func = lambda t, D: 2*dim*D*t
+    ts = []
+    Ds = []
+    dDs = []
+    for i,t in enumerate(lagtime[:-1*window]):
+        ts.append(np.mean(lagtime[i:i+window]))
+        fit_x = lagtime[i:i+window]-lagtime[i]
+        fit_y = msd[i:i+window] - msd[i]
+        d, cov = curve_fit(msd_func,fit_x,fit_y,p0=[1e-1])
+        Ds.append(d[0])
+        dDs.append(np.sqrt(cov[0,0]))
+
+    Ds = np.array(Ds)
+    dDs = np.array(dDs)
+    ts = np.array(ts)
+    D_diff = Ds[1:]-Ds[:-1]
+    i_cross = np.argmax(D_diff)
+
+    return ts, Ds, dDs, i_cross
 
 if __name__=="__main__":
 
