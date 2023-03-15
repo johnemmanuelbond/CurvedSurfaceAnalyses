@@ -350,9 +350,10 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     mayer_f = lambda r: np.exp(-phi(r))-1
 
     #hypersphere solid angle
-    hsolid = lambda r, n: n*np.pi**(n/2)/gamma(n/2+1) *r**(n-1)
+    g = gamma(dim/2+1)
+    hsolid = lambda r: dim*np.pi**(dim/2)/g *r**(dim-1)
 
-    integrand = lambda r: -1/2 * hsolid(r,dim) * mayer_f(r)
+    integrand = lambda r: -1/2 * hsolid(r) * mayer_f(r)
 
     # infinity plays poorly, so if we want a hard core we need to start from 1.0
     if core_radius!=None:
@@ -366,7 +367,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     B2 = np.array(parts).sum()
     #now we add back the hard core correction, mayer_f goes to -1 in this limit
     if core_radius!=None:
-        B2+=quad(lambda r: hsolid(r,dim)/2,0,2*core_radius)[0]
+        B2+=quad(hsolid,0,2*core_radius)[0]/2
 
     return np.array(parts).sum(), integrand, parts
 
