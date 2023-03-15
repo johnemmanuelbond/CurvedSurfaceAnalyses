@@ -369,7 +369,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     if core_radius!=None:
         B2+=quad(hsolid,0,2*core_radius)[0]/2
 
-    return np.array(parts).sum(), integrand, parts
+    return B2, integrand, parts
 
 if __name__=="__main__":
 
