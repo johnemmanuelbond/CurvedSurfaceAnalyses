@@ -507,7 +507,7 @@ def find_DL(lagtime, msd, dim=2, window=100):
     dDs = np.array(dDs)
     ts = np.array(ts)
     D_diff = Ds[1:]-Ds[:-1]
-    i_cross = np.where(D_diff>0)[0]
+    i_cross = np.where(D_diff>0)[0][0]
 
     return ts, Ds, dDs, i_cross
 
