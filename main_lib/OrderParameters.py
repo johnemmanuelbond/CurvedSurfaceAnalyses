@@ -339,16 +339,34 @@ def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
 
     return C6, np.mean(C6)/c6_hex(N), psi6, psi6global
 
+from scipy.special import gamma
 # Second virial coeffecient for an arbitrary potential
 # recieve a pair potential in kT units, phi, which takes r in simulation units
 # returns the second virial coefficient for that potential
-def B2(phi,splits=np.array([0,5,np.infty])):
+def B2(phi,splits=np.array([0,5,np.infty]),dim=3, hard=True):
     
     if type(phi) != type(np.mean): raise Exception("Input must be a python function")
-    
+
+    mayer_f = lambda r: np.exp(-phi(r))-1
+
+    #hypersphere solid angle
+    hsolid = lambda r, n: n*np.pi**(n/2)/gamma(n/2+1) *r**(n-1)
+
+    integrand = lambda r: -1/2 * hsolid(r,dim) * mayer_f(r)
+
+    # infinity plays poorly, so if we want a hard core we need to start from 1.0
+    if hard:
+        splits = splits[splits>=1.0]
+        if not (np.any(splits==1.0)):
+            splits = np.array([1.0,*splits])
+
     bounds = zip(splits[:-1],splits[1:])
-    integrand = lambda r: -2*np.pi*r**2 * (np.exp(-phi(r))-1)
     parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
+
+    B2 = np.array(parts).sum()
+    #now we add back the hard core correction, mayer_f goes to -1 in this limit
+    if hard:
+        B2+=quad(hsolid(r),0,1)[0]/2
 
     return np.array(parts).sum(), integrand, parts
 
