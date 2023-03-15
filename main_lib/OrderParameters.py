@@ -366,7 +366,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     B2 = np.array(parts).sum()
     #now we add back the hard core correction, mayer_f goes to -1 in this limit
     if core_radius!=None:
-        B2+=quad(hsolid(r),0,2*core_radius)[0]/2
+        B2+=quad(lambda r: hsolid(r,dim)/2,0,2*core_radius)[0]
 
     return np.array(parts).sum(), integrand, parts
 
