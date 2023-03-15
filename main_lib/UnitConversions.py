@@ -16,8 +16,9 @@ from timeit import default_timer as timer
 
 # General physical constants
 kb = 1.380e-23 # [J/K] Boltzmann constant
-e = 1.602177e-19 #[C] elementary charge
-eps = 8.854e-12 #[F/m] or [J/(m*V**2)], permittivity of free space
+e = 1.602177e-19 # [C] elementary charge
+eps = 8.854e-12 # [F/m] or [J/(m*V**2)], permittivity of free space
+Na = 6.0221408e23 # [1/mol] Avogadro's number
 
 """
 These methods take in a dictionaty of experimental parameters in SI
@@ -51,6 +52,18 @@ def field_k(params):
 def length_scale(params):
 	a = params['particle_radius']            # [m]
 	return params['debye_length']/(2*a) # converts [m] to [2a]
+
+def kappa(params):
+	if 'debye_length' in params:
+		return 1/length_scale(params)
+
+	ze = params['ion_multiplicity']*e        # [C] electrolyte charge
+	kT = kb*params['temperature']            # [J]
+	rel_eps = params['rel_permittivity']*eps # [F/m] permittivity of sol'n
+	C = params['electrolyte_concentration']  # [mol/m^3]
+
+	#assuming a symmetric electrolyte with
+	return np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/m]
 
 def getSimInputTerms(params):
 	return yukawa_prefactor(params), field_k(params), length_scale(params)
