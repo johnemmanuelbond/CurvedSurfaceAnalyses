@@ -355,7 +355,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     integrand = lambda r: -1/2 * hsolid(r,dim) * mayer_f(r)
 
     # infinity plays poorly, so if we want a hard core we need to start from 1.0
-    if core_radius!=None
+    if core_radius!=None:
         splits = splits[splits>=2*core_radius]
         if not (np.any(splits==2*core_radius)):
             splits = np.array([2*core_radius,*splits])
@@ -365,7 +365,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
 
     B2 = np.array(parts).sum()
     #now we add back the hard core correction, mayer_f goes to -1 in this limit
-    if hard:
+    if core_radius!=None:
         B2+=quad(hsolid(r),0,2*core_radius)[0]/2
 
     return np.array(parts).sum(), integrand, parts
