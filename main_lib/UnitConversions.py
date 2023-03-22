@@ -60,10 +60,24 @@ def kappa(params):
 	ze = params['ion_multiplicity']*e        # [C] electrolyte charge
 	kT = kb*params['temperature']            # [J]
 	rel_eps = params['rel_permittivity']*eps # [F/m] permittivity of sol'n
-	C = params['electrolyte_concentration']  # [mol/m^3]
+	C = params['electrolyte_concentration']  # [mol/L]
 
-	#assuming a symmetric electrolyte with
+	#assuming a symmetric electrolyte
 	return np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/m]
+
+def ion_conc(params):
+	if 'electrolyte_concentration' in params:
+		return params['electrolyte_concentration']
+
+	ze = params['ion_multiplicity']*e        # [C] electrolyte charge
+	kT = kb*params['temperature']            # [J]
+	rel_eps = params['rel_permittivity']*eps # [F/m] permittivity of sol'n
+	debye_length = params['debye_length']    # [m]
+
+	#assuming a symmetric electrolye
+	return 1/1000 * rel_eps*kT*(1/debye_length**2)/(2*(ze**2)*Na)
+
+
 
 def getSimInputTerms(params):
 	return yukawa_prefactor(params), field_k(params), length_scale(params)
