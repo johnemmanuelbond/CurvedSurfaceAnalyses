@@ -12,7 +12,7 @@ and examine potential order parameters
 import numpy as np
 
 from scipy.signal import find_peaks
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, squareform
 
 from OrderParameters import Vc, Nc, findScars
 
@@ -82,10 +82,12 @@ def g_r_flat(coords, bin_width=0.01):
 
     return vals, mids, bins
 
-""" From a set of particle coordinates find the minimum in the radial distribution for the purposes of finding neighbors.
+""" From a frame or trajecectory of frames, find the minimum in the radial distribution for the purposes of finding neighbors.
 """
-def firstCoordinationShell(frame, flat=False):
-    vals, mids, _ = g_r(np.array([frame]), flat=flat)
+def firstCoordinationShell(frames, flat=False):
+    if len(frames.shape) == 3:
+        frames = np.array([frames])
+    vals, mids, _ = g_r(frames, flat=flat)
     peaks, _ = find_peaks(vals,prominence=5)
     spacing = mids[peaks[0]]
 
@@ -95,6 +97,46 @@ def firstCoordinationShell(frame, flat=False):
     shell_radius = relevantMids[np.argmin(relevantHval)]
 
     return shell_radius
+
+""" From a set of particle coordinates, locate where particles exchange between coordination shells by creating a subset of coordinates whose displacements are near the minimum in the radial distribution function
+"""
+def exchange_finder(frames, flat=False,tol=0.1):
+
+    rdf_min = firstCoordinationShell(frames,flat=flat)
+    coords = []
+
+    if len(frames.shape)==3:
+        frames = np.array([frames])
+
+    if flat:
+        for t, frame in enumerate(frames):
+            #assemble matrix of distances
+            dists = squareform(pdist(frame))
+            #find the ones near the rdf min
+            exchanges = np.where(np.abs(dists-rdf_min)<tol)
+            print(exchanges)
+            #find the particles cooresponding to those exchanges
+            ptcls = np.unique(np.flatten(exhchanges))
+            #add their coordinates to the array
+            for p in ptcls:
+                coords.append(frame[p])
+    else:
+        shell_radius = np.linalg.norm(frames, axis=-1).mean()
+        for t, frame in enumerate(frames):
+            cos_dists = 1-pdist(frame,metric='cosine')
+            cos_dists[cos_dists>1] = 1
+            cos_dists[cos_dists<-1]=-1
+            dists = shell_radius*cos_dists
+            exchanges = np.where(np.abs(dists-rdf_min)<tol)
+            print(exchanges)
+            ptcls = np.unique(np.flatten(exhchanges))
+            for p in ptcls:
+                coords.append(frame[p])
+
+    #hopefully coords has all the particles who exchange shells
+    return np.array(coords)
+
+
 
 #WIP: CODE FOR SMOOTHING AND FINDING THE PEAK OF A g(r)
 
