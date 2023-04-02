@@ -238,14 +238,16 @@ if __name__=="__main__":
         msd5,msd6,msd7 = mto_msd_part_Vcweight(multiple[:,1:,:], coordination[:,1:], msd_time_scale,skips=s)
 
         fig, ax = plt.subplots(figsize=(5,5))
-        ax.set_ylabel("MSD [$\sigma ^2$]", fontsize=FONT)
-        ax.set_xlabel("Lagtime [$\\tau$]", fontsize=FONT)
         ax.plot(msd_times, msd, label='overall', color='k', zorder=5)
         ax.plot(msd_times, msd5, label='5', color='red',lw=0.6,ls='--')
         ax.plot(msd_times, msd6, label='6', color='gray',lw=0.6,ls='--')
         ax.plot(msd_times, msd7, label='7', color='green',lw=0.6,ls='--')
+        
+        ax.set_ylabel("MSD [$\sigma ^2$]", fontsize=FONT)
+        ax.set_xlabel("Lagtime [$\\tau$]", fontsize=FONT)
         ax.set_title(title)
         ax.legend(fontsize=FONT//2)
+        fig.savefig("./msd_charge.jpg",bbox_inches='tight')
 
 
         # frac=0.9

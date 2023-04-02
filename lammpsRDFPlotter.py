@@ -104,13 +104,14 @@ if __name__=="__main__":
     ax.axvline(x=shell_radius*theta2,lw=0.6,c="red")#  
 
     samples = 5e7
-    n_frames = min(fnum,int(samples/pnum**2))
+    #we want to sample from the last half of a simulation
+    n_frames = min(int(fnum/2),int(samples/pnum**2))
     output = dict()
     for bw in [0.001,0.005,0.01,0.02]:
 
         #getting random sample frames
         rng = np.random.default_rng()
-        idx = np.arange(fnum)
+        idx = np.arange(int(fnum/2-1),fnum)
         rng.shuffle(idx)
         curr_idx = idx[:n_frames]
         reduced = multiple[sorted(curr_idx)]
