@@ -119,9 +119,8 @@ source: general_analysis, 7/23/22
 author: Alex Yeh, Jack Bond
 """
 def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, show_shell = True):
-    pnum = frames.shape[1]
-    
-    if radii is None: # calculate average radius at each frame
+
+    if show_shell and (radii is None): # calculate average radius at each frame
         radii = np.linalg.norm(frames,axis=-1).mean(axis=-1)
     
     if ts is None: # initialize timesteps if not provided
@@ -131,14 +130,17 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, sho
         box = format_boxes((-0.5,0.5), (-0.5,0.5), (-0.5,0.5))
     
     if colors is None: # initialize colors to light grey (0.6, 0.6, 0.6)
-        colors = np.ones_like(frames) * 0.6
-        
+        colors = np.array([np.ones_like(frame) * 0.6 for frame in frames])
+
+    pnum = frames[0].shape[0]    
     header = f"LAMMPS data file for {pnum} particles in a fluid\n\n{pnum} atoms\n1 atom types\n"
     mass = "Masses\n\n1 1.0\n"
     title = "\nAtoms\n\n"
     
     with open(filename, 'w') as outfile:
         for i, frame in enumerate(frames):
+            pnum = frame.shape[0]
+            col = colors[i]
             outfile.write(f"ITEM: TIMESTEP\n{ts[i]}\n")
             outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+show_shell}\n") #add in sphere
             outfile.write(f"ITEM: BOX BOUNDS ff ff ff" + box)
@@ -148,7 +150,7 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, sho
             for p, part in enumerate(frame):
                 line = f"{p+1} 0.5 "
                 coords = " ".join([f"{val:0.5f}" for val in part]) + " "
-                coloring = " ".join([f"{val:0.5f}" for val in colors[i,p]])
+                coloring = " ".join([f"{val:0.5f}" for val in col[p]])
                 outfile.write(line+coords+coloring+'\n')
         outfile.close()
 

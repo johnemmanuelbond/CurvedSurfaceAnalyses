@@ -85,10 +85,10 @@ def g_r_flat(coords, bin_width=0.01):
 """ From a frame or trajecectory of frames, find the minimum in the radial distribution for the purposes of finding neighbors.
 """
 def firstCoordinationShell(frames, flat=False):
-    if len(frames.shape) == 3:
+    if len(frames.shape) < 3:
         frames = np.array([frames])
     vals, mids, _ = g_r(frames, flat=flat)
-    peaks, _ = find_peaks(vals,prominence=5)
+    peaks, _ = find_peaks(vals)
     spacing = mids[peaks[0]]
 
     relevant = (mids>spacing)*(mids<2*spacing)
@@ -100,13 +100,14 @@ def firstCoordinationShell(frames, flat=False):
 
 """ From a set of particle coordinates, locate where particles exchange between coordination shells by creating a subset of coordinates whose displacements are near the minimum in the radial distribution function
 """
-def exchange_finder(frames, flat=False,tol=0.1):
+def exchange_finder(frames, flat=False,tol=0.05):
 
-    rdf_min = firstCoordinationShell(frames,flat=flat)
-    coords = []
-
-    if len(frames.shape)==3:
+    if len(frames.shape)<3:
         frames = np.array([frames])
+    
+    rdf_min = firstCoordinationShell(frames,flat=flat)
+    print(rdf_min)
+    coords = []
 
     if flat:
         for t, frame in enumerate(frames):
@@ -114,27 +115,23 @@ def exchange_finder(frames, flat=False,tol=0.1):
             dists = squareform(pdist(frame))
             #find the ones near the rdf min
             exchanges = np.where(np.abs(dists-rdf_min)<tol)
-            print(exchanges)
             #find the particles cooresponding to those exchanges
-            ptcls = np.unique(np.flatten(exhchanges))
+            ptcls = np.unique(exchanges)
             #add their coordinates to the array
-            for p in ptcls:
-                coords.append(frame[p])
+            coords.append(frame[ptcls])
     else:
         shell_radius = np.linalg.norm(frames, axis=-1).mean()
         for t, frame in enumerate(frames):
             cos_dists = 1-pdist(frame,metric='cosine')
             cos_dists[cos_dists>1] = 1
             cos_dists[cos_dists<-1]=-1
-            dists = shell_radius*cos_dists
+            dists = shell_radius*squareform(cos_dists)
             exchanges = np.where(np.abs(dists-rdf_min)<tol)
-            print(exchanges)
-            ptcls = np.unique(np.flatten(exhchanges))
-            for p in ptcls:
-                coords.append(frame[p])
+            ptcls = np.unique(exchanges)
+            coords.append(frame[ptcls])
 
     #hopefully coords has all the particles who exchange shells
-    return np.array(coords)
+    return coords
 
 
 
