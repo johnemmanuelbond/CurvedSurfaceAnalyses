@@ -118,7 +118,7 @@ outputs dump file in format to be used by OVITO for visualization
 source: general_analysis, 7/23/22
 author: Alex Yeh, Jack Bond
 """
-def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, show_shell = True):
+def output_vis(filename, frames, radii=None, ts=None, colors=None, alphas = None, box=None, show_shell = True):
 
     if show_shell and (radii is None): # calculate average radius at each frame
         radii = np.linalg.norm(frames,axis=-1).mean(axis=-1)
@@ -132,6 +132,9 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, sho
     if colors is None: # initialize colors to light grey (0.6, 0.6, 0.6)
         colors = np.array([np.ones_like(frame) * 0.6 for frame in frames])
 
+    if alphas is None: # initialize alphas to completely opaque
+        alphas = np.array([np.zeros(frame.shape[0]) for frame in frames])
+
     pnum = frames[0].shape[0]    
     header = f"LAMMPS data file for {pnum} particles in a fluid\n\n{pnum} atoms\n1 atom types\n"
     mass = "Masses\n\n1 1.0\n"
@@ -141,17 +144,19 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, box=None, sho
         for i, frame in enumerate(frames):
             pnum = frame.shape[0]
             col = colors[i]
+            al = alphas[i]
             outfile.write(f"ITEM: TIMESTEP\n{ts[i]}\n")
             outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+show_shell}\n") #add in sphere
             outfile.write(f"ITEM: BOX BOUNDS ff ff ff" + box)
-            outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color\n")
+            outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color Transparency\n")
             if show_shell: #Can choose not to print the spherical shell with the kwarg.
-                outfile.write(f"0 {radii[i]-0.5:0.5f} 0 0 0 1.0 1.0 1.0\n")
+                outfile.write(f"0 {radii[i]-0.5:0.5f} 0 0 0 1.0 1.0 1.0, 0.0\n")
             for p, part in enumerate(frame):
                 line = f"{p+1} 0.5 "
                 coords = " ".join([f"{val:0.5f}" for val in part]) + " "
                 coloring = " ".join([f"{val:0.5f}" for val in col[p]])
-                outfile.write(line+coords+coloring+'\n')
+                alpha= f" {al[p]}"
+                outfile.write(line+coords+coloring+alpha+'\n')
         outfile.close()
 
 """

@@ -32,26 +32,41 @@ def cap_polar_projection(frame):
 
 
 #coordination number based of voronoi triangulation
-def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
-    minZ = min(frame[:,2])
+def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
+    pnum, _ = frame.shape
     
     if flat:
-        sv = Voronoi(frame)
+        expand = lambda frame, basis: np.array([
+            *frame,
+            *(frame+basis@np.array([1,0,0])),
+            *(frame+basis@np.array([-1,0,0])),
+            *(frame+basis@np.array([0,1,0])),
+            *(frame+basis@np.array([0,-1,0])),
+            *(frame+basis@np.array([1,1,0])),
+            *(frame+basis@np.array([-1,1,0])),
+            *(frame+basis@np.array([1,-1,0])),
+            *(frame+basis@np.array([-1,-1,0])),
+            ])
+
+        sv = Voronoi(expand(frame,box_basis))
+        Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
+    
     else:
+        minZ = min(frame[:,2])
         if R == None:
             radius = np.mean(np.linalg.norm(frame,axis=1))
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
     
-    Vc = np.zeros(frame.shape[0])
-    for i, region in enumerate(sv.regions):
-        Vc[i] = len(region)
-        if(excludeborder):
-            for v in sv.vertices[region]:
-                if(v[2]<minZ):
-                    Vc[i]+=-1
-                    #Vc[i]=-1
+        Vc = np.zeros(pnum)
+        for i, region in enumerate(sv.regions):
+            Vc[i] = len(region)
+            if(excludeborder):
+                for v in sv.vertices[region]:
+                    if(v[2]<minZ):
+                        Vc[i]+=-1
+                        #Vc[i]=-1
     return Vc
 
 def shareVoronoiVertex(sv, i, j):
