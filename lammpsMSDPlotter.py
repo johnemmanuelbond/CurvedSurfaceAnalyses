@@ -175,7 +175,10 @@ if __name__=="__main__":
     ax.set_title(title)
 
     ax.legend(fontsize=FONT//2)
-    fig.savefig(path+"msd_short.jpg", bbox_inches='tight')
+    fig.savefig(path+"msd_short.jpg", bbox_inches='tight') 
+
+    #temp until center-of-mass is figured out.
+    np.save('mto_msd_nodrift.npy',np.array([msd_times,msd]))
 
     ### Trying to do a center of mass trick to eliminate lattice diffusion from our plots. To do this we lock onto a subtended sector of particles and then perform mto msd on that subset. If the lattice is diffusing back and forth, this should pick that up.
 
