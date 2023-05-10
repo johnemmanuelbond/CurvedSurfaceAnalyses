@@ -105,7 +105,7 @@ def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
     return V_rho
 
 #point-density based on the area of voronoi polygons INCLUDING NEAREST NEIGHBORS on a frame
-def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False):
+def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     minZ = min(frame[:,2])
     
     if flat:
@@ -116,8 +116,7 @@ def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False):
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-    
-    coord_shell = firstCoordinationShell(frame, flat=flat)
+        
     _, neighbors = Nc(frame,shellradius=coord_shell)
 
     V_rho = np.zeros(frame.shape[0])

@@ -19,6 +19,7 @@ from timeit import default_timer as timer
 import main_lib.FileHandling as handle
 #from main_lib.OrderParameters import radialDistributionFunction
 from main_lib.OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
+from Correlation import firstCoordinationShell
 
 
 def int_a_eff(radius, Bpp, kappa):
@@ -87,11 +88,12 @@ if single:
 	pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
 
 	frames = multiple[idx]
+        shell = firstCoordinationShell(frames)
 
 	qs = np.array([6-Vc(frame, R = R,tol=1e-5) for frame in frames]).flatten()
 	#XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
 	etas = np.array([rho_voronoi(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
-	etashells = np.array([rho_voronoi_shell(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
+	etashells = np.array([rho_voronoi_shell(frame,R=R,tol=1e-5,coord_shell=shell) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
 
 	pltqs=[]
 	pltetas=[]
