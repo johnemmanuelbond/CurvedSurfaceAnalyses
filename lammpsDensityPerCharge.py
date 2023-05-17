@@ -17,35 +17,24 @@ from timeit import default_timer as timer
 
 
 import main_lib.FileHandling as handle
-#from main_lib.OrderParameters import radialDistributionFunction
+from main_lib.UnitConversions import getAEff
 from main_lib.OrderParameters import Vc, rho_voronoi, rho_voronoi_shell
-from Correlation import firstCoordinationShell
+from main_lib.Correlation import firstCoordinationShell
 
-
-def int_a_eff(radius, Bpp, kappa):
-    integrand = lambda r: 1-np.exp(-1*Bpp*np.exp(-1*kappa*r))
-    
-    debye_points = np.arange(5)/(kappa)
-        
-    first, fErr = integrate.quad(integrand, 0, 1000/kappa, points=debye_points)
-    second, sErr = integrate.quad(integrand, 1000/kappa, np.inf)
-        
-    return radius + 1/2*(first+second)
+hexatic_window = 0.702,0.714
 
 fig, [ax,axshell] = plt.subplots(1,2,sharex=True,sharey=True)
 ax.set_title("Single Particle")
 ax.set_xlabel("Topological Charge")
 ax.set_ylabel(r"$\eta_{eff}$")
-ax.set_ylim([0,1])
-ax.axhline(y=0.69)
-ax.axhline(y=0.71)
+ax.axhline(y=hexatic_window[0],color='red',lw=0.6,ls='--')
+ax.axhline(y=hexatic_window[1],color='blue',lw=0.6,ls='--')
 
 axshell.set_title("First Coord Shell")
 #axshell.set_xlabel("Topological Charge")
 #axshell.set_ylabel(r"$\eta_{eff}$")
-axshell.set_ylim([0,1])
-axshell.axhline(y=0.69)
-axshell.axhline(y=0.71)
+axshell.axhline(y=hexatic_window[0],color='red',lw=0.6,ls='--')
+axshell.axhline(y=hexatic_window[1],color='blue',lw=0.6,ls='--')
 
 single = len(sys.argv) == 1 or sys.argv[1] != 'batch'
 if len(sys.argv)>=2: batch = sys.argv[1]=='batch'
@@ -59,25 +48,19 @@ if single:
     infile = glob.glob(path+'*.in')
     assert len(infile) == 1, "need to have one specified input file"
 
-    a_hc = 1.4
-
-    lammps_params = handle.read_infile(infile[0])
-    time_str = handle.get_thermo_time(path+'log.lammps')
+    with open('config.json','r') as c:
+        config = json.load(c)
+        params = config['params']
+        simarg = config['arg']
     multiple = np.load(path+'datapts.npy')
-    ts = np.load(path+'times.npy')
-    fnum = multiple.shape[0]
-    N = multiple.shape[1]
+    fnum, N, _ = multiple.shape
     coordination = np.load(path+'vor_coord.npy')
-    # dt = lammps_params['timestep']*tau # [s]
 
-    damp = lammps_params['damp']
-    kappa = lammps_params['kappa_2a']/(2*a_hc)
-    bpp = lammps_params['bpp']
-    dt = lammps_params['timestep']
-    R = lammps_params['rad']
+    aeff = getAEff(params)/(2*params['particle_radius'])
+    R = simarg['xxxradiusxxx']
 
-    aeff = int_a_eff(a_hc, bpp, kappa)
-    eta_eff = N*(aeff/(2*a_hc))**2/(4*R**2)
+    eta_eff = N*(aeff**2)/(4*R**2)
+    ax.set_ylim([eta_eff-0.1,eta_eff+0.1])
 
     #loop through equilibrated frames to gather information about charged clusters. We don't want to excessively calculate cluster positions, and we only want to sample independent frames, so I've created an array of index positions to control which frames we actually perform calculations on.
     last_section = 1/3
@@ -88,12 +71,12 @@ if single:
     pltlab = rf"$\eta_{{eff}}$={eta_eff:.3f},R={R:.2f},N={N}"
 
     frames = multiple[idx]
-        shell = firstCoordinationShell(frames)
+    shell = firstCoordinationShell(frames)
 
     qs = np.array([6-Vc(frame, R = R,tol=1e-5) for frame in frames]).flatten()
     #XS = 0.5*(np.array([np.sum(np.abs(q)) for q in qs])/12-1)
-    etas = np.array([rho_voronoi(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
-    etashells = np.array([rho_voronoi_shell(frame,R=R,tol=1e-5,coord_shell=shell) for frame in frames]).flatten()*np.pi*(aeff/(2*a_hc))**2
+    etas = np.array([rho_voronoi(frame,R=R,tol=1e-5) for frame in frames]).flatten()*np.pi*(aeff**2)
+    etashells = np.array([rho_voronoi_shell(frame,R=R,tol=1e-5,coord_shell=shell) for frame in frames]).flatten()*np.pi*(aeff**2)
 
     pltqs=[]
     pltetas=[]
@@ -121,9 +104,7 @@ if single:
     handle.dumpDictionaryJSON({'qs':pltqs,'etas':pltetas,'detas':pltdetas,'etashells':pltetashells,'detashells':pltdetashells,'eta_eff':eta_eff,'R':R,'N':N},"ChargeAndDensity")
 
 elif batch:
-    outs = glob.glob("./*radius*etaeff*pnum*trial*/ChargeAndDensity.json")
-
-
+    outs = glob.glob("./BD_R*eta*/ChargeAndDensity.json")
     for o in outs:
 
         dic = json.load(open(o,'r'))
@@ -140,6 +121,7 @@ elif batch:
             pltdetas = dic['detas']
             pltdetashells = dic['detashells']
 
+            ax.set_ylim([0.5,1])
             ax.errorbar(pltqs,pltetas,yerr=pltdetas,label=pltlab, ls='none', marker='^',fillstyle='none')
             axshell.errorbar(pltqs,pltetashells,yerr=pltdetashells,label=pltlab, ls='none', marker='^',fillstyle='none')
 
