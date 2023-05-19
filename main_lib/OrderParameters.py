@@ -29,7 +29,17 @@ def cap_polar_projection(frame):
     return np.array([x,y]).T, np.array([l,phi]).T, jacobian
 
 
+#a simple coordination number 
+def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    npart = frame.shape[0]
+    i,j = np.mgrid[0:npart,0:npart]
+    dr_norm = sp.spatial.distance.squareform(pdist(frame))
+    
+    neighbors = dr_norm<shellradius
+    neighbors[i==j]=False
+    Nc = np.sum(neighbors,axis=-1)
 
+    return Nc, neighbors
 
 #coordination number based of voronoi triangulation
 def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
@@ -116,13 +126,15 @@ def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False,coor
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-        
+    
+
     _, neighbors = Nc(frame,shellradius=coord_shell)
 
     V_rho = np.zeros(frame.shape[0])
     areas = sv.calculate_areas()
     for i, nei in enumerate(neighbors):
-        As = areas[np.where(nei!=0)[0]]
+        #Nc does not include the particle itself when counting neighbors
+        As = areas[[i,*np.where(nei!=0)[0]]]
         area = As.sum()
         nshell = As.size
         V_rho[i] = nshell/area
@@ -142,20 +154,7 @@ def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
     return colors
 
     
-#a simple coordination number 
-def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
-    npart = frame.shape[0]
-    i,j = np.mgrid[0:npart,0:npart]
-    dr_norm = sp.spatial.distance.squareform(pdist(frame))
-    
-    neighbors = dr_norm<shellradius
-    neighbors[i==j]=False
-    Nc = np.sum(neighbors,axis=-1)
-
-    return Nc, neighbors
-    
 #scar methods DO NOT WORK for flat systems
-
 def findScarsCarefully(frame,tol=1e-6):
     N = frame.shape[0]
     radius = np.mean(np.linalg.norm(frame,axis=1))
