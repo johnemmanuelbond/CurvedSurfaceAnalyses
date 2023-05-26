@@ -23,26 +23,46 @@ theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.
 
 """
 Given a set of frames, computed the average radial distribution function
+source: Correlation, 5/23/23
+author: Jack Bond
+"""
+def g_r(coords, shell_radius=None, bin_width=0.01, flat = False,subset=None):
+    """calculates the pair distribution function from the given coordinates"""
+    fnum,pnum,_ = coords.shape
+    if subset is None:
+        subset = np.arange(pnum)
+    anti = np.setdiff1d(np.arange(pnum),subset)
+    if flat:
+        return g_r_flat(coords,bin_width=bin_width,exclude=anti)
+    else:
+        return g_r_curved(coords,shell_radius=shell_radius,bin_width=bin_width,exclude=anti)
+
+
+"""
+Given a set of frames, computed the average radial distribution function
 source: general_analysis, 7/23/22
 author: Alex yeh, Jack Bond
 """
-def g_r(coords, shell_radius=None, bin_width=0.01, flat = False):
+def g_r_curved(coords, shell_radius=None, bin_width=0.01, flat = False, exclude=None):
     """calculates the pair distribution function from the given coordinates"""
-    if flat:
-        return g_r_flat(coords,bin_width=bin_width)
-
     if shell_radius is None:
         # get mean radius over run
         shell_radius = np.linalg.norm(coords, axis=-1).mean()
         
     fnum, pnum, _ = coords.shape
+    rshape = np.ones((pnum,pnum))
+    rshape[:,exclude]=0
+    rnum = int(np.sum(np.triu(rshape,k=1)))
     
-    allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
+    allrs = np.zeros((fnum, rnum))
     for t, frame in enumerate(coords):
         cos_dists = 1-pdist(frame,metric='cosine')
         cos_dists[cos_dists>1] = 1
         cos_dists[cos_dists<-1]=-1
-        allrs[t,:] = shell_radius*np.arccos(cos_dists)
+        dists = squareform(shell_radius*np.arccos(cos_dists))
+        dists[:,exclude] = 0
+        dists = np.triu(dists)
+        allrs[t,:] = dists[dists>0]
     
     bins = np.histogram_bin_edges(allrs[0],
                                   bins = int(np.pi*shell_radius/bin_width),
@@ -61,15 +81,18 @@ Given a frame or set of frames, computed the average radial distribution functio
 source: Correlation, 3/3/23
 author: Jack Bond
 """
-def g_r_flat(coords, bin_width=0.01):
+def g_r_flat(coords, bin_width=0.01, exclude=None):
     """calculates the pair distribution function from the given coordinates"""
     fnum, pnum, _ = coords.shape
+    snum = pnum-len(exclude)
     
     extent = max(pdist(coords[0]))
     
     allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
     for t, frame in enumerate(coords):
-        dists = pdist(frame)
+        dists = squareform(pdist(frame))
+        dists[:,exclude] = 0
+        dists = np.triu(dists)
         allrs[t,:] = dists
         
     bins = np.histogram_bin_edges(allrs[0], bins = int(extent/bin_width), range = (0, extent))

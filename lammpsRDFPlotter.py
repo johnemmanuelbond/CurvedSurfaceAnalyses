@@ -103,7 +103,7 @@ if __name__=="__main__":
     ax.axvline(x=shell_radius*theta1,lw=0.6,c="black")#
     ax.axvline(x=shell_radius*theta2,lw=0.6,c="red")#  
 
-    samples = 5e7
+    samples = 5e9
     #we want to sample from the last half of a simulation
     n_frames = min(int(fnum/2),int(samples/pnum**2))
     output = dict()
