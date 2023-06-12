@@ -84,16 +84,18 @@ author: Jack Bond
 def g_r_flat(coords, bin_width=0.01, exclude=None):
     """calculates the pair distribution function from the given coordinates"""
     fnum, pnum, _ = coords.shape
-    snum = pnum-len(exclude)
+    rshape = np.ones((pnum,pnum))
+    rshape[:,exclude]=0
+    rnum = int(np.sum(np.triu(rshape,k=1)))
     
     extent = max(pdist(coords[0]))
     
-    allrs = np.zeros((fnum, (pnum*(pnum-1)//2)))
+    allrs = np.zeros((fnum, rnum))
     for t, frame in enumerate(coords):
         dists = squareform(pdist(frame))
         dists[:,exclude] = 0
         dists = np.triu(dists)
-        allrs[t,:] = dists
+        allrs[t,:] = dists[dists>0]
         
     bins = np.histogram_bin_edges(allrs[0], bins = int(extent/bin_width), range = (0, extent))
     width = bins[1] - bins[0]
