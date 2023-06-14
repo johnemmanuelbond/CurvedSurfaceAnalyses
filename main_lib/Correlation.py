@@ -21,13 +21,13 @@ r_ico = np.sin(2*np.pi/5)
 theta1 = 2*np.arcsin(1/2/r_ico)
 theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
 
-"""
-Given a set of frames, computed the average radial distribution function
-source: Correlation, 5/23/23
-author: Jack Bond
-"""
+
 def g_r(coords, shell_radius=None, bin_width=0.01, flat = False,subset=None):
-    """calculates the pair distribution function from the given coordinates"""
+    """
+    Given a set of frames, computed the average radial distribution function
+    source: Correlation, 5/23/23
+    author: Jack Bond
+    """
     fnum,pnum,_ = coords.shape
     if subset is None:
         subset = np.arange(pnum)
