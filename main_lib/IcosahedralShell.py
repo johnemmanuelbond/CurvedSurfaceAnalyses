@@ -14,6 +14,7 @@ rcParams.update({'figure.autolayout': True})
 
 from itertools import product
 
+
 def sector(angle, index):
     """Returns points in triangle defined by [1, 0, 0] and 
     [np.cos(rad), np.sin(rad), 0] with index points along each side."""
@@ -26,6 +27,7 @@ def sector(angle, index):
         tot = i*a + j*b
         sector.append(tot)
     return np.array(sector)
+
 
 def patch(index):
     """returns n x 3 array of points composing a 60-120 rhombus in the xy-plane
@@ -42,6 +44,7 @@ def patch(index):
         if j > 0: #build lower half of patch
             rhomb.append(i*b + j*c)
     return np.array(rhomb)
+
 
 def hk_face(h, k, e_tol=1e-3):
     """returns a h, k face within: (-0.5,0,0), (0,sqrt(3)/2,0), (0.5,0,0)
@@ -78,6 +81,7 @@ def hk_face(h, k, e_tol=1e-3):
     normed_centered = (trim/np.linalg.norm(ray)) - np.array([0.5, 0, 0])
     return normed_centered
 
+
 def rotate(points, ray):
     """Rotates the given array of points (n x 3) such that the projection of 
     ray (1 x 2 or 3) on the x-y plane would be brought to the x axis"""
@@ -86,6 +90,7 @@ def rotate(points, ray):
                      [np.sin(rad),  np.cos(rad), 0],
                      [          0,            0, 1]])
     return points @ rot
+
 
 # code adapted from:
 # https://stackoverflow.com/questions/46777626/mathematically-producing-sphere-shaped-hexagonal-grid
@@ -101,6 +106,7 @@ def barycentricCoords(p):
     l1 = 1 - l2 - l3
     return np.array([l1,l2,l3])
 
+
 def slerp(p0,p1,t):
     """Uniform interpolation of arc defined by p0, p1 (around origin)
        t=0 -> p0, t=1 -> p1"""
@@ -112,6 +118,7 @@ def slerp(p0,p1,t):
     l1 = np.sin(t    *ang0)
     return np.array([(l0*p0[i] + l1*p1[i])/ang0Sin for i in range(len(p0))])
 
+
 # map 2D point p to spherical triangle s1,s2,s3 (3D vectors of equal length)
 def mapPointToTriangle(p,s1,s2,s3):
     l1,l2,l3 = barycentricCoords(p)
@@ -120,12 +127,14 @@ def mapPointToTriangle(p,s1,s2,s3):
     p12 = slerp(s1,s2,l2s)
     return slerp(p12,s3,l3)
 
+
 def mapFaceToTriangle(covering, triangle):
     """takes array of points and returns each point mapped to given triangle"""
     answer = []
     for point in covering:
         answer.append(mapPointToTriangle(point[:2], *triangle))
     return np.array(answer)
+
 
 def mapFaceToIco(covering, icoTriangles):
     """takes in array of points in barycentric coordinates and maps to every
@@ -136,6 +145,7 @@ def mapFaceToIco(covering, icoTriangles):
     multi_dim = np.reshape(np.array(answer), (-1,3))
     uniques = np.unique(multi_dim.round(decimals=10), axis=0)
     return uniques
+
 
 #%% set up code for icosahedron adapted from:
 # https://stackoverflow.com/questions/46777626/mathematically-producing-sphere-shaped-hexagonal-grid
@@ -173,9 +183,11 @@ icoTriPoints = np.array([[ 0,  1,  2],
                          [ 5, 11, 10]])
 icoTri = np.array([[icoPoints[p] for p in icoTriPoints[i]] for i in range(len(icoTriPoints))])
 
+
 def hk_sphere(h, k, e_tol=1e-3):
     triangle = hk_face(h, k, e_tol)
     return mapFaceToIco(triangle, icoTri)
+
 
 if __name__=="__main__":
     #%% troubleshooting h k patches

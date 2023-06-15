@@ -12,182 +12,187 @@ from numpy.random import default_rng
 from scipy.optimize import curve_fit
 from Correlation import theta1,theta2
 
-"""
-Theoretical expression for the diffusive mean-squared displacement on a spherical surface
-source: general_analysis, 7/23/22
-author: Alex yeh
-"""
+
 def sphere_msd(taus, damp, shell_radius = 10):
+    """
+    Theoretical expression for the diffusive mean-squared displacement on a
+    spherical surface.
+    source: general_analysis, 7/23/22
+    author: Alex yeh
+    """
     return 2*(shell_radius**2)*(1-np.exp(-2*damp*taus*shell_radius**-2))
 
 
-"""
-source MSD, 2/9/23
-author: Jack Bond
-"""
 def minimum_image(coords, wraps, basis):
     """
-    uses the minumum image convention to correctly account for perodic boundary conditions when calculating coordinates by using the basis vectors of the periodic box.
+    uses the minumum image convention to correctly account for perodic
+    boundary conditions when calculating coordinates by using the basis
+    vectors of the periodic box.
+    source MSD, 2/9/23
+    author: Jack Bond
     """
     disp = np.einsum("ij,anj->ani",basis,wraps)
     return coords + disp
 
 
-"""
-source: general_analysis, 7/23/22
-author: Alex yeh
-"""
-def mto_msd(coords, max_lag, skips=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the msd up to the given max_step, defaulting to the maximum number of 
-    non-overlapping multiple time origins. Overlapping time orgins can be
-    given by specifying a skip param less than 2*max_lag.
-    Returns a [T x 3] array of msds
+def com(coords, masses = None):
     """
-
-    #set up multiple time origins
-    if skips is None:
-        skips = 2*max_lag #non-overlapping mtos
-    
-    pnum = coords.shape[1]
-    total_steps = coords.shape[0]
-    orig_num = int(total_steps/(skips))
-    print(f"time origins: {orig_num}")
-    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
-    final_step = time_origins[-1]+max_lag
-    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
-    
-    #compute msds
-    msd_comp = np.zeros((max_lag, 3))
-    for t in range(max_lag):
-        for tstart in time_origins:
-            tend = tstart + t
-            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
-
-            msd_comp[t] += np.sum(allmsd,axis=0) #3
-            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_comp/(pnum*orig_num)
-
-
-"""
-source: general_analysis, 7/23/22
-author: Alex yeh
-"""
-def mto_msd_part(coords, max_lag, skips=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the msd per particle up to the given max_step, defaulting to the maximum 
-    number of non-overlapping multiple time origins. Overlapping time orgins 
-    can be given by specifying a skip param less than 2*max_lag.
-    Returns a [T x N x 3] array of msds
+    returns the center of mass trajectory of a set of frames given the mass of
+    each particle in the frame
+    source: MSD, 6/15/23
+    author: Jack Bond
     """
-
-    #set up the multiple time origins
-    if skips is None:
-        skips = 2*max_lag #non-overlapping mtos
-    
     pnum = coords.shape[1]
-    total_steps = coords.shape[0]
-    orig_num = int(total_steps/(skips))
-    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
-    final_step = time_origins[-1]+max_lag
-    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
-    
-    #compute msd
-    msd = np.zeros((max_lag, pnum, 3))
-    
-    for t in range(max_lag):
-        for tstart in time_origins:
-            tend = tstart + t
-            msd[t] += (coords[tend] - coords[tstart])**2
-            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    
-    return msd/orig_num
-
-
-"""
-source: general_analysis, 7/23/22
-author: Jack Bond
-"""
-def mto_msd_arc(coords, max_lag, skips=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the msd in the arclength coordinate up to the given max_step, defaulting
-    to the maximum number of non-overlapping multiple time origins.
-    Overlapping time orgins can be given by specifying a skip param less than
-    2*max_lag. Returns a [T x 3] array of msds
-    """
-
-    #set up multiple time origins
-    if skips is None:
-        skips = 2*max_lag #non-overlapping mtos
-    
-    pnum = coords.shape[1]
-    total_steps = coords.shape[0]
-    orig_num = int(total_steps/(skips))
-    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
-    final_step = time_origins[-1]+max_lag
-    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
-
-    #compute msds
-    msd_w = np.zeros((max_lag, 1))
-    shell_radius = np.linalg.norm(coords, axis=-1).mean()
-    for t in range(max_lag):
-        for tstart in time_origins:
-            tend = tstart + t
-            allmsd = (coords[tend]-coords[tstart])**2 #Nx3
-
-            arg = np.sqrt(allmsd.sum(axis=-1))/(2*shell_radius) #N
-            arg[arg>1] = 1
-            
-            msd_w[t] += np.sum((2*shell_radius*np.arcsin(arg))**2) #1
-            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_w/(pnum*orig_num)
-
-
-"""
-source MSD, 2/9/23
-author: Jack Bond
-"""
-def mto_com_msd(coords,max_lag,skips=None, masses=None):
-    """Given a set of T timesteps of N particles ([T x N x 3]), computes 
-    the center-of-mass msd up to the given max_step, defaulting to the maximum
-    number of non-overlapping multiple time origins. Overlapping time orgins
-    can be given by specifying a skip param less than 2*max_lag.
-    Returns a [T x 3] array of msds, as well as the center of mass coordinates.
-    """
-
-    #set up the multiple time origins
-    if skips is None:
-        skips = 2*max_lag #non-overlapping mtos
-
-    pnum = coords.shape[1]
-    total_steps = coords.shape[0]
-    orig_num = int(total_steps/(skips))
-    time_origins = np.linspace(0,total_steps-max_lag,orig_num).astype(int)
-    final_step = time_origins[-1]+max_lag
-    assert final_step<=total_steps, f'{final_step} will exceed array size({total_steps}), must specify smaller number of skips'
-    
     #compute the center of mass of every frame
     if masses is None:
         masses = np.ones(pnum)
     com = np.einsum("n,fni->fi",masses,coords)/masses.sum()
+    return com
+
+
+def _mto(times, max_lag, orig_num=None, delta=None):
+    """
+    Given a set of times and a maximum lagtime, returns a list of indices
+    corresponding to the starting points of each mto trajectory, as well as
+    the number of points in each trajectory
+    There are multiple ways to do this calculation.
+    delta: specify the time between time origins
+    num_origins: specify a desired amount of origins
+    source: MSD, 6/15/23
+    author: Jack Bond
+    """
     
-    #compute msd
-    msd_comp = np.zeros((max_lag, 3))
+    #lagtime cannot me more than
+    assert max_lag <= times[-1], "max lagtime is larger than total runtime"
+    #find the maximum trajectory length
+    lag_idx = np.argmin(np.abs(times-max_lag))
+    
+    total_steps=len(times)
 
-    for t in range(max_lag):
-        for tstart in time_origins:
-            tend = tstart + t
-            msd_comp[t] +=  (com[tend]-com[tstart])**2#3
-            # print(f"({tstart},{t})   {tstart: ^6} | {tend: ^4} | {tend-tstart: ^4}")
-    return msd_comp/(orig_num), com
 
-"""
-source MSD, 2/14/23
-author: Jack Bond
-"""
+    if delta is None:
+        if orig_num is None:
+            #default to nonoverlapping time origins
+            orig_num = int(total_steps/(2*max_lag))
+    #define orig_num using delta
+    elif orig_num is None:
+        orig_num = int((times[-1]-max_lag)/delta)
+    #otherwise just accept the given orig_num
+    
+    time_origins = np.linspace(0,total_steps-lag_idx,orig_num).astype(int)
+    
+    #this should be impossible, but as a stopgap
+    assert time_origins[-1]+max_lag < total_steps, "final step will exceed array size"
+
+    return time_origins, lag_idx
+
+def mto_msd(coords, times, max_lag, orig_num = None, delta = None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the msd up to the given max_step, defaulting to the maximum number of 
+    non-overlapping multiple time origins. The number of or distance between
+    each time origin may be specified.
+    Returns a [TO x 3] array of msds
+    source: MSD, 6/15/23
+    author: Jack Bond
+    """
+
+    #set up multiple time origins
+    time_origins, lag_idx = _mto(times,max_lag,orig_num=orig_num,delta=delta)
+
+    #compute msds per coordinate for all time origins
+    trajs = np.array([(coords[og+np.arange(lag_idx)]-coords[og])**2 for og in time_origins])
+
+    msd_full = trajs.sum(axis=-1)
+    ptcl_average = msd_full.mean(axis=-1)
+    mto_average = ptcl_average.mean(axis=0)
+    return mto_average
+
+
+def mto_msd_part(coords, times, max_lag, orig_num = None, delta = None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the msd per particle up to the given max_step, defaulting to the maximum
+    number of non-overlapping multiple time origins. The number of or distance 
+    between each time origin may be specified.
+    Returns a [TO x N x 3] array of msds
+    source: MSD, 6/15/23
+    author: Jack Bond
+    """
+
+    #set up multiple time origins
+    time_origins, lag_idx = _mto(times,max_lag,orig_num=orig_num,delta=delta)
+
+    #compute msds per coordinate for all time origins
+    trajs = np.array([(coords[og+np.arange(lag_idx)]-coords[og])**2 for og in time_origins])
+
+    msd_full = trajs.sum(axis=-1)
+    mto_average = msd_full.mean(axis=0)
+    return mto_average
+
+
+def mto_msd_arc(coords, times, max_lag, orig_num = None, delta = None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the msd in the arclength coordinate up to the given max_step, defaulting
+    to the maximum number of non-overlapping multiple time origins. The number
+    of or distance between each time origin may be specified.
+    Returns a [TO x 3] array of msds
+    source: MSD, 6/15/23
+    author: Jack Bond
+    """
+
+    #set up multiple time origins
+    time_origins, lag_idx = _mto(times,max_lag,orig_num=orig_num,delta=delta)
+
+    #compute msds per coordinate for all time origins
+    trajs = np.array([(coords[og+np.arange(lag_idx)]-coords[og])**2 for og in time_origins])
+
+    msd_full = trajs.sum(axis=-1)
+
+    #compute cartesian chords to geodesic arcs
+    shell_radius = np.linalg.norm(coords, axis=-1).mean()
+    args = np.sqrt(msd_full)/(2*shell_radius)
+    args[args>1]=1
+    arcs = 2*shell_radius*np.arcsin(args)
+
+    ptcl_average = arcs.mean(axis=-1)
+    mto_average = ptcl_average.mean(axis=0)
+    return mto_average
+
+
+def mto_com_msd(coords, times, max_lag, orig_num = None, delta = None):
+    """
+    Given a set of T timesteps of N particles ([T x N x 3]), computes 
+    the center-of-mass msd up to the given max_step, defaulting to the maximum
+    number of non-overlapping multiple time origins. The number
+    of or distance between each time origin may be specified.
+    Returns a [TO x 3] array of msds
+    source MSD, 6/15/23
+    author: Jack Bond
+    """
+
+    #set up multiple time origins
+    time_origins, lag_idx = _mto(times,max_lag,orig_num=orig_num,delta=delta)
+
+    #compute center of mass
+    com = _com(coords,masses=masses)
+    #compute msds per coordinate for all time origins
+    trajs = np.array([(com[og+np.arange(lag_idx)]-com[og])**2 for og in time_origins])
+
+    msd_full = trajs.sum(axis=-1)
+    return msd_full
+
+
 def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
     """
-    Given a set of T timesteps of N particles ([T x N x 3]), computes the center-of-mass msd for a subset of particles within a subtended angle of some point on the sphere (given by theta and phi). Returns a [T x 3] array of msds
+    Given a set of T timesteps of N particles ([T x N x 3]), computes the
+    center-of-mass msd for a subset of particles within a subtended angle of
+    some point on the sphere (given by theta and phi). Returns a [T x 3] array
+    of msds, a [T x 1] array of the msd for the center of mass, the subset of
+    particles within the sector, and the vector pointing to the sector center
+    source MSD, 2/14/23
+    author: Jack Bond
     """
 
     #picking the central point around which we track particles
@@ -200,6 +205,7 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
     
     central_vec = np.array([shell_radius*np.sin(theta_c)*np.cos(phi_c),shell_radius*np.sin(theta_c)*np.sin(phi_c),shell_radius*np.cos(theta_c)])
 
+    #finding the subset of particles to define a sector
     fnum, pnum, _ = coords.shape
 
     unit_vecs = np.array([c/np.linalg.norm(c) for c in coords[0]])
@@ -214,9 +220,11 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
     if masses is None:
         masses = np.ones(pnum)
 
+    #check if zero particles are in the sector
     if masses[idx].sum()==0:
         com_adj = np.zeros((fnum,3))
         rel_rad = np.zeros(fnum)
+    #otherwise compute center of mass msds projected onto sphere surface
     else:
         com = np.einsum("n,fni->fi",masses[idx],subset)/(masses[idx].sum())
         #adjust the com to keep it on the spehere surface
@@ -231,13 +239,17 @@ def sector_msd(coords,masses=None,theta_c=None,phi_c=None,subtended_halfangle=th
 
     return msd_ens, msd_com, rel_rad, idx, central_vec
 
-"""
-source MSD, 2/9/23
-author: Jack Bond
-"""
+
 def mto_sector_msd(coords,max_lag,skips=None, masses=None,theta_c=None,phi_c=None,subtended_halfangle=theta1/2,shell_radius=None):
     """
-    Given a set of T timesteps of N particles ([T x N x 3]), computes the ensemble and center-of-mass msd for a subset of particles within a subtended angle of some point on the sphere (given by theta and phi), up to the given max_step, defaulting to the maximum number of non-overlapping multiple time origins. Overlapping time orgins can be given by specifying a skip param less than 2*max_lag. Returns a [T x 3] array of msds
+    Given a set of T timesteps of N particles ([T x N x 3]), computes the
+    ensemble and center-of-mass msd for a subset of particles within a
+    subtended angle of some point on the sphere (given by theta and phi), up
+    to the given max_step, defaulting to the maximum number of non-overlapping
+    multiple time origins. Overlapping time orgins can be given by specifying
+    a skip param less than 2*max_lag. Returns a [T x 3] array of msds
+    source MSD, 2/9/23
+    author: Jack Bond
     """
 
     #picking the central point around which we track particles
@@ -520,6 +532,9 @@ if __name__=="__main__":
 
     start = timer()
 
+    times = np.linspace(1,100,2000)
+
+    print(_mto(times,5,delta=20))
 
     end = timer()
     print(f"{end-start}s runtime")
