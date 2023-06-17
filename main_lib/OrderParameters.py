@@ -153,6 +153,134 @@ def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
     colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
     return colors
 
+ 
+"""
+Given a spherical frame, plots the centers and vertices of the voronoi tesselation
+source: plot_voronoi, 5/26/23
+author: John Edison
+"""
+def plot_voronoi_sphere(points, filename="voronoi_frame.jpg", colors = ['yellow','yellow','yellow','yellow','orange','red','grey','green','blue','purple'], view = np.array([0,0,1]),tol=1e-5):
+
+    import matplotlib.pyplot as plt
+    import mpl_toolkits.mplot3d as a3d
+    
+    radius = np.linalg.norm(points,axis=-1).mean()
+    center = np.array([0.0, 0.0, 0.0])
+    sv     = SphericalVoronoi(points, radius, center,threshold=tol)
+    sv.sort_vertices_of_regions()
+    areas = sv.calculate_areas()
+
+    fig = plt.figure(figsize=(7,7),dpi=600)
+    ax = fig.add_subplot(projection='3d')
+    front = points[points@view>0]
+    theta = np.arccos( min(max(view[2]/np.linalg.norm(view),-1),1) )
+    if theta == 0 or theta == np.pi:
+        phi=0
+    else:
+        if view[0]==0:
+            phi = np.pi/2 + np.pi*(view[1]<0)
+        else:
+            phi = np.arctan(view[1]/view[0])
+
+    ax.view_init(90-180*theta/np.pi,180*phi/np.pi)
+    plt.axis('off')
+    
+    for i, region in enumerate(sv.regions):
+
+        if (areas[i] > 1.50*np.pi):
+            continue
+        
+        n = len(region)
+        vtx = sv.vertices[region]
+        
+        tri = a3d.art3d.Poly3DCollection([vtx])
+
+        if (n < len(colors)):
+            tri.set_color(colors[n])
+        else:
+            tri.set_color('k')
+        tri.set_edgecolor('k')
+        tri.set_linewidth(0.5)
+        ax.add_collection3d(tri)
+
+    ax.scatter(*(front.T), c='k',s=2)
+
+    ax.autoscale()
+    ax.set_xlim3d(-radius,radius)     #Reproduce magnification
+    ax.set_ylim3d(-radius,radius)     #...
+    ax.set_zlim3d(-radius, radius)
+    ax.set_aspect('equal')
+
+    # make the panes transparent
+    ax.xaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.yaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    ax.zaxis.set_pane_color((1.0, 1.0, 1.0, 0.0))
+    # make the grid lines transparent
+    ax.xaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+    ax.yaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+    ax.zaxis._axinfo["grid"]['color'] =  (1,1,1,0)
+
+    _ = ax.set_xticks([])
+    _ = ax.set_yticks([])
+    _ = ax.set_zticks([])
+
+    fig.savefig(filename,bbox_inches='tight')
+    plt.close(fig)
+
+"""
+Given a planar frame, plots the centers and vertices of the voronoi tesselation
+source: plot_voronoi, 5/26/23
+author: John Edison, Jack Bond
+"""
+def plot_voronoi_plane(points, filename="voronoi_frame.jpg", colors = ['yellow','yellow','yellow','yellow','orange','red','grey','green','blue','purple'],box=None):
+
+    if box is None: raise Exception('please input simulation box')
+    pnum,_= points.shape
+    expand = lambda frame, basis: np.array([
+            *frame,
+            *(frame+basis@np.array([1,0,0])),
+            *(frame+basis@np.array([-1,0,0])),
+            *(frame+basis@np.array([0,1,0])),
+            *(frame+basis@np.array([0,-1,0])),
+            *(frame+basis@np.array([1,1,0])),
+            *(frame+basis@np.array([-1,1,0])),
+            *(frame+basis@np.array([1,-1,0])),
+            *(frame+basis@np.array([-1,-1,0])),
+            ])
+    vor = Voronoi(expand(points, box)[:,:2])
+
+    fig = plt.figure(figsize=(7,7),dpi=600)
+    ax = fig.add_subplot()
+
+    plt.axis('off')
+
+    for i, pr in enumerate(vor.point_region[:pnum]):
+        region = vor.regions[pr]
+        n = len(region)
+        vtx = vor.vertices[region]
+        
+        if -1 in region:
+            continue
+
+        tri = mpl.collections.PolyCollection([vtx])
+
+        if (n < len(colors)):
+            tri.set_color(colors[n])
+        else:
+            tri.set_color('k')
+        tri.set_edgecolor('k')
+        tri.set_linewidth(0.5)
+        ax.add_collection(tri)
+
+    ax.scatter(*(points[:,:2].T), c='k',s=1)
+    ax.autoscale()
+    ax.set_aspect('equal')
+
+    _ = ax.set_xticks([])
+    _ = ax.set_yticks([])
+
+    fig.savefig(filename,bbox_inches='tight')
+    plt.close(fig)
     
 #scar methods DO NOT WORK for flat systems
 def findScarsCarefully(frame,tol=1e-6):
