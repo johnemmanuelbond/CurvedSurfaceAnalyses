@@ -6,7 +6,7 @@ import numpy as np
 import scipy as sp
 
 from scipy.spatial.distance import pdist
-from scipy.spatial import SphericalVoronoi, Voronoi#, geometric_slerp
+from scipy.spatial import SphericalVoronoi, Voronoi, ConvexHull#, geometric_slerp
 from scipy.signal import find_peaks
 from scipy.integrate import quad
 
@@ -58,7 +58,7 @@ def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
             *(frame+basis@np.array([-1,-1,0])),
             ])
 
-        sv = Voronoi(expand(frame,box_basis))
+        sv = Voronoi(expand(frame,box_basis)[:,:2])
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
     
     else:
@@ -97,63 +97,96 @@ def voronoi_colors(frame,v=None,tol=1e-6):
     return colors
 
 #point-density based on the area of voronoi polygons on a frame
-def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False):
+def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False,box=None):
     minZ = min(frame[:,2])
     
+    pnum,_ = frame.shape
+    
     if flat:
-        sv = Voronoi(frame)
+        if box is None: raise Exception("please input simulation box")
+        expand = lambda frame, basis: np.array([
+            *frame,
+            *(frame+basis@np.array([1,0,0])),
+            *(frame+basis@np.array([-1,0,0])),
+            *(frame+basis@np.array([0,1,0])),
+            *(frame+basis@np.array([0,-1,0])),
+            *(frame+basis@np.array([1,1,0])),
+            *(frame+basis@np.array([-1,1,0])),
+            *(frame+basis@np.array([1,-1,0])),
+            *(frame+basis@np.array([-1,-1,0])),
+            ])
+        vor = Voronoi(expand(frame, box)[:,:2])
+        #flat-case area calculation courtesy of ybeltokov on stackoverlow (jan 19 2019)
+        areas = np.zeros(pnum)
+        for i,reg in enumerate(vor.point_region[:pnum]):
+            indices = vor.regions[reg]
+            if -1 in indices:
+                areas[i] = np.infty
+                print("this should never print")
+            else:
+                areas[i] = ConvexHull(vor.vertices[indices]).volume
     else:
         if R == None:
             radius = np.mean(np.linalg.norm(frame,axis=1))
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
+        areas = sv.calculate_areas()
 
-    V_rho = np.zeros(frame.shape[0])
-    for i, area in enumerate(sv.calculate_areas()):
-        V_rho[i] = 1/area
-    return V_rho
+    return 1/areas
+
 
 #point-density based on the area of voronoi polygons INCLUDING NEAREST NEIGHBORS on a frame
-def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False, box=None, coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     minZ = min(frame[:,2])
     
+    pnum, _ = frame.shape
+
     if flat:
-        sv = Voronoi(frame)
+        if box is None: raise Exception("please input simulation box")
+        expand = lambda frame, basis: np.array([
+            *frame,
+            *(frame+basis@np.array([1,0,0])),
+            *(frame+basis@np.array([-1,0,0])),
+            *(frame+basis@np.array([0,1,0])),
+            *(frame+basis@np.array([0,-1,0])),
+            *(frame+basis@np.array([1,1,0])),
+            *(frame+basis@np.array([-1,1,0])),
+            *(frame+basis@np.array([1,-1,0])),
+            *(frame+basis@np.array([-1,-1,0])),
+            ])
+        _, neighbors = Nc(expand(frame, box),shellradius=coord_shell)
+        vor = Voronoi(expand(frame, box)[:,:2])
+        #flat-case area calculation courtesy of ybeltokov on stackoverlow (jan 19 2019)
+        areas = np.zeros(pnum)
+        for i,reg in enumerate(vor.point_region[:pnum]):
+            indices = vor.regions[reg]
+            if -1 in indices:
+                areas[i] = np.infty
+                print("this should never print")
+            else:
+                areas[i] = ConvexHull(vor.vertices[indices]).volume
+
     else:
         if R == None:
             radius = np.mean(np.linalg.norm(frame,axis=1))
         else:
             radius = R
+
+        _, neighbors = Nc(frame,shellradius=coord_shell)
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-    
-
-    _, neighbors = Nc(frame,shellradius=coord_shell)
-
-    V_rho = np.zeros(frame.shape[0])
-    areas = sv.calculate_areas()
-    for i, nei in enumerate(neighbors):
+        areas = sv.calculate_areas()
+        
+    V_rho = np.zeros(pnum)
+    for i, nei in enumerate(neighbors[:pnum]):
         #Nc does not include the particle itself when counting neighbors
-        As = areas[[i,*np.where(nei!=0)[0]]]
+        As = areas[[i,*(np.where(nei!=0)[0]%pnum)]]
         area = As.sum()
         nshell = As.size
         V_rho[i] = nshell/area
+    
     return V_rho
 
-#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
-    if type(rhos) == type(None):
-        rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
-    #print(np.sum(6-v))
-    #print(np.sum(np.abs(6-v)))
-    rho_cp = 0.9067/(np.pi*aeff**2)
-    rho_fl = 0.69/(np.pi*aeff**2)
-    rho_mean = rhos.mean()
-    scale = (rhos-rho_mean)/(rho_cp-rho_fl)
-    colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
-    return colors
-
- 
 """
 Given a spherical frame, plots the centers and vertices of the voronoi tesselation
 source: plot_voronoi, 5/26/23
@@ -281,6 +314,21 @@ def plot_voronoi_plane(points, filename="voronoi_frame.jpg", colors = ['yellow',
 
     fig.savefig(filename,bbox_inches='tight')
     plt.close(fig)
+
+
+#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
+def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
+    if type(rhos) == type(None):
+        rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
+    #print(np.sum(6-v))
+    #print(np.sum(np.abs(6-v)))
+    rho_cp = 0.9067/(np.pi*aeff**2)
+    rho_fl = 0.69/(np.pi*aeff**2)
+    rho_mean = rhos.mean()
+    scale = (rhos-rho_mean)/(rho_cp-rho_fl)
+    colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
+    return colors
+
     
 #scar methods DO NOT WORK for flat systems
 def findScarsCarefully(frame,tol=1e-6):
