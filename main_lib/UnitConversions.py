@@ -122,16 +122,6 @@ def vpp(field_k, params):
     return np.sqrt(field_strength)*(params['dg']**2)
 
 
-def rho(eta, a_eff):
-    """converts area fraction to number density based on an effective radius"""
-    return eta/(np.pi * a_eff**2)  #in units of 1/[a_eff**2]
-
-
-def eta(rho, a_eff):
-    """converts number density to area fraction based on an effective radius"""
-    return rho*(np.pi*a_eff**2) #unitless
-
-
 def get_a_eff(params):
     """
     Takes in a dictionary of experimental quantities in  SI units.
@@ -158,6 +148,27 @@ def get_a_eff(params):
     end = timer()
     #print(end-start)
     return aeff
+
+
+def rho(eta, a_eff):
+    """converts area fraction to number density based on an effective radius"""
+    return eta/(np.pi * a_eff**2)  #in units of 1/[a_eff**2]
+
+
+def eta(rho, a_eff):
+    """converts number density to area fraction based on an effective radius"""
+    return rho*(np.pi*a_eff**2) #unitless
+
+def chord_to_arc(dists, radius):
+    """
+    converts a chord accross a sphere with radius 'radius' into a geodesic arc
+    source: MSD 6/20/23
+    author: Jack Bond
+    """
+    args = dists/(2*shell_radius)
+    args[args>1]=1
+    arcs = 2*shell_radius*np.arcsin(args)
+    return arcs
 
 
 if __name__=="__main__":
