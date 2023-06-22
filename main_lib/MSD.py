@@ -218,7 +218,7 @@ def bootstrap_msd(msd_part, trials, confidence=95, rng=default_rng()):
 
 #CENTER OF MASS CORRECTIONS
 
-def com(coords, masses = None, on_sphere=False):
+def _com(coords, masses = None, on_sphere=False):
     """
     returns the center of mass trajectory of a set of frames given the mass of
     each particle in the frame.
@@ -240,7 +240,7 @@ def com(coords, masses = None, on_sphere=False):
 
     return com
 
-def mto_com_msd(coords, times, masses=None, max_lag=None, orig_num = None, delta = None):
+def mto_com_msd(coords, times, spherical=False, masses=None, max_lag=None, orig_num = None, delta = None):
     """
     Given a set of T timesteps of N particles ([T x N x 3]), computes 
     the center-of-mass msd up to the given max lagtime
@@ -257,7 +257,7 @@ def mto_com_msd(coords, times, masses=None, max_lag=None, orig_num = None, delta
     time_origins, lag_idx = _mto(times,max_lag=max_lag,orig_num=orig_num,delta=delta)
 
     #compute center of mass
-    com = com(coords,masses=masses)
+    com = _com(coords,masses=masses,on_sphere=spherical)
 
     #to save memory we loop over time origins and repeatedly add them to the final array
     mto_average = np.zeros(lag_idx)
@@ -266,7 +266,7 @@ def mto_com_msd(coords, times, masses=None, max_lag=None, orig_num = None, delta
         msd_full = msd_comp.sum(axis=-1)
         mto_average += msd_full/len(time_origins)
 
-    return msd_full, times[:lag_idx]
+    return mto_average, times[:lag_idx]
 
 
 def bootstrap_com_msd(coords, traj_length, n_subsets, trials, 
@@ -294,27 +294,12 @@ def bootstrap_com_msd(coords, traj_length, n_subsets, trials,
         subset_idx = np.argsort(np.linalg.norm(coords[i_start]-rand_point,axis=-1))[:subset_size]
         traj = coords[i_start:(i_start+traj_length)][:,subset_idx]
         
-        subset_com = com(traj,on_sphere=spherical,masses=masses)
+        subset_com = _com(traj,on_sphere=spherical,masses=masses)
         com_msds[:,i] = np.sum((subset_com-subset_com[0])**2,axis=-1)
 
-    boot_msd = np.zeros((traj_length, trials))
-    
-    for b in range(trials):
-        # get indices with replacement
-        boot_idx = rng.integers(0, n_subsets, n_subsets)
-        # average over msds for each bootstrap trial
-        boot_msd[:, b] = np.mean(com_msds[:, boot_idx], axis=-1)
-    
-    print(boot_msd[-1])
-
-    #get confidence intervals
-    low = (100 - confidence)/2
-    high = 100 - low
-    low_bound = np.percentile(boot_msd, low, axis=1)
-    high_bound = np.percentile(boot_msd, high, axis=1)
+    low_bound, high_bound = bootstrap_msd(com_msds,trials, confidence=confidence,rng=rng)
 
     return low_bound, high_bound
-
 
 #COMPOUND ANALYSES
 
@@ -477,9 +462,12 @@ if __name__=="__main__":
     config = json.load(open('config.json','r'))
 
     coords = np.load('example_datapts.npy')
+    times = np.load('times.npy')*config['arg']['xxxtimestepxxx']
+    #coords = np.load('example_datapts_minim.npy')
+    #times = np.load('times.npy')
+    
     fnum,pnum,_= coords.shape
     vor = np.load('example_vor_coord.npy')
-    times = np.load('times.npy')*config['arg']['xxxtimestepxxx']
     
     
     # max_lag = 50 #tau units
@@ -534,11 +522,15 @@ if __name__=="__main__":
     ax.plot(lag, (low_bound+high_bound)/2,color='grey',ls=':')
 
     #com confidence interval
-    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag),300,1000, spherical=True,subset_size=20)
+    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag),300,1000, spherical=False,subset_size=100)
     
     ax.fill_between(lag,low_bound_com,high_bound_com,facecolor='blue',alpha=0.6,edgecolor='blue',lw=0.3)
     ax.plot(lag, (low_bound_com+high_bound_com)/2,color='blue',ls=':')
     print(high_bound_com[-1])
+
+    #for flat-cases we can just calcilate the com motiom
+    #msd_com, _ = mto_com_msd(coords,times, max_lag=100, orig_num=100, spherical=False)
+    #ax.plot(lag, msd_com,color='red',ls=':')
 
     #input diffusivity for visual reference
     ax.plot(lag, sphere_msd(lag,0.25,shell_radius=np.linalg.norm(coords).mean()), color='k',lw=0.5)
