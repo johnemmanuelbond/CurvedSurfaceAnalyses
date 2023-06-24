@@ -101,6 +101,7 @@ def field_k(params):
 
     return field_prefactor/(kT * (2*a)**-2)  # converts [J*m**-2] to units of [kT*(2a)**-2]
 
+
 def vpp(field_k, params):
     """
     Takes in a dictionary of experimental quantities in  SI units. As well as a
@@ -158,6 +159,7 @@ def rho(eta, a_eff):
 def eta(rho, a_eff):
     """converts number density to area fraction based on an effective radius"""
     return rho*(np.pi*a_eff**2) #unitless
+
 
 def chord_to_arc(dists, radius):
     """
