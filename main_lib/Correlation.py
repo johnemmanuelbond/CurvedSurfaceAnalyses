@@ -16,11 +16,6 @@ from scipy.spatial.distance import pdist, squareform
 
 from OrderParameters import Vc, Nc, findScars
 
-#icosohedral angles
-r_ico = np.sin(2*np.pi/5)
-theta1 = 2*np.arcsin(1/2/r_ico)
-theta2 = 2*np.arccos((r_ico**2+r_ico**2*np.cos(theta1/2)**2-3/4)/(2*r_ico**2*np.cos(theta1/2)))
-
 
 def g_r(coords, shell_radius=None, bin_width=0.01, flat = False,subset=None):
     """

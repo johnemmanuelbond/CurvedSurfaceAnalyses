@@ -1,1 +1,1 @@
-__all__ = ["FileHandling","UnitConversions","OrderParameters","ForceBalanceTheory","IcosahedralShell","MSD","Correlation"]
+__all__ = ["FileHandling","GeometryHelpers","UnitConversions","OrderParameters","ForceBalanceTheory","IcosahedralShell","MSD","Correlation"]

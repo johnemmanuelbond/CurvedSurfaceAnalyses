@@ -1,6 +1,7 @@
 import os, sys, glob, json
 
 from FileHandling import read_xyz_frame
+from GeometryHelpers import expand_around_pbc
 
 import numpy as np
 import scipy as sp
@@ -14,19 +15,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 from timeit import default_timer as timer
-
-"""from a a spherical cap in 3D coordinates, returns a 2D projection
-in polar coordinates where the radius is the arclength from the pole and
-the angle is the azimuthal angle. Also returns said coordinates in a
-cartesian representation, and the jacobian at each point for considering length
-scales"""
-def cap_polar_projection(frame):
-    Rs = np.linalg.norm(frame,axis=-1)
-    l = Rs*np.arccos(frame[:,2]/Rs)
-    phi = np.arctan(frame[:,1]/(frame[:,0]+0.000001))+np.pi*(frame[:,0]<0)
-    x,y = l*np.cos(phi), l*np.sin(phi)
-    jacobian = Rs*np.sin(l/Rs)
-    return np.array([x,y]).T, np.array([l,phi]).T, jacobian
 
 
 #a simple coordination number 
@@ -42,23 +30,11 @@ def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
     return Nc, neighbors
 
 #coordination number based of voronoi triangulation
-def Vc(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
+def vor_coord(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
     pnum, _ = frame.shape
     
     if flat:
-        expand = lambda frame, basis: np.array([
-            *frame,
-            *(frame+basis@np.array([1,0,0])),
-            *(frame+basis@np.array([-1,0,0])),
-            *(frame+basis@np.array([0,1,0])),
-            *(frame+basis@np.array([0,-1,0])),
-            *(frame+basis@np.array([1,1,0])),
-            *(frame+basis@np.array([-1,1,0])),
-            *(frame+basis@np.array([1,-1,0])),
-            *(frame+basis@np.array([-1,-1,0])),
-            ])
-
-        sv = Voronoi(expand(frame,box_basis)[:,:2])
+        sv = Voronoi(expand_around_pc(frame,box_basis)[:,:2])
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
     
     else:
@@ -676,64 +652,3 @@ if __name__=="__main__":
 
 #   return C6, Nc
 
-def Fourier_Transform_2D(coordinates,pointnumber=100,filename="Fourier_Test_2D.png"):
-    N = coordinates.shape[0]
-    coordinates[coordinates==0]=0.000001
-    voronoiNumber = Vc(coordinates)
-
-    Rs = np.linalg.norm(coordinates,axis=-1)
-    l = Rs*np.arccos(coordinates[:,2]/Rs)
-    phi = np.arctan(coordinates[:,1]/coordinates[:,0])+np.pi*(coordinates[:,0]<0)
-    x,y = l*np.cos(phi), l*np.sin(phi)
-    
-    R = np.mean(Rs)
-    h = (N*(np.pi*0.5**2)/0.65)/(2*np.pi*R)
-    extent = R*np.arccos((R-h)/R)
-    if np.isnan(extent):
-        extent = np.pi*R
-
-    fig,[ax1,ax2] = plt.subplots(1,2, figsize = (8,4))
-    plt.tight_layout()#rect=[0, 0.03, 1, 1.2])
-    ax1.set_aspect('equal', 'box')
-    ax1.set_xlim([-1*extent,extent])
-    ax1.set_ylim([-1*extent,extent])
-    ax2.set_aspect('equal', 'box')
-
-    plt.suptitle(f"Projected snapshot and Fourier Transform for R={R:.2f}[2a]")
-    ax1.set_xlabel("[2a]")
-    ax1.set_ylabel("[2a]")
-
-    ax1.scatter(x,y,color=[getRGB(v) for v in voronoiNumber])
-    #ax.scatter(coordinates[:,0],coordinates[:,1],marker = 'x')
-    
-
-    mesh = np.linspace(-1*np.pi,np.pi,num=pointnumber,endpoint=True)
-    kx, ky = np.meshgrid(mesh,mesh)
-    
-    #mesh = np.linspace(0,np.pi,num=pointnumber,endpoint=True)
-    #kl, kphi = np.meshgrid(mesh,2*mesh)
-    #kx, ky = kl*np.cos(kphi), kl*np.sin(kphi)
-
-    jacobian = Rs*np.sin(l/Rs)
-    dot = np.einsum("i,jk,i->ijk",jacobian,kx,np.cos(phi)) + np.einsum("i,jk,i->ijk",jacobian,ky,np.sin(phi))
-    #dot = np.einsum("i,jk,i,jk->ijk",jacobian,kl,np.cos(phi),np.cos(kphi)) + np.einsum("i,jk,i,jk->ijk",jacobian,kl,np.sin(phi),np.sin(kphi))
-
-    integrand = np.einsum('ijk,i->ijk',np.exp(-2j*np.pi*dot),jacobian)
-    F = 1/(2*np.pi)*np.sum(integrand,axis=0)
-
-    #ax = plt.axes(projection='3d')
-    sigma = np.std(np.abs(F))
-    zval = np.abs(F)
-    #zval[zval<sigma]=0
-    zval[zval>4*sigma]=4*sigma
-    ax2.contourf(kx,ky,zval,cmap='Greys')
-    #ax2.contourf(kl,kphi,zval,cmap='Greys')
-
-
-    # ax2.xaxis.set_major_formatter(tck.FormatStrFormatter('%g $\pi$'))
-    # ax2.xaxis.set_major_locator(tck.MultipleLocator(base=1.0))
-    # ax2.yaxis.set_major_formatter(tck.FormatStrFormatter('%g $\pi$'))
-    # ax2.yaxis.set_major_locator(tck.MultipleLocator(base=1.0))
-
-    fig.savefig(filename, bbox_inches='tight')
-    plt.close()

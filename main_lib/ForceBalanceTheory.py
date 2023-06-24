@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from timeit import default_timer as timer
 
 
-from .UnitConversions import getSimInputTerms, getAEff
+from .UnitConversions import field_k, get_a_eff
 
 # Thermodynamic critical points for hard disc systems
 eta_cp = 0.906  # close packed
@@ -89,9 +89,9 @@ The energy can then be related to a distance via the functional form and strengt
 of the external field, in this case it is quadratic.
 """
 def rFromUpf(u, params, extent = np.inf):
-	_, field_k, _ = getSimInputTerms(params) #units of kT/(2a)^2
-	assert field_k > 0, "field must be positive"
-	rs = np.sqrt(u/field_k)
+	k = field_k(params) #units of kT/(2a)^2
+	assert k > 0, "field must be positive"
+	rs = np.sqrt(u/k)
 
 	#on spheres large arclength isn't allowed:
 	rs[rs>extent] = extent
@@ -135,7 +135,7 @@ def profileFromFieldStrength(params, target_N, tol_e=-3, aeff=None, shellRadius=
 	
 	a = params['particle_radius']
 	if(aeff==None):
-		aeff = getAEff(params)
+		aeff = get_a_eff(params)
 	
 #     stepsize = 1e-5
 #     all_etas = np.linspace(eta_cp-stepsize,1e-3,num = int((eta_cp-stepsize-1e-3)/stepsize))
@@ -193,7 +193,7 @@ def profileFromCentralDensity(eta_c, params, target_N, tol_e=-3, aeff=None, shel
 	
 	a = params['particle_radius']
 	if(aeff==None):
-		aeff = getAEff(params)
+		aeff = get_a_eff(params)
 
 	eta_in = np.linspace(eta_c,0.001,num=400)
 	U = energyFromForceBalance(eta_in)
@@ -316,7 +316,7 @@ if __name__=="__main__":
 			'dg': 100e-6,           # [m]
 			}
 
-	print(getAEff(params))
+	print(get_a_eff(params))
 
 	testN = 300
 

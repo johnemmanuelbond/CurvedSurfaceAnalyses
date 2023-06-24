@@ -8,8 +8,10 @@ Collected from various driver and analysis scripts authored by myself and @AlexY
 @author: Jack Bond
 """
 
+
 import numpy as np
 import json#, yaml
+import gsd
 
 
 def dump_json(dic,filename):
@@ -17,6 +19,7 @@ def dump_json(dic,filename):
     file = open(filename,"w")
     file.write(json.dumps(dic,indent=2))
     file.close()
+
 
 # def dump_yaml(dic, filename):
 #    file = open(filename,"w")
@@ -79,12 +82,6 @@ def save_xyz(coords, filename, comment=None):
                 output.write("{}\t{:.8f}\t{:.8f}\t{:.8f}\n".format(
                              j+1,
                              *part))
-
-
-def chop_cap(frame, newN, filename = "out.xyz"):
-    """ chops the first N particles (usually also the top N) out from a frame and saves it as a new file. """
-    top = frame[np.argsort(frame[:,2])][-newN:]
-    handle.save_xyz(top,filename)
 
 
 def save_vis_xyz(frame, colors, filename="visual", comment="A colored visualization",show_shell=True):
@@ -330,3 +327,5 @@ def output_plain(filename, frame, density=1.90985,
             line = f"{i+1} 1 1.0 {density:0.5e} "
             coords = " ".join([f"{val:0.5f}" for val in part])
             outfile.write(line+coords+'\n')
+
+

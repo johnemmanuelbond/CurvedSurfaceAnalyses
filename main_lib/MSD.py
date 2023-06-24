@@ -10,32 +10,8 @@ Contains lots of methods to compute msds and variatons thereof for particles on 
 import numpy as np
 from numpy.random import default_rng
 from scipy.optimize import curve_fit
-from UnitConversions import chord_to_arc
-from Correlation import theta1,theta2
 
-
-#HELPER METHODS
-
-def sphere_msd(taus, damp, shell_radius = 10):
-    """
-    Theoretical expression for the diffusive mean-squared displacement on a
-    spherical surface.
-    source: general_analysis, 7/23/22
-    author: Alex yeh
-    """
-    return 2*(shell_radius**2)*(1-np.exp(-2*damp*taus*shell_radius**-2))
-
-
-def minimum_image(coords, wraps, basis):
-    """
-    uses the minumum image convention to correctly account for perodic
-    boundary conditions when calculating coordinates by using the basis
-    vectors of the periodic box.
-    source MSD, 2/9/23
-    author: Jack Bond
-    """
-    disp = np.einsum("ij,anj->ani",basis,wraps)
-    return coords + disp
+from GeometryHelpers import chord_to_arc
 
 
 #MULTIPLE TIME ORIGIN MSDS
