@@ -260,7 +260,7 @@ def bootstrap_com_msd(coords, traj_length, n_subsets, trials,
     fnum,pnum,_ = coords.shape
 
     if subset_size is None:
-        subset_size = int(2*pnum/n_subsets)
+        subset_size = int(pnum/10)
 
     #generate n_subsets com trajectories
     com_msds = np.zeros((traj_length,n_subsets))

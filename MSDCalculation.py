@@ -26,7 +26,7 @@ DEFAULT_ARGS = {
     "max_lagtime": 150, # in tau units
     "origin_sep": 5, #in tau units
     "n_origins": None,
-    "bootstrap_trials": 100,
+    "bootstrap_trials": 2000,
 }
 
 if __name__=="__main__":

@@ -2,7 +2,7 @@
 """
 Created on Fri, Jun 23, 2023
 
-Quickly converts a hoomd gsd file into the common-ground numpy arrays we use mostly
+Quickly converts a hoomd gsd file into the common-ground numpy arrays we use most of the time
 
 @author: Jack Bond
 """
@@ -29,7 +29,7 @@ if __name__=="__main__":
     fnum,pnum,_ = coords_raw.shape
     coords = minimum_image(multiple,wraps,box_basis)
 
-    np.save("datapts_pbc.npy",coords)
+    np.save("datapts_pbc.npy",coords_raw)
     np.save("datapts.npy",coords)
     np.save("times.npy",times)
     np.save("box.npy",box_basis)

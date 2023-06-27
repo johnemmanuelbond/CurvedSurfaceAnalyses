@@ -134,7 +134,7 @@ def get_a_eff(params):
     """
     start = timer()
     a = params['particle_radius']
-    kap = kappa(params['debye_length'])
+    kap = kappa(params)/(2*a) #convert to SI units
     Y_pf = yukawa_prefactor(params)
     
     integrand = lambda r: 1-np.exp(-1*Y_pf*np.exp(-1*kap*r))
