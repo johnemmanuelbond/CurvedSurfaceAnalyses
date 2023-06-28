@@ -27,6 +27,7 @@ DEFAULT_ARGS = {
     "origin_sep": 5, #in tau units
     "n_origins": None,
     "bootstrap_trials": 2000,
+    "D_0": 0.25, #in (2a)^2/tau units
 }
 
 if __name__=="__main__":
@@ -44,8 +45,7 @@ if __name__=="__main__":
     flat = np.std(np.linalg.norm(coords[0],axis=-1)) > 0.1
 
     #define multiple time origin parameters
-    assert times[-1] > 2*args['max_lagtime'], "please provide a maximum lagtime less than half the simulation runtime"
-    if n_orig is None:
+    if args['n_origins'] is None:
         delta = args['origin_sep']
         orig_num=None
     else:
@@ -60,8 +60,8 @@ if __name__=="__main__":
 
     #calculate lattice diffusion by tracking the center of mass
     low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag), pnum, args['bootstrap_trials'], spherical=not flat)
-    if args['flat']:
-        msd_com, _ = mto_com_msd(coords,times, max_lag=arg['max_lagtime'], orig_num=orig_num, delta=delta, spherical=False)
+    if flat:
+        msd_com, _ = mto_com_msd(coords,times, max_lag=args['max_lagtime'], orig_num=orig_num, delta=delta, spherical=False)
     else:
         #for spherical surfaces the center of mass is identically at the origin so we rely on this bootstrapping method
         #for an estimate
@@ -72,9 +72,9 @@ if __name__=="__main__":
     msd_nocom = msd_ens - msd_com
     dmsd_nocom = dmsd_ens + dmsd_com
 
-    np.save("mto_msd_ensemble.npy",np.array(lag,msd_ens,dmsd_ens))
-    np.save("mto_msd_com.npy",np.array(lag,msd_com,dmsd_com))
-    np.save("mto_msd_nocom.npy",,np.array(lag,msd_nocom,dmsd_nocom))
+    np.save("mto_msd_ensemble.npy",np.array([lag,msd_ens,dmsd_ens]))
+    np.save("mto_msd_com.npy",np.array([lag,msd_com,dmsd_com]))
+    np.save("mto_msd_nocom.npy",np.array([lag,msd_nocom,dmsd_nocom]))
 
     #fitting to find long-time diffusive constant
     if flat:
@@ -97,7 +97,7 @@ if __name__=="__main__":
             'dD_com': None,
             'D_diff': None,
             'dD_diff': None,
-            'D_0': None,
+            'D_0': args['D_0'],
     }
 
     dump_json(output, 'diffusion.json')

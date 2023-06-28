@@ -8,6 +8,8 @@ used geometry formulas and values.
 @author: Jack Bond
 """
 
+import numpy as np
+
 #icosohedral angles
 r_ico = np.sin(2*np.pi/5)
 theta1 = 2*np.arcsin(1/2/r_ico)
@@ -21,7 +23,7 @@ def rho(eta, a_eff):
 
 def eta(rho, a_eff):
     """converts number density to area fraction based on an effective radius"""
-    return rho*(np.pi*a_eff**2) #unitless
+    return rho*(np.pi * a_eff**2) #unitless
 
 
 def eta_eff_from_N_R(N,R,a_eff):
@@ -29,7 +31,7 @@ def eta_eff_from_N_R(N,R,a_eff):
     Given a particle count and a sphere radius, returns effective area fraction on such a sphere
     Assumes R and a_eff given in 2a units
     """
-    return N*a_eff**2/(4*R**2)
+    return N * a_eff**2 / (4 * R**2)
 
 
 def R_from_eta_eff_N(eta_eff,N,a_eff):
@@ -37,7 +39,7 @@ def R_from_eta_eff_N(eta_eff,N,a_eff):
     Given an area fraction and a particle count, returns the radius of sphere on which those particles would pack
     Assumes R and a_eff given in 2a units
     """
-    return np.sqrt(N*a_eff**2/(4(eta_eff)))
+    return np.sqrt(N * a_eff**2 / (4 * eta_eff))
 
 
 def N_from_eta_eff_R(eta_eff,R,a_eff):
@@ -45,7 +47,7 @@ def N_from_eta_eff_R(eta_eff,R,a_eff):
     Given an area fraction and a sphere radius, returns the number of particles which would fit on that sphere, rounded to the nearest integer
     Assumes R and a_eff given in 2a units
     """
-    return np.round(eta_eff*4*R**2/(a_eff**2))
+    return np.round(eta_eff * 4 * R**2/(a_eff**2))
 
 
 def chord_to_arc(dists, radius):
@@ -62,7 +64,7 @@ def chord_to_arc(dists, radius):
 
 def hoomd_box_to_matrix(box):
     """ returns the matrix form of a hoomd box for use in minimum image calculations"""
-    return np.array([[box[0],box[3]*box[1],box[4]*box[2]],[0,box[1],box[5]*box[2]],[box[2]]])
+    return np.array([[box[0],box[3]*box[1],box[4]*box[2]],[0,box[1],box[5]*box[2]],[0,0,box[2]]])
 
 
 def expand_around_pbc(frame, basis):

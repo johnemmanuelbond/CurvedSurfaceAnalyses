@@ -9,9 +9,10 @@ Determines whether a system is flat or spherical and performs the appropriate vo
 
 import os
 import numpy as np
+from main_lib.FileHandling import dump_json
 from main_lib.OrderParameters import vor_coord
 
-if __name__ == "__main__"
+if __name__ == "__main__":
     
     assert os.path.exists('datapts.npy'), "please run some postprocessing code to produce numpy files"
     coords = np.load('datapts.npy')
@@ -22,7 +23,7 @@ if __name__ == "__main__"
 
     #run appropriate voronoi tesselation
     if os.path.exists('datapts_pbc.npy'):
-        coords_raw = np.load('coords_raw.npy')
+        coords_raw = np.load('datapts_pbc.npy')
         box_basis = np.load('box.npy')
         vc = np.array([vor_coord(frame, flat=flat, box_basis=box_basis, tol=1e-5) for frame in coords_raw])
     else:

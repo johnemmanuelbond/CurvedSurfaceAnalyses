@@ -27,9 +27,9 @@ if __name__=="__main__":
         box_basis = hoomd_box_to_matrix(hoomd_out[0].configuration.box)
 
     fnum,pnum,_ = coords_raw.shape
-    coords = minimum_image(multiple,wraps,box_basis)
+    coords = minimum_image(coords_raw,wraps,box_basis)
 
     np.save("datapts_pbc.npy",coords_raw)
     np.save("datapts.npy",coords)
-    np.save("times.npy",times)
+    np.save("times.npy",times-times[0])
     np.save("box.npy",box_basis)

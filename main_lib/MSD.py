@@ -46,7 +46,7 @@ def _mto(times, max_lag=None, orig_num=None, delta=None):
         time_origins = np.linspace(0,total_steps-lag_idx,orig_num).astype(int)
     
     #this should be impossible, but here's a stopgap anyway
-    assert time_origins[-1]+max_lag < total_steps, "final step will exceed array size"
+    assert time_origins[-1]+lag_idx < total_steps, "final step will exceed array size. Either reduce max lagtime or use fewer time origins."
 
     return time_origins, lag_idx
 

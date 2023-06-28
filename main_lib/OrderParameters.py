@@ -34,7 +34,8 @@ def vor_coord(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=No
     pnum, _ = frame.shape
     
     if flat:
-        sv = Voronoi(expand_around_pc(frame,box_basis)[:,:2])
+        if box_basis is None: raise Exception("please input simulation box")
+        sv = Voronoi(expand_around_pbc(frame,box_basis)[:,:2])
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
     
     else:
@@ -80,18 +81,7 @@ def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False,box=None):
     
     if flat:
         if box is None: raise Exception("please input simulation box")
-        expand = lambda frame, basis: np.array([
-            *frame,
-            *(frame+basis@np.array([1,0,0])),
-            *(frame+basis@np.array([-1,0,0])),
-            *(frame+basis@np.array([0,1,0])),
-            *(frame+basis@np.array([0,-1,0])),
-            *(frame+basis@np.array([1,1,0])),
-            *(frame+basis@np.array([-1,1,0])),
-            *(frame+basis@np.array([1,-1,0])),
-            *(frame+basis@np.array([-1,-1,0])),
-            ])
-        vor = Voronoi(expand(frame, box)[:,:2])
+        vor = Voronoi(expand_around_pbc(frame, box)[:,:2])
         #flat-case area calculation courtesy of ybeltokov on stackoverlow (jan 19 2019)
         areas = np.zeros(pnum)
         for i,reg in enumerate(vor.point_region[:pnum]):
