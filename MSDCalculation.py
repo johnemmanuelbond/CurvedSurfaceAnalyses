@@ -59,9 +59,9 @@ if __name__=="__main__":
     dmsd_ens = np.max([msd_ens-low_bound,high_bound-msd_ens],axis=0)
 
     #calculate lattice diffusion by tracking the center of mass
-    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag), pnum, args['bootstrap_trials'], spherical=not flat)
+    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag), pnum, args['bootstrap_trials'])
     if flat:
-        msd_com, _ = mto_com_msd(coords,times, max_lag=args['max_lagtime'], orig_num=orig_num, delta=delta, spherical=False)
+        msd_com, _ = mto_com_msd(coords,times, max_lag=args['max_lagtime'], orig_num=orig_num, delta=delta)
     else:
         #for spherical surfaces the center of mass is identically at the origin so we rely on this bootstrapping method
         #for an estimate
