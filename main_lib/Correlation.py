@@ -13,8 +13,9 @@ import numpy as np
 from scipy.signal import find_peaks
 from scipy.spatial.distance import pdist, squareform
 
+from GeometryHelpers import expand_around_pbc
 
-def g_r(coords, bin_width=0.01, subset=None):
+def g_r(coords, bin_width=0.01, subset=None, box=None):
     """
     Given a set of frames, computed the average radial distribution function
     biw_width: determine the width in [2a] units of each rdf bin
@@ -37,9 +38,13 @@ def g_r(coords, bin_width=0.01, subset=None):
 
     #run appropriate function
     if flat:
-        return _g_r_sphere(coords,bin_width=bin_width,exclude=anti)
+        #need to consider nearest images to get the correct stats on interparticle distances
+        assert not (box is None), 'please supply simulation box'
+        expand = np.array([expand_around_pbc(f,box) for f in coords])
+        anti = np.array([*anti,*np.arange(pnum,expand.shape[1])])
+        return _g_r_flat(expand,bin_width=bin_width,exclude=anti)
     else:
-        return _g_r_curved(coords,shell_radius=shell_rad,bin_width=bin_width,exclude=anti)
+        return _g_r_sphere(coords,shell_radius=shell_rad,bin_width=bin_width,exclude=anti)
 
 
 def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
