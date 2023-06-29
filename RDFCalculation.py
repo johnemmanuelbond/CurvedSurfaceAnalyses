@@ -22,7 +22,7 @@ DEFAULT_ARGS = {
 
 if __name__=="__main__":
 
-	if os.path.exists("RDF_analysis_arguments.json"):
+    if os.path.exists("RDF_analysis_arguments.json"):
         args = json.load(open('RDF_analysis_arguments.json'))
     else:
         args = DEFAULT_ARGS
@@ -37,30 +37,30 @@ if __name__=="__main__":
     output = dict()
 
     #do several bin widths
-    for bw in args[bin_widths]:
+    for bw in args['bin_widths']:
 
-	    #getting random sample frames
-	    rng = np.random.default_rng()
-	    idx = np.arange(int(fnum/2-1),fnum)
-	    rng.shuffle(idx)
-	    curr_idx = idx[:n_frames]
-	    reduced = multiple[sorted(curr_idx)]
+        #getting random sample frames
+        rng = np.random.default_rng()
+        idx = np.arange(int(fnum/2-1),fnum)
+        rng.shuffle(idx)
+        curr_idx = idx[:n_frames]
+        reduced = multiple[sorted(curr_idx)]
 
-	    #get g(r)
-	    vals,mids,bins = g_r(reduced,shell_radius=shell_rad,bin_width=bw)
-	    
-	    #save images and numpy arrays
-	    np.save(path+f'RDF_bw{bw}.npy',np.array([mids,vals]))
+        #get g(r)
+        vals,mids,bins = g_r(reduced,shell_radius=shell_rad,bin_width=bw)
+        
+        #save images and numpy arrays
+        np.save(path+f'RDF_bw{bw}.npy',np.array([mids,vals]))
 
-	    # code to integrate the first peak and also get the peak height by multiple methods
+        # code to integrate the first peak and also get the peak height by multiple methods
 
-	    output[f"bw={bw}"] = {
-	            "bw": bw,
-	            "gr_peak_simple": np.max(vals[mids<3]),
-	            "contact_simple": mids[mids<3][np.argmax(vals[mids<3])],
-	            "gr_peak_fit": None,
-	            "gr_area": None,
-	    }
+        output[f"bw={bw}"] = {
+                "bw": bw,
+                "gr_peak_simple": np.max(vals[mids<3]),
+                "contact_simple": mids[mids<3][np.argmax(vals[mids<3])],
+                "gr_peak_fit": None,
+                "gr_area": None,
+        }
     
 
     dump_json(output,"RDF.json")

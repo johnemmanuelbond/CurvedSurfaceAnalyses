@@ -2,9 +2,8 @@
 """
 Created on Thu, Mar 3, 2022
 
-Used to categorize a batch of MC results, extract relevant infromation for
-the reader, compute density profiles, compare them to theory, make movies,
-and examine potential order parameters
+Performs various spatial correlations on results from lammps or hoomd simulations
+(or custom MC code) once they've been processed into numpy arrays
 
 @author: Jack Bond
 """
