@@ -24,7 +24,6 @@ def _mto(times, max_lag=None, orig_num=None, delta=None):
     There are multiple ways to do this calculation.
     delta: specify the time between time origins
     orig_num: specify a desired amount of origins (takes precedence)
-    source: MSD, 6/15/23
     author: Jack Bond
     """
     
@@ -63,7 +62,6 @@ def mto_msd(coords, times, max_lag=None, orig_num = None, delta = None):
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a ([TO x 1]) array of msds and a ([TO x 1]) array of lagtimes
-    source: MSD, 6/15/23
     author: Jack Bond
     """
 
@@ -90,7 +88,6 @@ def mto_msd_part(coords, times, max_lag=None, orig_num = None, delta = None):
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a ([TO x N]) array of msds and a ([TO x 1]) array of lagtimes
-    source: MSD, 6/15/23
     author: Jack Bond
     """
 
@@ -116,7 +113,6 @@ def mto_msd_arc(coords, times, max_lag=None, orig_num = None, delta = None):
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a ([TO x 1]) array of msds and a ([TO x 1]) array of lagtimes
-    source: MSD, 6/15/23
     author: Jack Bond
     """
 
@@ -147,7 +143,6 @@ def mto_msd_part_arc(coords, times, max_lag=None, orig_num = None, delta = None)
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a ([TO x N]) array of msds and a ([TO x 1]) array of lagtimes
-    source: MSD, 6/15/23
     author: Jack Bond
     """
 
@@ -200,7 +195,6 @@ def _com(coords, masses = None, shell_rad=None):
     each particle in the frame.
     if on_sphere, the center of mass point is projected to the surface of the
     sphere which coords sit on.
-    source: MSD, 6/15/23
     author: Jack Bond
     """
     pnum = coords.shape[1]
@@ -229,7 +223,6 @@ def mto_com_msd(coords, times, shell_rad=None, masses=None, max_lag=None, orig_n
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a ([TO x 1]) array of msds and a ([TO x 1]) array of lagtimes
-    source MSD, 6/15/23
     author: Jack Bond
     """
 
@@ -260,7 +253,6 @@ def bootstrap_com_msd(coords, traj_length, n_subsets, trials,
     specified confidence interval for the center of mass motion by randomly taking.
     
     Returns a tuple of three ([TO x N]) arrays of msds and one ([T x 1]) array of lagtimes
-    source: MSD, 6/20/23
     author: Jack Bond,
     """
 
@@ -304,7 +296,6 @@ def mto_msd_weighted_voronoi(coords, times, vor, max_lag=None, orig_num=None, de
     each time origin may be specified. If neither is specified, no mto
     calculation occurs. 
     Returns a tuple of three ([TO x 1]) arrays of msds and one ([TO x 1]) array of lagtimes
-    source: MSD, 6/20/23
     author: Jack Bond, Alex Yeh
     see: Vest, Tarjus, Viot, J. Chem. Phys. (2018) https://doi.org/10.1063/1.5027389
     """
@@ -351,7 +342,6 @@ def mto_msd_weighted_voronoi(coords, times, vor, max_lag=None, orig_num=None, de
 
 def find_DL(msd, lagtime, window=100, msd_func = lambda t, D: 4*D*t):
     """
-    source:MSD 3/14/23
     author: Jack Bond
     """
     ts = []
