@@ -40,9 +40,11 @@ def g_r(coords, bin_width=0.01, subset=None, box=None):
     if flat:
         #need to consider nearest images to get the correct stats on interparticle distances
         assert not (box is None), 'please supply simulation box'
+        area = np.linalg.norm(box[1])
+        rho = coords.shape[1]/area
         expand = np.array([expand_around_pbc(f,box) for f in coords])
         anti = np.array([*anti,*np.arange(pnum,expand.shape[1])])
-        return _g_r_flat(expand,bin_width=bin_width,exclude=anti)
+        return _g_r_flat(expand,area,bin_width=bin_width,exclude=anti)
     else:
         return _g_r_sphere(coords,shell_radius=shell_rad,bin_width=bin_width,exclude=anti)
 
@@ -86,17 +88,17 @@ def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
     angle_bins = bins/shell_radius
     width = bins[1] - bins[0]
     mids = bins[:-1] + width/2
-    hval = np.zeros_like(mids)
     
     counts, _ = np.histogram(allrs, bins=bins)
     vals = counts/(fnum*allrs.shape[1]) * 2/(np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))
     return vals, mids, bins
 
 
-def _g_r_flat(coords, bin_width=0.01, exclude=None):
+def _g_r_flat(coords, plane_area, extent=None, bin_width=0.01, exclude=None):
     """
     Given a frame or set of frames, computed the average radial distribution function
-    for the simple case of a 2D flat surface
+    for the simple case of a 2D flat surface. flat case g(r)'s need the number density
+    rho to properly normalize the histogram
     exclude is a helper kwarg for the subset functionality in g_r
     author: Jack Bond
     """
@@ -107,7 +109,7 @@ def _g_r_flat(coords, bin_width=0.01, exclude=None):
     rshape[:,exclude]=0
     rnum = int(np.sum(np.triu(rshape,k=1)))
     
-    extent = max(pdist(coords[0]))
+    extent = np.sqrt(plane_area)
     
     allrs = np.zeros((fnum, rnum))
     for t, frame in enumerate(coords):
@@ -122,10 +124,9 @@ def _g_r_flat(coords, bin_width=0.01, exclude=None):
     bins = np.histogram_bin_edges(allrs[0], bins = int(extent/bin_width), range = (0, extent))
     width = bins[1] - bins[0]
     mids = bins[:-1] + width/2
-    hval = np.zeros_like(mids)
     
     counts, _ = np.histogram(allrs, bins=bins)
-    vals = counts/(fnum*allrs.shape[1])
+    vals = counts/(fnum*allrs.shape[1]) / (pi*plane_area*(bins[1:]**2-bins[:-1]**2))
 
     return vals, mids, bins
 
