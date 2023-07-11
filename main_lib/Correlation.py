@@ -13,7 +13,7 @@ import numpy as np
 from scipy.signal import find_peaks
 from scipy.spatial.distance import pdist, squareform
 
-from GeometryHelpers import expand_around_pbc
+from GeometryHelpers import expand_around_pbc, hoomd_matrix_to_box
 
 def g_r(coords, bin_width=0.01, subset=None, box=None):
     """
@@ -38,13 +38,25 @@ def g_r(coords, bin_width=0.01, subset=None, box=None):
 
     #run appropriate function
     if flat:
+        from freud.density import RDF
         #need to consider nearest images to get the correct stats on interparticle distances
         assert not (box is None), 'please supply simulation box'
-        area = np.linalg.norm(box[1])
-        rho = coords.shape[1]/area
-        expand = np.array([expand_around_pbc(f,box) for f in coords])
-        anti = np.array([*anti,*np.arange(pnum,expand.shape[1])])
-        return _g_r_flat(expand,area,bin_width=bin_width,exclude=anti)
+        area = np.linalg.norm(np.cross(box[0],box[1]))
+        max_r = min(10,np.sqrt(area/8))
+
+        #freud g(r) doesn't have the same subset functionality unfortunately
+        freud_rdf = RDF(int(max_r/bin_width),max_r)
+        hbox = hoomd_matrix_to_box(box)
+        [freud_rdf.compute(system=(hbox,pts),reset=False) for pts in coords]
+        bins = np.float64(np.array(freud_rdf.bin_edges))
+        mids = np.float64(np.array(freud_rdf.bin_centers))
+        vals = np.float64(np.array(freud_rdf.rdf))
+        return vals, mids, bins
+        
+        #homebrew g(r) is slow and not working quite correctly
+        #expand = np.array([expand_around_pbc(f,box) for f in coords])
+        #anti = np.array([*anti,*np.arange(pnum,expand.shape[1])])
+        #return _g_r_flat(expand,area,bin_width=bin_width,exclude=anti)
     else:
         return _g_r_sphere(coords,shell_radius=shell_rad,bin_width=bin_width,exclude=anti)
 
@@ -64,21 +76,21 @@ def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
     #create the right size matrix to hold the interparticle distances between particles not in exclude and all particles
     fnum, pnum, _ = coords.shape
     rshape = np.ones((pnum,pnum))
-    rshape[:,exclude]=0
+    rshape[exclude,:]=0
     rnum = int(np.sum(np.triu(rshape,k=1)))
     
     allrs = np.zeros((fnum, rnum))
     for t, frame in enumerate(coords):
         #compute geodesic distances
         cos_dists = 1-pdist(frame,metric='cosine')
-        cos_dists[cos_dists>1] = 1
-        cos_dists[cos_dists<-1]=-1
+        cos_dists[cos_dists>  1]=  1
+        cos_dists[cos_dists< -1]= -1
         #reorganize into 2d matrix
         dists = squareform(shell_radius*np.arccos(cos_dists))
         #neglect particles within exlcude along one axis
-        dists[:,exclude] = 0
+        dists[exclude,:] = 0
         #neglect double-counts
-        dists = np.triu(dists)
+        dists = np.triu(dists,k=1)
         allrs[t,:] = dists[dists>0]
     
     #bin distances into a probability distribution
@@ -90,11 +102,12 @@ def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
     mids = bins[:-1] + width/2
     
     counts, _ = np.histogram(allrs, bins=bins)
-    vals = counts/(fnum*allrs.shape[1]) * 2/(np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))
+    norm = fnum * pnum*(pnum-1)/2 * (np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))/2
+    vals = counts/norm
     return vals, mids, bins
 
 
-def _g_r_flat(coords, plane_area, extent=None, bin_width=0.01, exclude=None):
+def _g_r_flat(coords, plane_area, bin_width=0.01, exclude=None):
     """
     Given a frame or set of frames, computed the average radial distribution function
     for the simple case of a 2D flat surface. flat case g(r)'s need the number density
@@ -104,34 +117,35 @@ def _g_r_flat(coords, plane_area, extent=None, bin_width=0.01, exclude=None):
     """
 
     #create the right size matrix to hold the interparticle distances between particles not in exclude and all particles
-    fnum, pnum, _ = coords.shape
-    rshape = np.ones((pnum,pnum))
-    rshape[:,exclude]=0
+    fnum, pnum_pbc, _ = coords.shape
+    pnum=int(pnum_pbc/9)
+    rshape = np.ones((pnum_pbc,pnum_pbc))
+    rshape[exclude,:]=0
     rnum = int(np.sum(np.triu(rshape,k=1)))
     
-    extent = np.sqrt(plane_area)
+    extent = np.sqrt(plane_area/3)
     
     allrs = np.zeros((fnum, rnum))
     for t, frame in enumerate(coords):
         #compute interparticledistance matrix
         dists = squareform(pdist(frame))
         #neglect particles within exlcude along one axis
-        dists[:,exclude] = 0
+        dists[exclude,:] = 0
         #neglect double-counts
-        dists = np.triu(dists)
+        dists = np.triu(dists,k=1)
         allrs[t,:] = dists[dists>0]
-        
+
     bins = np.histogram_bin_edges(allrs[0], bins = int(extent/bin_width), range = (0, extent))
     width = bins[1] - bins[0]
     mids = bins[:-1] + width/2
     
     counts, _ = np.histogram(allrs, bins=bins)
-    vals = counts/(fnum*allrs.shape[1]) / (pi*plane_area*(bins[1:]**2-bins[:-1]**2))
-
+    norm = fnum * pnum*(pnum-1)/2 * 1/extent**2 * (bins[1:]**2-bins[:-1]**2)
+    vals = counts/norm
     return vals, mids, bins
 
 
-def firstCoordinationShell(frames):
+def firstCoordinationShell(frames, box=None):
     """
     From a frame or trajecectory of frames, find the minimum in the radial distribution
     for the purposes of finding neighbors. Depending on the topology of the surface, this
@@ -141,7 +155,7 @@ def firstCoordinationShell(frames):
     """
     if len(frames.shape) < 3:
         frames = np.array([frames])
-    vals, mids, _ = g_r(frames)
+    vals, mids, _ = g_r(frames,box=box)
     peaks, _ = find_peaks(vals)
     spacing = mids[peaks[0]]
 
@@ -153,7 +167,7 @@ def firstCoordinationShell(frames):
     return shell_radius
 
 
-def exchange_finder(frames, tol=0.05):
+def exchange_finder(frames, tol=0.05, box=None):
     """
     From a set of particle coordinates, locate where particles exchange between coordination
     shells by creating a subset of coordinates whose displacements are near the minimum in
@@ -168,7 +182,7 @@ def exchange_finder(frames, tol=0.05):
     or geodesic metric. But this effect is small at small distances,
     and the specific value of rdf min doesn't matter too much to the
     functionality of this method"""
-    rdf_min = firstCoordinationShell(frames)
+    rdf_min = firstCoordinationShell(frames,box=box)
     print(rdf_min)
     coords = []
 

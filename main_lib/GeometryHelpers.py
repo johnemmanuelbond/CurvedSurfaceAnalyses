@@ -67,6 +67,15 @@ def hoomd_box_to_matrix(box):
     return np.array([[box[0],box[3]*box[1],box[4]*box[2]],[0,box[1],box[5]*box[2]],[0,0,box[2]]])
 
 
+def hoomd_matrix_to_box(box):
+    """ returns the hoomd box form of a pbc basis matrix"""
+    hbox= np.array([box[0,0],box[1,1],box[2,2],box[0,1]/box[1,1],box[0,2]/box[2,2],box[1,2]/box[2,2]])
+    if box[2,2]==0:
+        hbox[4]=0
+        hbox[5]=0
+    return hbox
+
+
 def expand_around_pbc(frame, basis):
     """
     given a frame and a box basis matrix, returns a larger frame which

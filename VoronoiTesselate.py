@@ -36,12 +36,14 @@ if __name__ == "__main__":
     frac7 = np.mean(vc==7)
     fracd = np.mean(vc!=6)
     q_xs = ((np.abs(vc-6).sum()/fnum)-12)/24
+    N_avg = np.mean(vc,axis='all')
 
     output = {
             'frac5': frac5,
             'frac7': frac7,
             'fracd': fracd,
             'q_xs': q_xs,
+            'N_avg': N_avg,
     }
 
     dump_json(output, 'defects.json')
