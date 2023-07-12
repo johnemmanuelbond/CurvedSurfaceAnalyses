@@ -342,29 +342,34 @@ def mto_msd_weighted_voronoi(coords, times, vor, max_lag=None, orig_num=None, de
 
 def find_DL(msd, lagtime, window=100, msd_func = lambda t, D: 4*D*t):
     """
+    Given an msd trajectory, finds the time at which all short-time behavior is gone.
+    to do this we perform a series of tangent fits to the trajectory and find the first
+    instance where the slope increases instantaneously. Since the diffusivity monotonically
+    decreases from the short-time behavior to the long-time behavior, this method should safely
+    distinguish the two.
+    'window' specifies the length, in indices, that we fit each tangent line to.
+    'msd_func': allows alternative fitting functions, though lines are pretty standard.
     author: Jack Bond
     """
     ts = []
     Ds = []
-    dDs = []
-    for i,t in enumerate(lagtime[:-1*window]):
+    for i,t in enumerate(lagtime[:-1*window:int(window/2)]):
         ts.append(np.mean(lagtime[i:i+window]))
         fit_x = lagtime[i:i+window]-lagtime[i]
         fit_y = msd[i:i+window] - msd[i]
-        d, cov = curve_fit(msd_func,fit_x,fit_y,p0=[1e-1])
+        d, _ = curve_fit(msd_func,fit_x,fit_y,p0=[1e-1])
         Ds.append(d[0])
-        dDs.append(np.sqrt(cov[0,0]))
 
     Ds = np.array(Ds)
     dDs = np.array(dDs)
     ts = np.array(ts)
     D_diff = Ds[1:]-Ds[:-1]
     tol = np.std(D_diff)
-    if not np.any(D_diff>tol):
-        tol = 0
+    while not np.any(D_diff>tol):
+        tol = tol/2
     i_cross = np.where(D_diff>tol)[0][0]
 
-    return ts, Ds, dDs, i_cross
+    return ts[i_cross]
 
 
 #Alex's old version for benchmarking
