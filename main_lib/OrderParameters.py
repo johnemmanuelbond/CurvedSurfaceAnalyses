@@ -18,7 +18,7 @@ from timeit import default_timer as timer
 
 
 #a simple coordination number 
-def Nc(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def coord(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
     npart = frame.shape[0]
     i,j = np.mgrid[0:npart,0:npart]
     dr_norm = sp.spatial.distance.squareform(pdist(frame))
@@ -63,7 +63,7 @@ def shareVoronoiVertex(sv, i, j):
 #returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
 def voronoi_colors(frame,v=None,tol=1e-6):
     if type(v)==type(None):
-        v = Vc(frame, excludeborder=False,tol=tol)
+        v = vor_coord(frame, excludeborder=False,tol=tol)
     #print(np.sum(6-v))
     #print(np.sum(np.abs(6-v)))
     colors = np.array([[0.6,0.6,0.6] for _ in v])
@@ -331,8 +331,8 @@ def findScarsCarefully(frame,tol=1e-6):
 
 def findScars(frame,tol=1e-6,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
 
-    _, neighbors = Nc(frame,shellradius=coord_shell)
-    charge = 6-Vc(frame,tol=tol)
+    _, neighbors = coord(frame,shellradius=coord_shell)
+    charge = 6-vor_coord(frame,tol=tol)
     
     charged_pairs = np.abs(np.array([charge for _ in charge])*np.array([charge for _ in charge]).T)
 
@@ -412,8 +412,8 @@ def c6_hex(pnum):
 def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     N = frame.shape[0]
     i,j = np.mgrid[0:N,0:N]
-    _, n = Nc(frame,shellradius=coord_shell)
-    vc = Vc(frame)
+    _, n = coord(frame,shellradius=coord_shell)
+    vc = vor_coord(frame)
 
 
     # finding the tanget-plane components of the nearest-neighbor bonds, we'll
@@ -481,7 +481,7 @@ def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+n
 #CURRENTLY BROKEN
 def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     N = frame.shape[0]
-    n, vc = Nc(frame,shell_radius=coord_shell)
+    n, vc = coord(frame,shell_radius=coord_shell)
     
     psi6, psi6global = Psi6(frame)
     C6 = 0*vc

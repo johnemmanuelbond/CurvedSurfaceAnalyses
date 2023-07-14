@@ -204,11 +204,18 @@ def _com(coords, masses = None, shell_rad=None):
     com = np.average(coords, weights=masses,axis=1)
 
     if not (shell_rad is None):
+        #fist we put the center of mass on the surface of the sphere
         com_rad = np.linalg.norm(com,axis=-1)
         fact = shell_rad/com_rad
         com = np.array([fact,fact,fact]).T * com
-        if np.any(fact>2):
-            at_center = np.argmax(fact>2)
+        #this method is meant to pick up local lattice wiggles
+        #if the center of mass of this cluster move sufficiently
+        #closer to the sphere center than it's inital position
+        #--meaning the cluster has dilated as opposed to moved--
+        #then we want to neglect this contribution
+        relative_dilation = np.abs((com_rad[0]-com_rad))/shell_rad
+        if np.any(relative_dilation > 1/10):
+            at_center = np.argmax(relative_dilation > 1/10)
             print(at_center)
             com[(at_center+1):]=com[at_center]
 
@@ -361,7 +368,6 @@ def find_DL(msd, lagtime, window=100, msd_func = lambda t, D: 4*D*t):
         Ds.append(d[0])
 
     Ds = np.array(Ds)
-    dDs = np.array(dDs)
     ts = np.array(ts)
     D_diff = Ds[1:]-Ds[:-1]
     tol = np.std(D_diff)
