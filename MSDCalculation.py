@@ -28,6 +28,7 @@ DEFAULT_ARGS = {
     "n_origins": None,
     "bootstrap_trials": 2000,
     "D_0": 0.25, #in (2a)^2/tau units
+    "dilation_threshold": 1/20,
 }
 
 if __name__=="__main__":
@@ -59,7 +60,7 @@ if __name__=="__main__":
     dmsd_ens = np.max([msd_ens-low_bound,high_bound-msd_ens],axis=0)
 
     #calculate lattice diffusion by tracking the center of mass
-    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag), pnum, args['bootstrap_trials'])
+    low_bound_com, high_bound_com = bootstrap_com_msd(coords, len(lag), pnum, args['bootstrap_trials'], dilation_threshold=args['dilation_threshold'])
     if flat:
         msd_com, _ = mto_com_msd(coords,times, max_lag=args['max_lagtime'], orig_num=orig_num, delta=delta)
     else:

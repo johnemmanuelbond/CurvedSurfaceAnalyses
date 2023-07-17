@@ -189,7 +189,7 @@ def bootstrap_msd(msd_part, trials, confidence=95, rng=default_rng()):
 
 #CENTER OF MASS CORRECTIONS
 
-def _com(coords, masses = None, shell_rad=None):
+def _com(coords, masses = None, shell_rad=None, dilation_threshold=1/20):
     """
     returns the center of mass trajectory of a set of frames given the mass of
     each particle in the frame.
@@ -214,8 +214,8 @@ def _com(coords, masses = None, shell_rad=None):
         #--meaning the cluster has dilated as opposed to moved--
         #then we want to neglect this contribution
         relative_dilation = np.abs((com_rad[0]-com_rad))/shell_rad
-        if np.any(relative_dilation > 1/10):
-            at_center = np.argmax(relative_dilation > 1/10)
+        if np.any(relative_dilation > dilation_threshold):
+            at_center = np.argmax(relative_dilation > dilation_threshold)
             print(at_center)
             com[(at_center+1):]=com[at_center]
 
@@ -253,7 +253,7 @@ def mto_com_msd(coords, times, shell_rad=None, masses=None, max_lag=None, orig_n
 
 
 def bootstrap_com_msd(coords, traj_length, n_subsets, trials, 
-        masses = None, subset_size=None, shell_rad=None,
+        masses = None, subset_size=None, shell_rad=None, dilation_threshold=1/20,
         confidence=95, rng=default_rng()):
     """
     Given a set of T timesteps of N particles ([T x N x 3]), performs bootstrapping to estimate a
@@ -282,7 +282,7 @@ def bootstrap_com_msd(coords, traj_length, n_subsets, trials,
         subset_idx = np.argsort(np.linalg.norm(coords[i_start]-rand_point,axis=-1))[:subset_size]
         traj = coords[i_start:(i_start+traj_length)][:,subset_idx]
         
-        subset_com = _com(traj,shell_rad=shell_rad,masses=masses[subset_idx])
+        subset_com = _com(traj,shell_rad=shell_rad,masses=masses[subset_idx],dilation_threshold=dilation_threshold)
         com_msds[:,i] = np.sum((subset_com-subset_com[0])**2,axis=-1)
 
     low_bound, high_bound = bootstrap_msd(com_msds,trials, confidence=confidence,rng=rng)
