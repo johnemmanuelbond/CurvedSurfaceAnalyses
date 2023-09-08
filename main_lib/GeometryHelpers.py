@@ -30,6 +30,7 @@ def eta_eff_from_N_R(N,R,a_eff):
     """
     Given a particle count and a sphere radius, returns effective area fraction on such a sphere
     Assumes R and a_eff given in 2a units
+    author: Jack Bond
     """
     return N * a_eff**2 / (4 * R**2)
 
@@ -38,6 +39,7 @@ def R_from_eta_eff_N(eta_eff,N,a_eff):
     """
     Given an area fraction and a particle count, returns the radius of sphere on which those particles would pack
     Assumes R and a_eff given in 2a units
+    author: Jack Bond
     """
     return np.sqrt(N * a_eff**2 / (4 * eta_eff))
 
@@ -46,6 +48,7 @@ def N_from_eta_eff_R(eta_eff,R,a_eff):
     """
     Given an area fraction and a sphere radius, returns the number of particles which would fit on that sphere, rounded to the nearest integer
     Assumes R and a_eff given in 2a units
+    author: Jack Bond
     """
     return np.round(eta_eff * 4 * R**2/(a_eff**2))
 

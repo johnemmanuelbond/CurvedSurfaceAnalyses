@@ -51,7 +51,7 @@ def kappa(params):
     """
 
     if 'debye_length' in params:
-        return 2*params['particle_radius']/params['debye_length']
+        return 2*params['particle_radius']/params['debye_length'] #[1/2a]
 
     kT = kb*params['temperature']            # [J]
     ze = params['ion_multiplicity']*e        # [C] electrolyte charge
@@ -59,7 +59,7 @@ def kappa(params):
     C = params['electrolyte_concentration']  # [mol/L]
 
     #assuming a symmetric electrolyte
-    return np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/m]
+    return 2*params['particle_radius']/np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/2a]
 
 
 def ion_conc(params):

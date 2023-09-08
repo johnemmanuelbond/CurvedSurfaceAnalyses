@@ -33,17 +33,18 @@ def _mto(times, max_lag=None, orig_num=None, delta=None):
     assert max_lag <= times[-1], "max lagtime is larger than total runtime"
     #find the maximum trajectory length
     lag_idx = np.argmin(np.abs(times-max_lag))
-    
     total_steps=len(times)
 
     if orig_num is None:
         #default to one full-length time origin
-        if delta is None: time_origins = np.array([0])
-        step = np.argmin(np.abs(times-delta))
-        time_origins = np.arange(0,total_steps-lag_idx,step)
+        if delta is None:
+            time_origins = np.array([0])
+        else:
+            step = np.argmin(np.abs(times-delta))
+            time_origins = np.arange(0,total_steps-lag_idx-1,step)
     else:
-        time_origins = np.linspace(0,total_steps-lag_idx,orig_num).astype(int)
-    
+        time_origins = np.linspace(0,total_steps-lag_idx-1,orig_num).astype(int)
+
     #this should be impossible, but here's a stopgap anyway
     assert time_origins[-1]+lag_idx < total_steps, "final step will exceed array size. Either reduce max lagtime or use fewer time origins."
 
@@ -452,9 +453,7 @@ if __name__=="__main__":
     config = json.load(open('config.json','r'))
 
     coords = np.load('example_datapts.npy')
-    times = np.load('times.npy')*config['arg']['xxxtimestepxxx']
-    #coords = np.load('example_datapts_minim.npy')
-    #times = np.load('times.npy')
+    times = np.load('times.npy')
     
     fnum,pnum,_= coords.shape
     vor = np.load('example_vor_coord.npy')

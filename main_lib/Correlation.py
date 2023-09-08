@@ -145,7 +145,7 @@ def _g_r_flat(coords, plane_area, bin_width=0.01, exclude=None):
     return vals, mids, bins
 
 
-def firstCoordinationShell(frames, box=None):
+def first_coord_shell(frames, box=None):
     """
     From a frame or trajecectory of frames, find the minimum in the radial distribution
     for the purposes of finding neighbors. Depending on the topology of the surface, this
@@ -182,7 +182,7 @@ def exchange_finder(frames, tol=0.05, box=None):
     or geodesic metric. But this effect is small at small distances,
     and the specific value of rdf min doesn't matter too much to the
     functionality of this method"""
-    rdf_min = firstCoordinationShell(frames,box=box)
+    rdf_min = first_coord_shell(frames,box=box)
     print(rdf_min)
     coords = []
 
@@ -282,7 +282,7 @@ def scar_correlation(frame,charge_to_correlate = 1, bin_width=2,tol=1e-6):
     mids = hbin_edge[:-1] + widths/2
     hval = 0*mids
 
-    coord_shell = firstCoordinationShell(frame)
+    coord_shell = first_coord_shell(frame)
 
     #find_scars assembles lists of topological charges within a coord_shell of each other
     from OrderParameters import find_scars
@@ -316,43 +316,244 @@ def scar_correlation(frame,charge_to_correlate = 1, bin_width=2,tol=1e-6):
 
 if __name__=="__main__":
 
+    from FileHandling import read_xyz_frame, output_vis
+    from UnitConversions import get_a_eff
     from timeit import default_timer as timer
+    import json, glob
+    import matplotlib.pyplot as plt
 
     start = timer()
 
+    #load data from a preprocessed simulation
+    config = json.load(open('config.json','r'))
+    if 'simarg' in config:
+        eta = config['simarg']['eta']
+    else:
+        aeff = get_a_eff(config['params'])/(2*config['params']['particle_radius'])
+        eta = config['arg']['npart']*aeff**2 / (4*config['arg']['xxxradiusxxx']**2)
+        rho_avg = config['arg']['npart'] / (4*np.pi*config['arg']['xxxradiusxxx']**2)
+
+    coords = np.load('example_datapts.npy')
+    fnum, pnum, _ = coords.shape
+    vor = np.load('example_vor_coord.npy')
+    times = np.load('times.npy')
+    flat = np.linalg.norm(coords[:10],axis=-1).std() > 1.0
+    if flat:
+        box = np.load('box.npy')
+    else:
+        box=None
+        shell_radius = np.linalg.norm(coords[:10],axis=-1).mean()
+
+
+    #compare to ensemble chi_T from g(r)
+    n_frames = min(int(fnum/2),int(5e8/pnum**2))
+
+    from MSD import mto_msd_part
+    msd_part, lagtime = mto_msd_part(coords[int(fnum/10):],times[:-int(fnum/10)],max_lag=5,orig_num=50)
+
+    #getting random sample frames
+    rng = np.random.default_rng()
+    idx = np.arange(int(fnum/2-1),fnum)
+    rng.shuffle(idx)
+    curr_idx = idx[:n_frames]
+    sample = coords[sorted(curr_idx)]
+    sample_vor = vor[sorted(curr_idx)]
+
+    xs = np.linspace(0,2,200)
+    ys = np.linspace(0,1,100)
+
+    dx = (xs[1:]-xs[:-1]).mean()
+    dy = (ys[1:]-ys[:-1]).mean()
+
+    rhos = np.zeros((len(xs[:-1]),len(ys[:-1])))
+    qbars = np.zeros((len(xs[:-1]),len(ys[:-1])))
+    dNs = np.zeros((len(xs[:-1]),len(ys[:-1])))
+    Dests = np.zeros((len(xs[:-1]),len(ys[:-1])))
+
+    sector_area = 5*np.pi#2*np.pi
+    cutoff = np.sqrt(sector_area/np.pi)
+
+
+    for i, phi in enumerate(np.pi*(xs[:-1]+dx/2)):
+        for j, theta in enumerate(np.pi*(ys[:-1]+dy/2)):
+
+            point = shell_radius*np.array([np.cos(phi)*np.sin(theta),np.sin(phi)*np.sin(theta),np.cos(theta)])
+            
+            inside = np.array([ (np.linalg.norm(frame-point,axis=-1) < cutoff) for frame in sample])
+
+            Ns = inside.sum(axis=-1)
+
+            Qs = np.array([np.abs(sample_vor[k,idx]-6).sum() for k, idx in enumerate(inside)])
+
+            rhos[i,j] = (Ns/sector_area).mean()
+            dNs[i,j] = Ns.std()
+            qbars[i,j] = (Qs/Ns).mean()
+
+            all_ptls = np.unique(np.where(inside)[1])
+            traj = msd_part[:,all_ptls].mean(axis=-1)
+            idx = lagtime>1
+            Dests[i,j] = 1/4 * (traj[idx][-1]-traj[idx][0])/(lagtime[idx][-1]-lagtime[idx][0])
+
+    from matplotlib.colors import Normalize as c_norm
+
+    fig, ax = plt.subplots(figsize=(6.5,3.25),dpi=600)
+    #ax.set_ylabel('$\\theta$')
+    #ax.set_xlabel('$\\phi$')
+    ax.set_xticks([0,0.5,1,1.5,2])
+    ax.set_xticklabels(['$0\\pi$','','$\\pi$','','$2\\pi$'])
+    ax.set_yticks([0,0.5,1])
+    ax.set_yticklabels(['$0\\pi$','','$\\pi$'])
+    ax.set_title(f"$R={shell_radius:.2f}, \\eta_{{eff}}={eta:.2f}, N={pnum}$")
+    ax.invert_yaxis()
+    ax.set_aspect('equal')
+    grid = ax.pcolormesh(*np.meshgrid(xs,ys),qbars.T,
+        cmap='Reds',norm=c_norm(0,0.5,clip=False))
+    cbar = fig.colorbar(grid,ax=ax)
+    cbar.set_label("$Q/N$")
+    fig.savefig('TEST_qbar_map.jpg',bbox_inches='tight')
+
+
+    fig, ax = plt.subplots(figsize=(6.5,3.25),dpi=600)
+    #ax.set_ylabel('$\\theta$')
+    #ax.set_xlabel('$\\phi$')
+    ax.set_xticks([0,0.5,1,1.5,2])
+    ax.set_xticklabels(['$0\\pi$','','$\\pi$','','$2\\pi$'])
+    ax.set_yticks([0,0.5,1])
+    ax.set_yticklabels(['$0\\pi$','','$\\pi$'])
+    ax.set_title(f"$R={shell_radius:.2f}, \\eta_{{eff}}={eta:.2f}, N={pnum}$")
+    ax.invert_yaxis()
+    ax.set_aspect('equal')
+    grid = ax.pcolormesh(*np.meshgrid(xs,ys),np.pi*aeff**2 * rhos.T,
+        cmap='coolwarm_r',norm=c_norm(eta-0.02,eta+0.02,clip=True))
+    cbar = fig.colorbar(grid,ax=ax)
+    cbar.set_label("$\\eta_{{eff}}$")
+    fig.savefig('TEST_rho_map.jpg',bbox_inches='tight')
+
+
+    fig, ax = plt.subplots(figsize=(6.5,3.25),dpi=600)
+    #ax.set_ylabel('$\\theta$')
+    #ax.set_xlabel('$\\phi$')
+    ax.set_xticks([0,0.5,1,1.5,2])
+    ax.set_xticklabels(['$0\\pi$','','$\\pi$','','$2\\pi$'])
+    ax.set_yticks([0,0.5,1])
+    ax.set_yticklabels(['$0\\pi$','','$\\pi$'])
+    ax.set_title(f"$R={shell_radius:.2f}, \\eta_{{eff}}={eta:.2f}, N={pnum}$")
+    ax.invert_yaxis()
+    ax.set_aspect('equal')
+    grid = ax.pcolormesh(*np.meshgrid(xs,ys),dNs.T,
+        cmap='Purples',norm=c_norm(0,2.0,clip=False))
+    cbar = fig.colorbar(grid,ax=ax)
+    cbar.set_label("$\\sigma_N$")
+    fig.savefig('TEST_dN_map.jpg',bbox_inches='tight')
+
+
+    fig, ax = plt.subplots(figsize=(6.5,3.25),dpi=600)
+    #ax.set_ylabel('$\\theta$')
+    #ax.set_xlabel('$\\phi$')
+    ax.set_xticks([0,0.5,1,1.5,2])
+    ax.set_xticklabels(['$0\\pi$','','$\\pi$','','$2\\pi$'])
+    ax.set_yticks([0,0.5,1])
+    ax.set_yticklabels(['$0\\pi$','','$\\pi$'])
+    ax.set_title(f"$R={shell_radius:.2f}, \\eta_{{eff}}={eta:.2f}, N={pnum}$")
+    ax.invert_yaxis()
+    ax.set_aspect('equal')
+    grid = ax.pcolormesh(*np.meshgrid(xs,ys),Dests.T,
+        cmap='Blues',norm=c_norm(0,0.1,clip=False))
+    cbar = fig.colorbar(grid,ax=ax)
+    cbar.set_label("$D_L$ estimate")
+    fig.savefig('TEST_D_map.jpg',bbox_inches='tight')
 
     end = timer()
-    print(f"{end-start}s runtime")
+    print(f"{end-start:.5f}s runtime")
 
 
-#DEPRECATED, MAYBE WORTH RESURRECTING AT SOME POINT
-# def var_bin_rho_hist(frames, var_bins=None):
-#     """calculates particle number density projected onto xy-plane
-#     given a N x M x 3 array. Uses flexible bin size, starting at a_hc and
-#     decreasing to a_hc*1e-2 at furthest extent."""
-#     projected = frames[:,:,:2]
-#     fnum, pnum, _ = projected.shape #get number of frames and particles
+# if __name__=="__main__":
 
-#     # converts projected coords into distances from center across sample
-#     dists = np.linalg.norm(projected, axis=-1).flatten()
+#     from FileHandling import read_xyz_frame, output_vis
+#     from UnitConversions import get_a_eff
+#     from timeit import default_timer as timer
+#     import json, glob
+#     import matplotlib.pyplot as plt
 
-#     # if furthest is not defined, include 20% beyond farthest excursion
-#     if var_bins is None:
-#         bin_widths = 0.1*np.ones(50)
-#         var_widths = np.geomspace(a_hc, 0.1, num=40)
-#         bin_widths[:var_widths.size] = var_widths
-#         var_bins = np.zeros(bin_widths.size+1)
-#         var_bins[1:] = np.cumsum(bin_widths)
+#     def isothermal_compressibility(coords, area = None, point = None,rho_avg=None):
 
-#     widths = var_bins[1:] - var_bins[:-1]
-#     mids = var_bins[:-1] + widths/2
+#         fnum, pnum, _ = coords.shape
 
-#     #annular area formula as defined below:
-#     #https://en.wikipedia.org/wiki/Annulus_(mathematics)
-#     area = np.pi*(var_bins[1:]**2 - var_bins[:-1]**2)
-#     #get count within each bin
-#     hval, hbin = np.histogram(dists, bins=var_bins)
-    
-#     errs = np.sqrt(hval) / (fnum * area)
-#     rho = hval / (fnum * area)
-#     return mids, rho, hbin, errs
+#         #choose a random point from the starting frame
+#         if point is None:
+#             point = coords[0,np.random.choice(pnum)]
+#             print(point)
+
+#         #detect if the system is flat, and calculate the spherical shell radius if not flat.
+#         flat = np.linalg.norm(coords[:10],axis=-1).std() > 1.0
+#         if not flat:
+#             shell_radius = np.linalg.norm(coords[:10],axis=-1).mean()
+#             rho_avg = pnum/(4*np.pi*shell_radius**2)
+
+#         #if no subset area is given, assume it's 1/8 of the sphere (or throw an error if the system isn't spherical)
+#         if area is None:
+#             assert not flat, "please suppy an area of subset to analyze"
+#             area = np.pi*shell_radius**2
+
+#         #this area-based cutoff holds on both spherical and flat surfaces.
+#         cutoff = np.sqrt(area/np.pi)
+
+#         Ns = np.array([ (np.linalg.norm(frame-point,axis=-1) < cutoff).sum() for frame in coords])
+
+#         delNs = Ns - rho_avg*area
+#         fluct = (delNs**2).mean()
+
+#         print(f"{Ns.mean():.2f}, {rho_avg*area:.2f}")
+
+#         return fluct/(rho_avg*rho_avg*area)
+
+#     start = timer()
+
+#     #load data from a preprocessed simulation
+#     config = json.load(open('config.json','r'))
+#     if 'simarg' in config:
+#         eta = config['simarg']['eta']
+#     else:
+#         aeff = get_a_eff(config['params'])/(2*config['params']['particle_radius'])
+#         eta = config['arg']['npart']*aeff**2 / (4*config['arg']['xxxradiusxxx']**2)
+#         rho_avg = config['arg']['npart'] / (4*np.pi*config['arg']['xxxradiusxxx']**2)
+
+#     coords = np.load('example_datapts.npy')
+#     fnum, pnum, _ = coords.shape
+#     flat = np.linalg.norm(coords[:10],axis=-1).std() > 1.0
+#     if flat:
+#         box = np.load('box.npy')
+#     else:
+#         box=None
+#         shell_radius = np.linalg.norm(coords[:10],axis=-1).mean()
+
+#     print("local chi_T",isothermal_compressibility(coords[int(fnum/3):],area=40.0))
+
+#     #compare to ensemble chi_T from g(r)
+#     n_frames = min(int(fnum/2),int(5e8/pnum**2))
+
+#     #getting random sample frames
+#     rng = np.random.default_rng()
+#     idx = np.arange(int(fnum/2-1),fnum)
+#     rng.shuffle(idx)
+#     curr_idx = idx[:n_frames]
+#     sample = coords[sorted(curr_idx)]
+
+#     #get g(r)
+#     vals,mids,bins = g_r(sample,bin_width=0.005,box=box)
+
+#     if flat:
+#         jac = 2*np.pi*mids
+#     else:
+#         jac = 2*np.pi*shell_radius*np.sin(mids/shell_radius)
+
+#     integrand = vals-1
+
+#     integral = (integrand*jac*(bins[1:]-bins[:-1])).sum()
+
+#     print("ensemble chi_T", 1/rho_avg + integral)
+
+
+
+#     end = timer()
+#     print(f"{end-start:.5f}s runtime")

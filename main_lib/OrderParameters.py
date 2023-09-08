@@ -1,37 +1,115 @@
-import os, sys, glob, json
+# -*- coding: utf-8 -*-
+"""
+Created on Mon, Apr 25, 2022
 
-from FileHandling import read_xyz_frame
-from GeometryHelpers import expand_around_pbc
+Contains a collection of calculations which compute single value, or arrays
+of order parameters on a frame of 3D coordinate data.
+
+@author: Jack Bond
+"""
 
 import numpy as np
 import scipy as sp
 
 from scipy.spatial.distance import pdist
 from scipy.spatial import SphericalVoronoi, Voronoi, ConvexHull#, geometric_slerp
-from scipy.signal import find_peaks
 from scipy.integrate import quad
+from scipy.special import gamma as gammafunc
 
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-
-from timeit import default_timer as timer
+from GeometryHelpers import expand_around_pbc
 
 
-#a simple coordination number 
-def coord(frame, shellradius = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
+    """
+    calculates the second virial coeffecient for an arbitrary potential. This
+    potential, phi, returns an energy in kT units based on only a pair distance
+    r, in 2a units.
+    'splits': bounds on the integration, can break the integral up into
+    discreet points for precision purposes.
+    'dim': this method can compute B2 in arbirtrary (integer) dimensions
+    'core_radius': the size of am optional hard core (phi->infinity) within
+    the potential
+    author: Jack Bond
+    """
+    
+    if type(phi) != type(np.mean): raise Exception("Input must be a python function capable of acting on arrays.")
+
+    mayer_f = lambda r: np.exp(-phi(r))-1
+
+    #hypersphere solid angle
+    g = gammafunc(dim/2+1)
+    hsolid = lambda r: dim*np.pi**(dim/2)/g *r**(dim-1)
+
+    integrand = lambda r: -1/2 * hsolid(r) * mayer_f(r)
+
+    # infinity plays poorly, so if we want a hard core we need to start from 1.0
+    if core_radius!=None:
+        splits = splits[splits>=2*core_radius]
+        if not (np.any(splits==2*core_radius)):
+            splits = np.array([2*core_radius,*splits])
+
+    bounds = zip(splits[:-1],splits[1:])
+    parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
+
+    B2 = np.array(parts).sum()
+    #now we add back the hard core correction, mayer_f goes to -1 in this limit
+    if core_radius!=None:
+        B2+=quad(hsolid,0,2*core_radius)[0]/2
+
+    return B2, integrand, parts
+
+
+def coord(frame, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    """
+    given a frame of 3D coordinates, calculates the coordination number of each
+    particle using a simple cutoff radius. Also returns a list of particle neighbors who lie within this radius
+    'shell radius': The cutoff radius used to find neighbors (defaulting to
+    just beyond the first coordination shell of a close-packed lattice)
+    author: Jack Bond
+    """
     npart = frame.shape[0]
     i,j = np.mgrid[0:npart,0:npart]
     dr_norm = sp.spatial.distance.squareform(pdist(frame))
     
-    neighbors = dr_norm<shellradius
+    neighbors = dr_norm<cutoff
     neighbors[i==j]=False
     Nc = np.sum(neighbors,axis=-1)
 
     return Nc, neighbors
 
-#coordination number based of voronoi triangulation
-def vor_coord(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=None):
+
+#create the typical array of colors used to indicate topological charge
+from matplotlib.colors import to_rgb
+cols = ['grey' for _ in range(13)]
+cols[4] = 'orange'
+cols[5] = 'red'
+cols[6] = 'white'
+cols[7] = 'green'
+cols[8] = 'blue'
+cols[0] = 'black'
+cols[-1] = 'black'
+VORONOI_COLORS = np.array([to_rgb(c) for c in cols])
+
+
+def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False):
+    """
+    given a frame, calculates the coordination number of each particle using a voronoi tesselation.
+    'flat': determine whether the frame in question sits on a spherical
+    surface or not, will detect for itself if unspecified.
+    'R': specify a radius for an underlying spherical surface. Will calculate
+    if unspecified
+    'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
+    from the spherical surface each particle is allowed to be at maximum.
+    'box_basis': specify the basis vectors for period boundary conditions
+    'exclude_border': for particles confined to a cap on a spherical surface,
+    can opt to disregard (-1 coord number) particles who sit at the border of
+    this cap and thus aren't part of a bulk system.
+    author: Jack Bond
+    """
+
     pnum, _ = frame.shape
+    if flat is None:
+        flat = (np.std(np.linalg.norm(frame,axis=-1)) > 0.1)
     
     if flat:
         if box_basis is None: raise Exception("please input simulation box")
@@ -49,126 +127,112 @@ def vor_coord(frame,excludeborder=False,R=None,tol=1e-6,flat=False, box_basis=No
         Vc = np.zeros(pnum)
         for i, region in enumerate(sv.regions):
             Vc[i] = len(region)
-            if(excludeborder):
+            if(exclude_border):
                 for v in sv.vertices[region]:
                     if(v[2]<minZ):
                         Vc[i]+=-1
                         #Vc[i]=-1
     return Vc
 
-def shareVoronoiVertex(sv, i, j):
-    vertices_i = sv.regions[i]
-    vertices_j = sv.regions[j]
 
-#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def voronoi_colors(frame,v=None,tol=1e-6):
-    if type(v)==type(None):
-        v = vor_coord(frame, excludeborder=False,tol=tol)
-    #print(np.sum(6-v))
-    #print(np.sum(np.abs(6-v)))
-    colors = np.array([[0.6,0.6,0.6] for _ in v])
-    greens = np.array([[0,0.5*vi/6,0.2] for vi in v])
-    reds = np.array([[1-0.5*vi/6,0,0.2+0] for vi in v])
-    colors[v>6] = greens[v>6]
-    colors[v<6] = reds[v<6]
-    return colors
+def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False):
+    """
+    given a frame, calculates the coordination number of each particle using a voronoi tesselation. Also returns the areas assigned to each voronoi cell
+    'flat': determine whether the frame in question sits on a spherical
+    surface or not, will detect for itself if unspecified.
+    'R': specify a radius for an underlying spherical surface. Will calculate
+    if unspecified
+    'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
+    from the spherical surface each particle is allowed to be at maximum.
+    'box_basis': specify the basis vectors for period boundary conditions
+    'exclude_border': for particles confined to a cap on a spherical surface,
+    can opt to disregard (-1 coord number) particles who sit at the border of
+    this cap and thus aren't part of a bulk system.
+    author: Jack Bond
+    """
 
-#point-density based on the area of voronoi polygons on a frame
-def rho_voronoi(frame,excludeborder=False,R=None,tol=1e-6,flat=False,box=None):
-    minZ = min(frame[:,2])
-    
-    pnum,_ = frame.shape
+    pnum, _ = frame.shape
+    if flat is None:
+        flat = (np.std(np.linalg.norm(frame,axis=-1)) > 0.1)
     
     if flat:
-        if box is None: raise Exception("please input simulation box")
-        vor = Voronoi(expand_around_pbc(frame, box)[:,:2])
-        #flat-case area calculation courtesy of ybeltokov on stackoverlow (jan 19 2019)
+        if box_basis is None: raise Exception("please input simulation box")
+        sv = Voronoi(expand_around_pbc(frame,box_basis)[:,:2])
+        Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
+
         areas = np.zeros(pnum)
-        for i,reg in enumerate(vor.point_region[:pnum]):
-            indices = vor.regions[reg]
+        for i,reg in enumerate(vc.point_region[:pnum]):
+            indices = vc.regions[reg]
             if -1 in indices:
                 areas[i] = np.infty
                 print("this should never print")
             else:
                 areas[i] = ConvexHull(vor.vertices[indices]).volume
+    
     else:
+        minZ = min(frame[:,2])
         if R == None:
             radius = np.mean(np.linalg.norm(frame,axis=1))
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-        areas = sv.calculate_areas()
-
-    return 1/areas
-
-
-#point-density based on the area of voronoi polygons INCLUDING NEAREST NEIGHBORS on a frame
-def rho_voronoi_shell(frame,excludeborder=False,R=None,tol=1e-6, flat=False, box=None, coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
-    minZ = min(frame[:,2])
     
+        Vc = np.zeros(pnum)
+        areas = sv.calculate_areas()
+        for i, region in enumerate(sv.regions):
+            Vc[i] = len(region)
+            if(exclude_border):
+                for v in sv.vertices[region]:
+                    if(v[2]<minZ):
+                        areas[i] = np.infty
+                        Vc[i]=-1
+    return Vc, areas
+
+
+def coordination_shell_densities(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False, coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    """
+    Given a frame, calclates the point-density based on the area of voronoi
+    polygons INCLUDING NEAREST NEIGHBORS. Determines nearest neighbors via a 
+    simple cutoff radius. Returns the local density per particle, the total
+    area of of each particle's coordination shell, and the number of particles
+    therein.
+    author: Jack Bond
+    """
+
     pnum, _ = frame.shape
 
-    if flat:
-        if box is None: raise Exception("please input simulation box")
-        expand = lambda frame, basis: np.array([
-            *frame,
-            *(frame+basis@np.array([1,0,0])),
-            *(frame+basis@np.array([-1,0,0])),
-            *(frame+basis@np.array([0,1,0])),
-            *(frame+basis@np.array([0,-1,0])),
-            *(frame+basis@np.array([1,1,0])),
-            *(frame+basis@np.array([-1,1,0])),
-            *(frame+basis@np.array([1,-1,0])),
-            *(frame+basis@np.array([-1,-1,0])),
-            ])
-        _, neighbors = Nc(expand(frame, box),shellradius=coord_shell)
-        vor = Voronoi(expand(frame, box)[:,:2])
-        #flat-case area calculation courtesy of ybeltokov on stackoverlow (jan 19 2019)
-        areas = np.zeros(pnum)
-        for i,reg in enumerate(vor.point_region[:pnum]):
-            indices = vor.regions[reg]
-            if -1 in indices:
-                areas[i] = np.infty
-                print("this should never print")
-            else:
-                areas[i] = ConvexHull(vor.vertices[indices]).volume
+    Vc, areas = vor_coord_with_areas(frame, flat=flat,R=R,tol=tol,box_basis=box_basis,exclude_border=exclude_border)
+    _, neighbors = coord(frame, cutoff=coord_shell)
 
-    else:
-        if R == None:
-            radius = np.mean(np.linalg.norm(frame,axis=1))
-        else:
-            radius = R
+    shell_areas = 0*areas
+    shell_counts = 0*Vc
 
-        _, neighbors = Nc(frame,shellradius=coord_shell)
-        sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-        areas = sv.calculate_areas()
-        
-    V_rho = np.zeros(pnum)
     for i, nei in enumerate(neighbors[:pnum]):
         #Nc does not include the particle itself when counting neighbors
         As = areas[[i,*(np.where(nei!=0)[0]%pnum)]]
-        area = As.sum()
-        nshell = As.size
-        V_rho[i] = nshell/area
-    
-    return V_rho
+        shell_areas[i] = As.sum()
+        shell_counts[i] = As.size
 
-"""
-Given a spherical frame, plots the centers and vertices of the voronoi tesselation
-source: plot_voronoi, 5/26/23
-author: John Edison
-"""
-def plot_voronoi_sphere(points, filename="voronoi_frame.jpg", colors = ['yellow','yellow','yellow','yellow','orange','red','grey','green','blue','purple'], view = np.array([0,0,1]),tol=1e-5):
+    return shell_counts/shell_areas, shell_areas, shell_counts
+
+
+def plot_voronoi_sphere(points, tol=1e-5, colors = VORONOI_COLORS, filename="voronoi_frame.jpg", view = np.array([0,0,1])):
+    """
+    Given a spherical frame, plots the centers and vertices of the voronoi tesselation on the surface of a sphere.
+    'view'; the vector along which we view the sphere
+    source: plot_voronoi, 5/26/23
+    author: John Edison
+    """
 
     import matplotlib.pyplot as plt
-    import mpl_toolkits.mplot3d as a3d
+    from mpl_toolkits.mplot3d.art3d import Poly3DCollection
     
     radius = np.linalg.norm(points,axis=-1).mean()
-    center = np.array([0.0, 0.0, 0.0])
-    sv     = SphericalVoronoi(points, radius, center,threshold=tol)
+    sv     = SphericalVoronoi(points, radius = radius,threshold=tol)
     sv.sort_vertices_of_regions()
     areas = sv.calculate_areas()
 
+    #set up axes with approprite view
     fig = plt.figure(figsize=(7,7),dpi=600)
     ax = fig.add_subplot(projection='3d')
     front = points[points@view>0]
@@ -184,6 +248,7 @@ def plot_voronoi_sphere(points, filename="voronoi_frame.jpg", colors = ['yellow'
     ax.view_init(90-180*theta/np.pi,180*phi/np.pi)
     plt.axis('off')
     
+    #plotting each point and voronoi polygon
     for i, region in enumerate(sv.regions):
 
         if (areas[i] > 1.50*np.pi):
@@ -192,7 +257,7 @@ def plot_voronoi_sphere(points, filename="voronoi_frame.jpg", colors = ['yellow'
         n = len(region)
         vtx = sv.vertices[region]
         
-        tri = a3d.art3d.Poly3DCollection([vtx])
+        tri = Poly3DCollection([vtx])
 
         if (n < len(colors)):
             tri.set_color(colors[n])
@@ -226,27 +291,21 @@ def plot_voronoi_sphere(points, filename="voronoi_frame.jpg", colors = ['yellow'
     fig.savefig(filename,bbox_inches='tight')
     plt.close(fig)
 
-"""
-Given a planar frame, plots the centers and vertices of the voronoi tesselation
-source: plot_voronoi, 5/26/23
-author: John Edison, Jack Bond
-"""
-def plot_voronoi_plane(points, filename="voronoi_frame.jpg", colors = ['yellow','yellow','yellow','yellow','orange','red','grey','green','blue','purple'],box=None):
+
+def plot_voronoi_plane(points, box=None, colors = VORONOI_COLORS, filename="voronoi_frame.jpg"):
+    """
+    Given a planar frame, plots the centers and vertices of the voronoi tesselation
+    source: plot_voronoi, 5/26/23
+    author: John Edison, Jack Bond
+    """
+
+    import matplotlib.pyplot as plt
+    from matplotlib.collections import PolyCollection
 
     if box is None: raise Exception('please input simulation box')
     pnum,_= points.shape
-    expand = lambda frame, basis: np.array([
-            *frame,
-            *(frame+basis@np.array([1,0,0])),
-            *(frame+basis@np.array([-1,0,0])),
-            *(frame+basis@np.array([0,1,0])),
-            *(frame+basis@np.array([0,-1,0])),
-            *(frame+basis@np.array([1,1,0])),
-            *(frame+basis@np.array([-1,1,0])),
-            *(frame+basis@np.array([1,-1,0])),
-            *(frame+basis@np.array([-1,-1,0])),
-            ])
-    vor = Voronoi(expand(points, box)[:,:2])
+
+    vor = Voronoi(expand_around_pbc(points,box)[:,:2])
 
     fig = plt.figure(figsize=(7,7),dpi=600)
     ax = fig.add_subplot()
@@ -261,7 +320,7 @@ def plot_voronoi_plane(points, filename="voronoi_frame.jpg", colors = ['yellow',
         if -1 in region:
             continue
 
-        tri = mpl.collections.PolyCollection([vtx])
+        tri = PolyCollection([vtx])
 
         if (n < len(colors)):
             tri.set_color(colors[n])
@@ -282,22 +341,17 @@ def plot_voronoi_plane(points, filename="voronoi_frame.jpg", colors = ['yellow',
     plt.close(fig)
 
 
-#returns an Nx3 array of rgb values based on the voronoi tesselation of a frame
-def density_colors(frame,rhos=None,aeff = 0.5,tol=1e-6):
-    if type(rhos) == type(None):
-        rhos = rho_voronoi(frame, excludeborder=False,tol=tol)
-    #print(np.sum(6-v))
-    #print(np.sum(np.abs(6-v)))
-    rho_cp = 0.9067/(np.pi*aeff**2)
-    rho_fl = 0.69/(np.pi*aeff**2)
-    rho_mean = rhos.mean()
-    scale = (rhos-rho_mean)/(rho_cp-rho_fl)
-    colors = np.array([[0.5-s,0.5+s,0.5] for s in scale])
-    return colors
-
-    
-#scar methods DO NOT WORK for flat systems
-def findScarsCarefully(frame,tol=1e-6):
+#SCAR METHODS DO NOT WORK FOR FLAT SYSTEMS ATM
+def find_charge_clusters(frame,tol=1e-5):
+    """
+    given a frame, finds and links together clusters of neighboring
+    topological defects (non-6-coordinated particles). Returns an list of
+    arrays of indices of these linked clusters, as well as an array of the net
+    topological charges of the cluster.
+    author: Jack Bond
+    """
+    if np.std(np.linalg.norm(frame,axis=-1)) > 0.1:
+        raise Exception("input frame is not on a spherical surface")
     N = frame.shape[0]
     radius = np.mean(np.linalg.norm(frame,axis=1))
     sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
@@ -308,111 +362,54 @@ def findScarsCarefully(frame,tol=1e-6):
 
     charged_neighbors = np.array((shared_vertices>=1)*(charged_pairs>0))
 
-    scars = []
+    clusts = []
 
     for i, ptcl in enumerate(charged_neighbors):
         links = np.sort(np.where(ptcl!=0)[0])
         if links.size !=0:
-            uniquePtcls = True
-            for j, scar in enumerate(scars):
-                if(np.any(np.isin(scar, links))):
-                    newscar = np.unique(np.append(scar,links))
-                    scars.pop(j)
-                    scars.append(newscar)
-                    links = newscar
-                    uniquePtcls = False
-            if(uniquePtcls):
-                scars.append(links)
+            unique_ptcls = True
+            for j, clust in enumerate(clusts):
+                if(np.any(np.isin(clust, links))):
+                    new_clust = np.unique(np.append(clust,links))
+                    clusts.pop(j)
+                    clusts.append(new_clust)
+                    links = new_clust
+                    unique_ptcls = False
+            if(unique_ptcls):
+                clusts.append(links)
 
-    scarCharges = np.array([np.sum(qs[scar]) for scar in scars])
+    net_charges = np.array([np.sum(qs[clust]) for clust in clusts])
 
-    return scars, scarCharges
-
-
-def findScars(frame,tol=1e-6,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
-
-    _, neighbors = coord(frame,shellradius=coord_shell)
-    charge = 6-vor_coord(frame,tol=tol)
-    
-    charged_pairs = np.abs(np.array([charge for _ in charge])*np.array([charge for _ in charge]).T)
-
-    charged_neighbors = np.array(neighbors*charged_pairs)
-
-    scars = []
-    
-    # pairs = np.unique(np.sort(np.array(np.where(charged_neighbors)).T,axis=-1),axis=0)
-    # for pair in pairs:
-    #   uniquePtcls = True
-    #   for i, scar in enumerate(scars):
-    #       if(np.any(np.isin(scar, pair))):
-    #           newscar = np.unique(np.append(scar,pair))
-    #           scars.pop(i)
-    #           scars.append(newscar)
-    #           uniquePtcls = False
-    #   if(uniquePtcls):
-    #       scars.append(pair)
-    
-    for i, ptcl in enumerate(charged_neighbors):
-        links = np.sort(np.where(ptcl!=0)[0])
-        if links.size !=0:
-            uniquePtcls = True
-            for j, scar in enumerate(scars):
-                if(np.any(np.isin(scar, links))):
-                    newscar = np.unique(np.append(scar,links))
-                    scars.pop(j)
-                    scars.append(newscar)
-                    links = newscar
-                    uniquePtcls = False
-            if(uniquePtcls):
-                scars.append(links)
-
-    scarCharges = np.array([np.sum(charge[scar]) for scar in scars])
-
-    return scars, scarCharges
-
-def ScarNumber(frame,tol=1e-6):
-    Sc = np.array([None for _ in range(frame.shape[0])])
-
-    scars, scarCharges = findScars(frame,tol=tol)
-
-    for i, scar in enumerate(scars):
-        Sc[scar] = scarCharges[i]
-
-    return Sc
-
-#returns an Nx3 array of rgb values based on the net voronoi charge of a frame
-def scar_colors(frame,s=None,tol=1e-6):
-    if type(s) == type(None):
-        s = ScarNumber(frame,tol=tol)
-    colors = np.zeros((s.size,3))
-    for i,si in enumerate(s):
-        if si == None:
-            colors[i] = np.array([0.6,0.6,0.6])
-        elif si == 0:
-            colors[i] = np.array([0.2,0.2,0.6])
-        elif si > 0:
-            colors[i] = np.array([0.5+(si-1)/2,0.2,0.2])
-        elif si < 0:
-            colors[i] = np.array([0.2,0.5+(1-si)/2,0.2])
-
-    return colors
+    return clusts, net_charges
+    #see older commits for a slightly simpler version of this method
 
 
-def shells(pnum):
-    """from particle number, calculate number of shells assuming hexagonal crystal"""
-    # equation 8 from SI of https://doi.org/10.1039/C2LC40692F
-    return -1/2 + np.sqrt((pnum-1)/3 + 1/4)
+def cluster_labels(frame,tol=1e-5):
+    """
+    given a frame, labels each particle with the net charge of the cluster to which it belongs, as well as the number of particles in that cluster
+    """
+    Sq = np.array([None for _ in range(frame.shape[0])])
+    Sn = np.array([0 for _ in range(frame.shape[0])])
 
-def c6_hex(pnum):
-    """returns C6 for a hexagonal cluster of the same size"""
-    # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
-    s = shells(pnum)
-    return 6*(3*s**2 + s)/pnum
+    clusts, net_charges = find_charge_clusters(frame,tol=tol)
 
+    for i,c in enumerate(clusts):
+        Sq[c] = net_charges[i]
+        Sn[c] = len(c)
+
+    return Sq, Sn
+
+
+#CURRENTLY DEPRECATED, NEED TO REVISIT
 def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    """
+    meant to do local bond orientational order, psi6 on the sphere by choosing
+    a self-consistent set of reference vectors via 3D rotations.
+    author: Jack Bond
+    """
     N = frame.shape[0]
     i,j = np.mgrid[0:N,0:N]
-    _, n = coord(frame,shellradius=coord_shell)
+    _, n = coord(frame,cutoff=coord_shell)
     vc = vor_coord(frame)
 
 
@@ -478,10 +475,23 @@ def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+n
 
     return psi6, np.mean(np.abs(psi6))
 
+
 #CURRENTLY BROKEN
 def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
-    N = frame.shape[0]
-    n, vc = coord(frame,shell_radius=coord_shell)
+    """
+    uses the local psi6 to compute crystalline connectivity C6
+    author: Jack Bond
+    """
+
+    pnum,_ = frame.shape
+    
+    # computing the reference c6 for a perfect lattice
+    # equation 8 from SI of https://doi.org/10.1039/C2LC40692F
+    shells = -1/2 + np.sqrt((pnum-1)/3 + 1/4)
+    # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
+    c6_hex = 6*(3*shells**2 + shells)/pnum
+
+    n, vc = coord(frame,cutoff=coord_shell)
     
     psi6, psi6global = Psi6(frame)
     C6 = 0*vc
@@ -492,153 +502,109 @@ def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
         chi = np.abs(np.real(pi*pj))/np.abs(pi*pj)
         C6[k] = np.sum(chi>=0.32)
 
-    return C6, np.mean(C6)/c6_hex(N), psi6, psi6global
+    return C6, np.mean(C6)/c6_hex, psi6, psi6global
 
-from scipy.special import gamma
-# Second virial coeffecient for an arbitrary potential
-# recieve a pair potential in kT units, phi, which takes r in simulation units
-# returns the second virial coefficient for that potential
-def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
-    
-    if type(phi) != type(np.mean): raise Exception("Input must be a python function")
-
-    mayer_f = lambda r: np.exp(-phi(r))-1
-
-    #hypersphere solid angle
-    g = gamma(dim/2+1)
-    hsolid = lambda r: dim*np.pi**(dim/2)/g *r**(dim-1)
-
-    integrand = lambda r: -1/2 * hsolid(r) * mayer_f(r)
-
-    # infinity plays poorly, so if we want a hard core we need to start from 1.0
-    if core_radius!=None:
-        splits = splits[splits>=2*core_radius]
-        if not (np.any(splits==2*core_radius)):
-            splits = np.array([2*core_radius,*splits])
-
-    bounds = zip(splits[:-1],splits[1:])
-    parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
-
-    B2 = np.array(parts).sum()
-    #now we add back the hard core correction, mayer_f goes to -1 in this limit
-    if core_radius!=None:
-        B2+=quad(hsolid,0,2*core_radius)[0]/2
-
-    return B2, integrand, parts
 
 if __name__=="__main__":
 
-    nargs = len(sys.argv)
-    if nargs <= 1:
-        nfiles = len(glob.glob("output*.xyz"))
-        index = np.arange(nfiles-1) 
-        c = np.zeros(nfiles-1)
-        p = np.zeros(nfiles-1)
-        for i in index:
-            frame = np.array(read_xyz_frame(f"output_{i+1}.xyz"))
-            _, c[i], _, p[i] = C6(frame)
+    from FileHandling import read_xyz_frame, output_vis
+    from UnitConversions import get_a_eff
+    from timeit import default_timer as timer
+    import json, glob
+    import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots()
-        
-        simArgument = json.load(open("simArgument.json",'r'))
-        R = simArgument['radius']
+    start = timer()
 
-        ax.set_title(f"Order Parameters for R = {R:.3f}")
-        ax.set_ylim([0,1])
-        ax.set_xlabel("sweeps")
-        ax.scatter(index*simArgument['nsnap'],c, label = r"[$C_6$]")
-        ax.scatter(index*simArgument['nsnap'],p, label = r"[$\psi_6$]")
-        ax.legend()
-        plt.savefig("Order Parameters",bbox_inches = 'tight')
+    #load data from a preprocessed simulation
+    config = json.load(open('config.json','r'))
+    if 'simarg' in config:
+        eta = config['simarg']['eta']
+    else:
+        aeff = get_a_eff(config['params'])/(2*config['params']['particle_radius'])
+        eta = config['arg']['npart']*aeff**2 / (4*config['arg']['xxxradiusxxx']**2)
 
-    elif nargs == 2:
+    coords = np.load('example_datapts.npy')
 
-        from Correlation import firstCoordinationShell
-        framepath = sys.argv[1]
-        frame = np.array(read_xyz_frame(framepath))
-        coord_shell = firstCoordinationShell(frame)
-        nc, n = Nc(frame,shellradius=coord_shell)
-        vc = Vc(frame)
-        
-        rdf,mids,_ = g_r(frame)
+    plot_voronoi_sphere(coords[-1])
 
-        a = mids[np.argmax(rdf[mids<coord_shell])]
-        #print(nc[np.where(vc!=nc)],vc[np.where(nc!=vc)], (6-nc[np.where(vc!=nc)])-(6-vc[np.where(nc!=vc)]))
+    #only get the last half
 
-        print(f"Voronoi Tesselation: total charge: {np.sum(6-vc)} excess charge: {0.5*(np.sum(np.abs(6-vc))/12-1)}")
-        print(f"Coordination Number: total charge: {np.sum(6-nc)} excess charge: {0.5*(np.sum(np.abs(6-nc))/12-1)}")
-
-        start = timer()
-        qs = 6-nc
-        end = timer()
-        print(f"charges computed in {end-start}s")
+    fnum, pnum, _ = coords.shape
+    vor = np.array([])
+    areas = np.array([])
 
 
-        print(f"First Coordination Shell: {coord_shell}")
-        print(f"R/a: {np.mean(np.linalg.norm(frame,axis=-1))/a}")
-        fig, ax = plt.subplots()
-        ax.plot(rs,hval,lw=0.6,c="black")
-        plt.show()
+    for i,frame in enumerate(coords[int(coords.shape[0]/2):]):
+        vc, ar = vor_coord_with_areas(frame)
+        vor = np.array([*vor,vc])
+        areas = np.array([*areas,ar])
 
-        findScars(frame)
+#    vor = np.load('example_vor_coord.npy')
+    vor = vor[int(vor.shape[0]/2):]
 
-        # simArgument = json.load(open("simArgument.json",'r'))
-        # R = simArgument['radius']
+    bin_edges = np.histogram_bin_edges(np.random.rand(10),bins = 50, range=(0,1))
+    width = bin_edges[1]-bin_edges[0]
+    mids = bin_edges[:-1]+width/2
 
-        # proj, _,_ = capPolarProjection(frame)
-        # fig,[ax1,ax2] = plt.subplots(1,2, figsize = (8,4))
+    # calculate f5 and f7 distributions
+    f5 = np.mean(vor==5,axis=0)
+    f7 = np.mean(vor==7,axis=0)
 
-        # plt.suptitle(f"Projected snapshot R={R:.3f}")
+    fig, ax = plt.subplots(figsize=(3.25,3.25),dpi=600)
+    ax.set_title(f"$\eta_{{eff}}={eta:.2f}$")
 
-        # plt.tight_layout()#rect=[0, 0.03, 1, 1.2])
-        # ax1.set_aspect('equal', 'box')
-        # ax1.set_title("Particles Colored by Voronoi Charge")
-        # ax1.scatter(proj[:,0],proj[:,1],c=nc)
+    vals, _ = np.histogram(f5,bins=bin_edges)
+    prob = vals/pnum
+    ax.plot(mids,prob,color='red',label='$p(f_5)$',lw=0.7)
+    avg = np.sum(mids*prob)
+    ax.axvline(x=avg,color='red',lw=0.5,ls='--')
 
+    mobile = (f5 >= avg)
+    immobile = (f5 < avg)
+    print(f"{mobile.sum()} 'mobile' particles")
 
-        # localC, meanC, psi, globalPsi = C6(frame)
-        # print(meanC,globalPsi)
+    vals, _ = np.histogram(f7,bins=bin_edges)
+    prob = vals/pnum
+    ax.plot(mids,prob,color='green',label='$p(f_7)$',lw=0.7)
+    avg = np.sum(mids*prob)
+    ax.axvline(x=avg,color='green',lw=0.5,ls='--')
 
-        # ax2.set_aspect('equal', 'box')
-        # ax2.set_title(r"Particles Colored by $C_6$")
-        # ax2.scatter(proj[:,0],proj[:,1],c=localC,cmap='viridis')
-        # plt.savefig(f"{framepath}.png",bbox_inches = 'tight')
+    ax.legend()
+    fig.savefig('time_average_charge_distributions.jpg',bbox_inches='tight')
 
-    elif nargs > 2:
-        raise Exception("You entered too much stuff, fool")
+    # threshold based on distribution moments?
+    last_section = 1.0
+    sample_rate=20
+    idx = np.arange(int((1-last_section)*fnum),fnum,sample_rate)
+    colors = np.array([np.array([immobile,immobile,immobile]).T for _ in range(fnum)])
+    output_vis("TEST_threshold.atom",coords[idx],colors=colors[idx],show_shell=True)
 
+    # calculate eta on either side using voronoi
+    eta_low = (np.pi*aeff**2) * np.sum(mobile)/np.sum(areas[:,mobile],axis=-1).mean()
+    eta_high = (np.pi*aeff**2) * np.sum(immobile)/np.sum(areas[:,immobile],axis=-1).mean()
+    print(f"low eta: {eta_low:.4f}\nens eta: {eta:.4f}\nhigh eta:{eta_high:.4f}")
 
-# #for planar systems only
-# def Ci6(coordinates, shellradius = 1.6):
-#   npart = coordinates.shape[0]
-#   i,j = np.mgrid[0:npart,0:npart]
-#   #dr = np.sqrt((coords[p,0]-coords[q,0])**2+(coords[p,1]-coords[q,1])**2)
-#   dr_vec = coordinates[i]-coordinates[j]
-#   dr_norm = np.linalg.norm(dr_vec,axis=-1)
-#   dr_norm[i==j] = 1e-3
-    
-#   #to get the theta's we need an aribrtrary reference angle, we'll say (0,1) is our reference angle
-#   # we get the cosine with the dot product between dr and (0,1), and then divide it by the norm
-#   cosines = dr_vec[:,:,0]/dr_norm
-#   #fix nans:
-#   cosines[i==j]=0
-    
-#   neighbors = dr_norm<shellradius
-#   neighbors[i==j]=False
-#   Nc = np.sum(neighbors,axis=-1)
-#   Nc[Nc==0]=1
-    
-#   with np.errstate(divide='ignore'):
+    # do MSD on each side of the threshold
 
-#       argument = np.exp(6j * np.arccos(cosines))
+    from MSD import mto_msd_part
 
-#       psi6 = np.array([(1/Nc[n])*np.sum(neighbors[n]*argument[n]) for n in range(npart)])
+    times = np.load('times.npy')
+    msd_part, lag = mto_msd_part(coords,times,max_lag=100,delta=5)
 
-#       psi6star = np.conjugate(psi6)
+    fig, ax = plt.subplots(figsize=(3.25,3.25),dpi=600)
+    ax.set_xlabel("$t/\\tau$")
+    ax.set_ylabel("$<\delta r^2>/(2a)^2$")
 
-#       chi6 = np.abs(np.real(psi6[i]*psi6star[j]))/np.abs(psi6[i]*psi6star[j])
+    ax.plot(lag, msd_part[:,mobile].mean(axis=-1),ls=':',lw=1.5,
+        color='black', label = 'high defect-fraction')
+    ax.plot(lag, msd_part[:,immobile].mean(axis=-1),ls=':',lw=1.5,
+        color='grey', label = 'low defect-fraction')
+    ax.plot(lag, msd_part.mean(axis=-1),ls=':',lw=1.5,
+        color='blue',label='ensemble average')
+    ax.legend()
 
-#       C6 = np.array([(1/6)*np.sum(neighbors[n]*(chi6[n]>0.32)) for n in range(npart)])
+    fig.savefig('TEST_msd_threshold.jpg',bbox_inches='tight')
 
-#   return C6, Nc
+    end = timer()
+    print(f"{end-start:.5f}s runtime")
 

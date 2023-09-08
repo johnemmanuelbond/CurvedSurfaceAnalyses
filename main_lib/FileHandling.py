@@ -130,10 +130,10 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, alphas = None
         box = format_boxes((-0.5,0.5), (-0.5,0.5), (-0.5,0.5))
     
     if colors is None: # initialize colors to light grey (0.6, 0.6, 0.6)
-        colors = np.array([np.ones_like(frame) * 0.6 for frame in frames])
+        colors = [np.ones_like(frame) * 0.6 for frame in frames]
 
     if alphas is None: # initialize alphas to completely opaque
-        alphas = np.array([np.zeros(frame.shape[0]) for frame in frames])
+        alphas = [np.zeros(frame.shape[0]) for frame in frames]
 
     pnum = frames[0].shape[0]    
     header = f"LAMMPS data file for {pnum} particles in a fluid\n\n{pnum} atoms\n1 atom types\n"

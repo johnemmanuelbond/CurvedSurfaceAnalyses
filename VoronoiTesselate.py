@@ -25,11 +25,14 @@ if __name__ == "__main__":
     if os.path.exists('datapts_pbc.npy'):
         coords_raw = np.load('datapts_pbc.npy')
         box_basis = np.load('box.npy')
-        vc = np.array([vor_coord(frame, flat=flat, box_basis=box_basis, tol=1e-5) for frame in coords_raw])
+        tess = np.array([vor_coord(frame, flat=flat, box_basis=box_basis) for frame in coords_raw])
     else:
-        vc = np.array([vor_coord(frame, flat=flat, tol=1e-5) for frame in coords])
+        tess = np.array([vor_coord(frame, flat=flat) for frame in coords])
 
+    vc = tess[:,0]
+    areas = tess[:,1]
     np.save("vor_coord.npy",np.array(vc))
+    np.save("vor_areas.npy",np.array(areas))
 
     #collect topological charge metrics
     frac5 = np.mean(vc==5)
