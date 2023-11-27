@@ -124,7 +124,7 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, alphas = None
         radii = np.linalg.norm(frames,axis=-1).mean(axis=-1)
     
     if ts is None: # initialize timesteps if not provided
-        ts = np.arange(frames.shape[0], dtype=np.int16)
+        ts = np.arange(len(frames), dtype=np.int16)
     
     if box is None: # initialize box if necessary
         box = format_boxes((-0.5,0.5), (-0.5,0.5), (-0.5,0.5))

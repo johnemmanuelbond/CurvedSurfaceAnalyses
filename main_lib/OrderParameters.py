@@ -11,7 +11,7 @@ of order parameters on a frame of 3D coordinate data.
 import numpy as np
 import scipy as sp
 
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import pdist, cosine
 from scipy.spatial import SphericalVoronoi, Voronoi, ConvexHull#, geometric_slerp
 from scipy.integrate import quad
 from scipy.special import gamma as gammafunc
@@ -62,8 +62,9 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
 def coord(frame, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
     """
     given a frame of 3D coordinates, calculates the coordination number of each
-    particle using a simple cutoff radius. Also returns a list of particle neighbors who lie within this radius
-    'shell radius': The cutoff radius used to find neighbors (defaulting to
+    particle using a simple cutoff radius. Also returns a list of neighboring
+    particles who lie within this radius.
+    'cutoff': The cutoff radius used to find neighbors (defaulting to
     just beyond the first coordination shell of a close-packed lattice)
     author: Jack Bond
     """
@@ -76,6 +77,31 @@ def coord(frame, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
     Nc = np.sum(neighbors,axis=-1)
 
     return Nc, neighbors
+
+
+def bond_order(frame, order=6,reference = np.array([0,1,0])):
+    """
+    
+    """
+    pnum = frame.shape[0]
+    i,j = np.mgrid[0:pnum,0:pnum]
+    dr_vec = frame[i]-frame[j]
+    
+    sv = Voronoi(frame[:,:2])
+    reg = [sv.regions[sv.point_region[k]] for k in range(pnum)]
+    order_param = np.zeros(pnum)+np.ones(pnum)*0j
+    for i, f, pr in zip(np.arange(pnum),frame[:,:2],sv.point_region):
+        # vec = sv.vertices[sv.regions[pr]]-f
+        # arg = np.array([np.arccos(1-cosine(v,reference[:2])) for v in vec])
+        # order_param[i]=np.exp(1j*6*order*arg).mean()
+        psi=[]
+        for j in np.where(np.linalg.norm(dr_vec[i],axis=-1)<3)[0]:
+            if (i!=j) and (np.intersect1d(reg[i],reg[j]).shape[0]>0):
+                arg = np.arccos(1-cosine(dr_vec[i,j],reference))
+                psi.append(np.exp(1j*order*arg))
+        order_param[i]=np.mean(np.array(psi))
+
+    return order_param
 
 
 #create the typical array of colors used to indicate topological charge
@@ -135,6 +161,40 @@ def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border
     return Vc
 
 
+def topo_connectivity(frame, vor=None, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+    """
+    Given a frame of 3D coordinates, calculates the average charge per
+    neighbor of each particle. Neighbors are determined using a simple
+    cutoff radius, charges are determined via voronoi tesselation.
+    'vor': an option to provide a pre-calculated voronoi coordination
+    number for the frame.
+    'flat': determine whether the frame in question sits on a spherical
+    surface or not, will detect for itself if unspecified.
+    'R': specify a radius for an underlying spherical surface. Will calculate
+    if unspecified
+    'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
+    from the spherical surface each particle is allowed to be at maximum.
+    'box_basis': specify the basis vectors for period boundary conditions
+    'exclude_border': for particles confined to a cap on a spherical surface,
+    can opt to disregard (-1 coord number) particles who sit at the border of
+    this cap and thus aren't part of a bulk system.
+    'cutoff': The cutoff radius used to find neighbors (defaulting to
+    just beyond the first coordination shell of a close-packed lattice)
+    author: Jack Bond
+    """
+    Nc, neighbors = coord(frame, cutoff=cutoff)
+
+    if not (vor is None):
+        assert vor.shape[0]==frame.shape[0], "voronoi tesselation has incorrect particle count."
+    else:
+        vor = vor_coord(frame,flat=flat,R=R,tol=tol,box_basis=box_basis,exclude_border=exclude_border)
+
+    c6 = np.array([np.sum(np.abs(vor[neighbors[i]]-6))/n for i,n in enumerate(Nc)])
+    c6[Nc==0]=1
+
+    return c6
+
+
 def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False):
     """
     given a frame, calculates the coordination number of each particle using a voronoi tesselation. Also returns the areas assigned to each voronoi cell
@@ -161,13 +221,13 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exc
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
 
         areas = np.zeros(pnum)
-        for i,reg in enumerate(vc.point_region[:pnum]):
-            indices = vc.regions[reg]
+        for i,reg in enumerate(sv.point_region[:pnum]):
+            indices = sv.regions[reg]
             if -1 in indices:
                 areas[i] = np.infty
                 print("this should never print")
             else:
-                areas[i] = ConvexHull(vor.vertices[indices]).volume
+                areas[i] = ConvexHull(sv.vertices[indices]).volume
     
     else:
         minZ = min(frame[:,2])
@@ -398,7 +458,6 @@ def cluster_labels(frame,tol=1e-5):
         Sn[c] = len(c)
 
     return Sq, Sn
-
 
 #CURRENTLY DEPRECATED, NEED TO REVISIT
 def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):

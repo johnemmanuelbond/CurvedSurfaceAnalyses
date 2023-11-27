@@ -79,24 +79,30 @@ def hoomd_matrix_to_box(box):
     return hbox
 
 
-def expand_around_pbc(frame, basis):
+def expand_around_pbc(frame, basis, do_corners = False):
     """
     given a frame and a box basis matrix, returns a larger frame which
     including surrounding particles from the nearest images. This will
     enable scipy.voronoi to respect periodic boundary conditions
     author: Jack Bond
     """
-    return np.array([
+    adjusted = np.array([
                 *frame,
                 *(frame+basis@np.array([1,0,0])),
                 *(frame+basis@np.array([-1,0,0])),
                 *(frame+basis@np.array([0,1,0])),
-                *(frame+basis@np.array([0,-1,0])),
-                *(frame+basis@np.array([1,1,0])),
-                *(frame+basis@np.array([-1,1,0])),
-                *(frame+basis@np.array([1,-1,0])),
-                *(frame+basis@np.array([-1,-1,0])),
-                ])
+                *(frame+basis@np.array([0,-1,0])),])
+
+    if do_corners:
+        adjusted =  np.array([
+                    *adjusted,
+                    *(frame+basis@np.array([1,1,0])),
+                    *(frame+basis@np.array([-1,1,0])),
+                    *(frame+basis@np.array([1,-1,0])),
+                    *(frame+basis@np.array([-1,-1,0])),
+                    ])
+
+    return adjusted
 
 
 def sphere_msd(taus, damp, shell_radius = 10):

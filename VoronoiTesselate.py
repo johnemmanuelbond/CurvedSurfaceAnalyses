@@ -25,9 +25,9 @@ if __name__ == "__main__":
     if os.path.exists('datapts_pbc.npy'):
         coords_raw = np.load('datapts_pbc.npy')
         box_basis = np.load('box.npy')
-        tess = np.array([vor_coord(frame, flat=flat, box_basis=box_basis) for frame in coords_raw])
+        vc, areas = np.array([vor_coord_with_areas(frame, flat=flat, box_basis=box_basis) for frame in coords_raw])
     else:
-        tess = np.array([vor_coord(frame, flat=flat) for frame in coords])
+        vc, areas = np.array([vor_coord_with_areas(frame, flat=flat) for frame in coords])
 
     vc = tess[:,0]
     areas = tess[:,1]
