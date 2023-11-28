@@ -79,30 +79,53 @@ def hoomd_matrix_to_box(box):
     return hbox
 
 
-def expand_around_pbc(frame, basis, do_corners = False):
+def expand_around_pbc(frame, box, padfrac = 0.8):
     """
     given a frame and a box basis matrix, returns a larger frame which
     including surrounding particles from the nearest images. This will
     enable scipy.voronoi to respect periodic boundary conditions
     author: Jack Bond
     """
-    adjusted = np.array([
-                *frame,
-                *(frame+basis@np.array([1,0,0])),
-                *(frame+basis@np.array([-1,0,0])),
-                *(frame+basis@np.array([0,1,0])),
-                *(frame+basis@np.array([0,-1,0])),])
 
-    if do_corners:
-        adjusted =  np.array([
-                    *adjusted,
-                    *(frame+basis@np.array([1,1,0])),
-                    *(frame+basis@np.array([-1,1,0])),
-                    *(frame+basis@np.array([1,-1,0])),
-                    *(frame+basis@np.array([-1,-1,0])),
-                    ])
+    pnum = frame.shape[0]
+    basis=box
+    if basis[2,2]==0: basis[2,2]=1
 
-    return adjusted
+    frame_basis = (np.linalg.inv(basis) @ frame.T).T
+    expanded = np.array([
+        *(frame_basis+np.array([ 1, 0, 0])),*(frame_basis+np.array([ 0, 1, 0])),
+        *(frame_basis+np.array([-1, 0, 0])),*(frame_basis+np.array([ 0,-1, 0])),
+        *(frame_basis+np.array([ 1, 1, 0])),*(frame_basis+np.array([ 1,-1, 0])),
+        *(frame_basis+np.array([-1, 1, 0])),*(frame_basis+np.array([-1,-1, 0]))
+        ])
+
+    pad_idx = np.argsort(np.max(np.abs(expanded),axis=-1))[:(int(padfrac*pnum))]
+    pad = (basis @ expanded[pad_idx].T).T
+
+    return np.array([*frame,*pad])
+
+
+def polygon_area(vertices):
+    """
+    uses the shoelace formula to find the area of a 2D polygon given the
+    coordinates of it's vertices.
+    author: Jack Bond
+    """
+
+    #check for infinite area
+    if np.infty in vertices.flatten(): return np.infty
+
+    #take the vertices, wrap them counterclockwise, and put them in the first quadrant
+    pts = vertices - np.mean(vertices,axis=0)
+    wrap_idx = np.argsort((np.angle(pts[:,0]+1j*pts[:,1])+2*np.pi)%(2*np.pi))
+    quad1 = vertices[wrap_idx] + np.array(np.min(vertices,axis=0))
+
+    #apply shoelace formula
+    area = 0.0
+    for v1,v2 in zip(quad1,np.roll(quad1,-1,axis=0)):
+        area += (v1[1]+v2[1])*(v1[0]-v2[0])/2
+    
+    return np.abs(area)
 
 
 def sphere_msd(taus, damp, shell_radius = 10):

@@ -16,7 +16,10 @@ from scipy.spatial import SphericalVoronoi, Voronoi, ConvexHull#, geometric_sler
 from scipy.integrate import quad
 from scipy.special import gamma as gammafunc
 
-from GeometryHelpers import expand_around_pbc
+from GeometryHelpers import expand_around_pbc, polygon_area
+
+#first coordination shell for our standard silica colloids at effective close-packing
+DEFAULT_CUTOFF = (1.44635/1.4)*0.5*(1+np.sqrt(3))
 
 
 def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
@@ -59,7 +62,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     return B2, integrand, parts
 
 
-def coord(frame, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def coord(frame, cutoff = DEFAULT_CUTOFF):
     """
     given a frame of 3D coordinates, calculates the coordination number of each
     particle using a simple cutoff radius. Also returns a list of neighboring
@@ -81,7 +84,13 @@ def coord(frame, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
 
 def bond_order(frame, order=6,reference = np.array([0,1,0])):
     """
-    
+    given a frame of 3D coordinates, calculates the bond orientational order
+    parameter of each particle with respect to a reference direction
+    'order': n-fold order defines the argument of the complex used
+    to calculate psi_n, 
+    'reference': the vector to calculate angles w.r.t. for the purpose of
+    calculating psi_n
+    author: Jack Bond
     """
     pnum = frame.shape[0]
     i,j = np.mgrid[0:pnum,0:pnum]
@@ -90,10 +99,11 @@ def bond_order(frame, order=6,reference = np.array([0,1,0])):
     sv = Voronoi(frame[:,:2])
     reg = [sv.regions[sv.point_region[k]] for k in range(pnum)]
     order_param = np.zeros(pnum)+np.ones(pnum)*0j
-    for i, f, pr in zip(np.arange(pnum),frame[:,:2],sv.point_region):
+    #for i, f, pr in zip(np.arange(pnum),frame[:,:2],sv.point_region):
         # vec = sv.vertices[sv.regions[pr]]-f
         # arg = np.array([np.arccos(1-cosine(v,reference[:2])) for v in vec])
         # order_param[i]=np.exp(1j*6*order*arg).mean()
+    for i in np.arange(pnum):
         psi=[]
         for j in np.where(np.linalg.norm(dr_vec[i],axis=-1)<3)[0]:
             if (i!=j) and (np.intersect1d(reg[i],reg[j]).shape[0]>0):
@@ -117,7 +127,7 @@ cols[-1] = 'black'
 VORONOI_COLORS = np.array([to_rgb(c) for c in cols])
 
 
-def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False):
+def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfrac=0.8, exclude_border=False):
     """
     given a frame, calculates the coordination number of each particle using a voronoi tesselation.
     'flat': determine whether the frame in question sits on a spherical
@@ -127,6 +137,8 @@ def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border
     'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
     from the spherical surface each particle is allowed to be at maximum.
     'box_basis': specify the basis vectors for period boundary conditions
+    'pbc_padfrac': specifies the proportion of extra particles needed to respect periodic
+    boundary conditions
     'exclude_border': for particles confined to a cap on a spherical surface,
     can opt to disregard (-1 coord number) particles who sit at the border of
     this cap and thus aren't part of a bulk system.
@@ -139,7 +151,7 @@ def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border
     
     if flat:
         if box_basis is None: raise Exception("please input simulation box")
-        sv = Voronoi(expand_around_pbc(frame,box_basis)[:,:2])
+        sv = Voronoi(expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2])
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
     
     else:
@@ -161,23 +173,14 @@ def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border
     return Vc
 
 
-def topo_connectivity(frame, vor=None, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False, cutoff = (1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def topo_connectivity(frame, vor=None, cutoff = DEFAULT_CUTOFF):
     """
     Given a frame of 3D coordinates, calculates the average charge per
     neighbor of each particle. Neighbors are determined using a simple
     cutoff radius, charges are determined via voronoi tesselation.
-    'vor': an option to provide a pre-calculated voronoi coordination
+    'vor': an option to provide a pre-calculated voronoi coordination with
+    custom voronoi parameters
     number for the frame.
-    'flat': determine whether the frame in question sits on a spherical
-    surface or not, will detect for itself if unspecified.
-    'R': specify a radius for an underlying spherical surface. Will calculate
-    if unspecified
-    'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
-    from the spherical surface each particle is allowed to be at maximum.
-    'box_basis': specify the basis vectors for period boundary conditions
-    'exclude_border': for particles confined to a cap on a spherical surface,
-    can opt to disregard (-1 coord number) particles who sit at the border of
-    this cap and thus aren't part of a bulk system.
     'cutoff': The cutoff radius used to find neighbors (defaulting to
     just beyond the first coordination shell of a close-packed lattice)
     author: Jack Bond
@@ -187,7 +190,7 @@ def topo_connectivity(frame, vor=None, flat=None, R=None, tol=1e-5, box_basis=No
     if not (vor is None):
         assert vor.shape[0]==frame.shape[0], "voronoi tesselation has incorrect particle count."
     else:
-        vor = vor_coord(frame,flat=flat,R=R,tol=tol,box_basis=box_basis,exclude_border=exclude_border)
+        vor = vor_coord(frame)
 
     c6 = np.array([np.sum(np.abs(vor[neighbors[i]]-6))/n for i,n in enumerate(Nc)])
     c6[Nc==0]=1
@@ -195,7 +198,53 @@ def topo_connectivity(frame, vor=None, flat=None, R=None, tol=1e-5, box_basis=No
     return c6
 
 
-def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False):
+def _calculate_planar_voronoi_areas(points, regions, vertices):
+    """
+    Given the outputs from a scipy.spatial.Voronoi object, returns
+    the area afforded to each point.
+    Modified from scipy.spatial._spherical_voronoi.py in scipy source code
+    'points': (N,3) array of particle positions
+    'regions': (N, *) list of lists, each list contains indices of 'vertices'
+    corresponding to that particle's region
+    of 'vertices' 
+    'vertices': (nvertices,3) array of all the vertices for this object
+    author: Jack Bond
+    """
+    sizes = [len(region) for region in regions]
+    csizes = np.cumsum(sizes)
+    num_regions = csizes[-1]
+
+    # We create a set of triangles consisting of one point and two Voronoi
+    # vertices. The vertices of each triangle are adjacent in the sorted
+    # regions list.
+    point_indices = [i for i, size in enumerate(sizes)
+                     for j in range(size)]
+
+    nbrs1 = np.array([r for region in regions for r in region])
+
+    # The calculation of nbrs2 is a vectorized version of:
+    # np.array([r for region in regions for r in np.roll(region, 1)])
+    nbrs2 = np.roll(nbrs1, 1)
+    indices = np.roll(csizes, 1)
+    indices[0] = 0
+    nbrs2[indices] = nbrs1[csizes - 1]
+
+    # Create the complete set of triangles and calculate their areas
+    triangles = np.hstack([points[point_indices],
+                           vertices[nbrs1],
+                           vertices[nbrs2]
+                           ]).reshape((num_regions, 3, 3))
+    triangles[:,:,2]=1
+    tri_areas = np.abs(np.linalg.det(triangles)/2)
+
+    # Sum the areas of the triangles in each region
+    areas = np.cumsum(tri_areas)[csizes - 1]
+    areas[1:] -= areas[:-1]
+
+    return areas
+
+
+def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfrac=0.8, exclude_border=False):
     """
     given a frame, calculates the coordination number of each particle using a voronoi tesselation. Also returns the areas assigned to each voronoi cell
     'flat': determine whether the frame in question sits on a spherical
@@ -205,6 +254,8 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exc
     'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
     from the spherical surface each particle is allowed to be at maximum.
     'box_basis': specify the basis vectors for period boundary conditions
+    'pbc_padfrac': specifies the proportion of extra particles needed to respect periodic
+    boundary conditions
     'exclude_border': for particles confined to a cap on a spherical surface,
     can opt to disregard (-1 coord number) particles who sit at the border of
     this cap and thus aren't part of a bulk system.
@@ -217,17 +268,19 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exc
     
     if flat:
         if box_basis is None: raise Exception("please input simulation box")
-        sv = Voronoi(expand_around_pbc(frame,box_basis)[:,:2])
+        sv = Voronoi(expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2])
         Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
 
-        areas = np.zeros(pnum)
-        for i,reg in enumerate(sv.point_region[:pnum]):
-            indices = sv.regions[reg]
-            if -1 in indices:
-                areas[i] = np.infty
-                print("this should never print")
-            else:
-                areas[i] = ConvexHull(sv.vertices[indices]).volume
+        regions = [sv.regions[reg] for reg in sv.point_region[:pnum]]
+        vertices = np.array([[v[0],v[1],0] for v in sv.vertices])
+        #making it so infinity is at index -1
+        vertices = np.array([*vertices,np.array([np.infty,np.infty,0])])
+
+        if -1 in [r for rs in regions for r in rs]:
+            print('tesselation includes points off the grid')
+            areas = np.array([polygon_area(vertices[reg]) for reg in regions])
+        else:
+            areas = _calculate_planar_voronoi_areas(frame,regions,vertices)
     
     else:
         minZ = min(frame[:,2])
@@ -249,23 +302,30 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, exc
     return Vc, areas
 
 
-def coordination_shell_densities(frame, flat=None, R=None, tol=1e-5, box_basis=None, exclude_border=False, coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def coordination_shell_densities(frame, areas=None, cutoff=DEFAULT_CUTOFF):
     """
     Given a frame, calclates the point-density based on the area of voronoi
     polygons INCLUDING NEAREST NEIGHBORS. Determines nearest neighbors via a 
     simple cutoff radius. Returns the local density per particle, the total
     area of of each particle's coordination shell, and the number of particles
     therein.
+    'areas': an option to provide a pre-calculated voronoi areas with
+    custom voronoi parameters
+    'cutoff': The cutoff radius used to find neighbors (defaulting to
+    just beyond the first coordination shell of a close-packed lattice)
     author: Jack Bond
     """
 
     pnum, _ = frame.shape
+    Nc, neighbors = coord(frame, cutoff=cutoff)
 
-    Vc, areas = vor_coord_with_areas(frame, flat=flat,R=R,tol=tol,box_basis=box_basis,exclude_border=exclude_border)
-    _, neighbors = coord(frame, cutoff=coord_shell)
+    if not (areas is None):
+        assert areas.shape[0]==frame.shape[0], "voronoi tesselation has incorrect particle count."
+    else:
+        areas = vor_coord_with_areas(frame)[1]
 
     shell_areas = 0*areas
-    shell_counts = 0*Vc
+    shell_counts = 0*Nc
 
     for i, nei in enumerate(neighbors[:pnum]):
         #Nc does not include the particle itself when counting neighbors
@@ -460,7 +520,7 @@ def cluster_labels(frame,tol=1e-5):
     return Sq, Sn
 
 #CURRENTLY DEPRECATED, NEED TO REVISIT
-def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def Psi6(frame, reference = np.array([0,1,0]),coord_shell=DEFAULT_CUTOFF):
     """
     meant to do local bond orientational order, psi6 on the sphere by choosing
     a self-consistent set of reference vectors via 3D rotations.
@@ -536,7 +596,7 @@ def Psi6(frame, reference = np.array([0,1,0]),coord_shell=(1.44635/1.4)*0.5*(1+n
 
 
 #CURRENTLY BROKEN
-def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
+def C6(frame,cutoff=DEFAULT_CUTOFF):
     """
     uses the local psi6 to compute crystalline connectivity C6
     author: Jack Bond
@@ -550,7 +610,7 @@ def C6(frame,coord_shell=(1.44635/1.4)*0.5*(1+np.sqrt(3))):
     # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
     c6_hex = 6*(3*shells**2 + shells)/pnum
 
-    n, vc = coord(frame,cutoff=coord_shell)
+    n, vc = coord(frame,cutoff=cutoff)
     
     psi6, psi6global = Psi6(frame)
     C6 = 0*vc
