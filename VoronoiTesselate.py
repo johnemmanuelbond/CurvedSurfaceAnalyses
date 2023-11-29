@@ -29,16 +29,20 @@ if __name__ == "__main__":
         coords_raw = np.load('datapts_pbc.npy')
         box_basis = np.load('box.npy')
         eta = json.load( open('config.json','r'))['simarg']['eta']
+        L = json.load( open('config.json','r'))['simarg']['L']
         #TEMP UNTIL UPDATED POSTPROCESS
         if eta == 0:
             tess = np.zeros((fnum,2,pnum))
+            tess[:,1,:] = L**2
         else:
             tess = np.array([vor_coord_with_areas(frame, flat=flat, box_basis=box_basis) for frame in coords_raw])
     else:
         #TEMP UNTIL UPDATED POSTPROCESS
         A = json.load( open('config.json','r'))['arg']['xxxpairstrengthxxx']
+        R = json.load( open('config.json','r'))['arg']['xxxradiusxxx']
         if A == 0:
             tess = np.zeros((fnum,2,pnum))
+            tess[:,1,:] = 4*np.pi*R**2
         else:
             tess = np.array([vor_coord_with_areas(frame, flat=flat) for frame in coords])
 
