@@ -148,7 +148,7 @@ def output_vis(filename, frames, radii=None, ts=None, colors=None, alphas = None
             outfile.write(f"ITEM: TIMESTEP\n{ts[i]}\n")
             outfile.write(f"ITEM: NUMBER OF ATOMS\n{pnum+show_shell}\n") #add in sphere
             outfile.write(f"ITEM: BOX BOUNDS ff ff ff" + box)
-            outfile.write(f"ITEM: ATOMS id radius xs ys zs Color Color Color Transparency\n")
+            outfile.write(f"ITEM: ATOMS id radius xs ys zs color.r color.g color.b transparency\n")
             if show_shell: #Can choose not to print the spherical shell with the kwarg.
                 outfile.write(f"0 {radii[i]-0.5:0.5f} 0 0 0 1.0 1.0 1.0, 0.0\n")
             for p, part in enumerate(frame):
