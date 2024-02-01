@@ -11,78 +11,18 @@ of order parameters on a frame of 3D coordinate data.
 import numpy as np
 import scipy as sp
 
-from scipy.spatial.distance import pdist, cosine
+from scipy.spatial.distance import pdist, cosine, squareform
 from scipy.spatial import SphericalVoronoi, Voronoi, ConvexHull#, geometric_slerp
-from scipy.integrate import quad
-from scipy.special import gamma as gammafunc
+
 
 from GeometryHelpers import expand_around_pbc, polygon_area
+from GeometryHelpers import theta1 as theta_ico
 
 #first coordination shell for our standard silica colloids at effective close-packing
 DEFAULT_CUTOFF = (1.44635/1.4)*0.5*(1+np.sqrt(3))
 
 
-def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
-    """
-    calculates the second virial coeffecient for an arbitrary potential. This
-    potential, phi, returns an energy in kT units based on only a pair distance
-    r, in 2a units.
-    'splits': bounds on the integration, can break the integral up into
-    discreet points for precision purposes.
-    'dim': this method can compute B2 in arbirtrary (integer) dimensions
-    'core_radius': the size of am optional hard core (phi->infinity) within
-    the potential
-    author: Jack Bond
-    """
-    
-    if type(phi) != type(np.mean): raise Exception("Input must be a python function capable of acting on arrays.")
-
-    mayer_f = lambda r: np.exp(-phi(r))-1
-
-    #hypersphere solid angle
-    g = gammafunc(dim/2+1)
-    hsolid = lambda r: dim*np.pi**(dim/2)/g *r**(dim-1)
-
-    integrand = lambda r: -1/2 * hsolid(r) * mayer_f(r)
-
-    # infinity plays poorly, so if we want a hard core we need to start from 1.0
-    if core_radius!=None:
-        splits = splits[splits>=2*core_radius]
-        if not (np.any(splits==2*core_radius)):
-            splits = np.array([2*core_radius,*splits])
-
-    bounds = zip(splits[:-1],splits[1:])
-    parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
-
-    B2 = np.array(parts).sum()
-    #now we add back the hard core correction, mayer_f goes to -1 in this limit
-    if core_radius!=None:
-        B2+=quad(hsolid,0,2*core_radius)[0]/2
-
-    return B2, integrand, parts
-
-
-def coord(frame, cutoff = DEFAULT_CUTOFF):
-    """
-    given a frame of 3D coordinates, calculates the coordination number of each
-    particle using a simple cutoff radius. Also returns a list of neighboring
-    particles who lie within this radius.
-    'cutoff': The cutoff radius used to find neighbors (defaulting to
-    just beyond the first coordination shell of a close-packed lattice)
-    author: Jack Bond
-    """
-    npart = frame.shape[0]
-    i,j = np.mgrid[0:npart,0:npart]
-    dr_norm = sp.spatial.distance.squareform(pdist(frame))
-    
-    neighbors = dr_norm<cutoff
-    neighbors[i==j]=False
-    Nc = np.sum(neighbors,axis=-1)
-
-    return Nc, neighbors
-
-
-def bond_order(frame, order=6,reference = np.array([0,1,0])):
+def bond_order(frame, order=6,reference = np.array([0,1,0]), cutoff=DEFAULT_CUTOFF):
     """
     given a frame of 3D coordinates, calculates the bond orientational order
     parameter of each particle with respect to a reference direction
@@ -95,18 +35,14 @@ def bond_order(frame, order=6,reference = np.array([0,1,0])):
     pnum = frame.shape[0]
     i,j = np.mgrid[0:pnum,0:pnum]
     dr_vec = frame[i]-frame[j]
-    
-    sv = Voronoi(frame[:,:2])
-    reg = [sv.regions[sv.point_region[k]] for k in range(pnum)]
+
     order_param = np.zeros(pnum)+np.ones(pnum)*0j
-    #for i, f, pr in zip(np.arange(pnum),frame[:,:2],sv.point_region):
-        # vec = sv.vertices[sv.regions[pr]]-f
-        # arg = np.array([np.arccos(1-cosine(v,reference[:2])) for v in vec])
-        # order_param[i]=np.exp(1j*6*order*arg).mean()
+    neighbors = squareform(pdist(frame)) < cutoff
+
     for i in np.arange(pnum):
         psi=[]
         for j in np.where(np.linalg.norm(dr_vec[i],axis=-1)<3)[0]:
-            if (i!=j) and (np.intersect1d(reg[i],reg[j]).shape[0]>0):
+            if (i!=j) and (neighbors[i,j]):
                 arg = np.arccos(1-cosine(dr_vec[i,j],reference))
                 psi.append(np.exp(1j*order*arg))
         order_param[i]=np.mean(np.array(psi))
@@ -125,78 +61,6 @@ cols[8] = 'blue'
 cols[0] = 'black'
 cols[-1] = 'black'
 VORONOI_COLORS = np.array([to_rgb(c) for c in cols])
-
-
-def vor_coord(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfrac=0.8, exclude_border=False):
-    """
-    given a frame, calculates the coordination number of each particle using a voronoi tesselation.
-    'flat': determine whether the frame in question sits on a spherical
-    surface or not, will detect for itself if unspecified.
-    'R': specify a radius for an underlying spherical surface. Will calculate
-    if unspecified
-    'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
-    from the spherical surface each particle is allowed to be at maximum.
-    'box_basis': specify the basis vectors for period boundary conditions
-    'pbc_padfrac': specifies the proportion of extra particles needed to respect periodic
-    boundary conditions
-    'exclude_border': for particles confined to a cap on a spherical surface,
-    can opt to disregard (-1 coord number) particles who sit at the border of
-    this cap and thus aren't part of a bulk system.
-    author: Jack Bond
-    """
-
-    pnum, _ = frame.shape
-    if flat is None:
-        flat = (np.std(np.linalg.norm(frame,axis=-1)) > 0.1)
-    
-    if flat:
-        if box_basis is None: raise Exception("please input simulation box")
-        sv = Voronoi(expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2])
-        Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
-    
-    else:
-        minZ = min(frame[:,2])
-        if R == None:
-            radius = np.mean(np.linalg.norm(frame,axis=1))
-        else:
-            radius = R
-        sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-    
-        Vc = np.zeros(pnum)
-        for i, region in enumerate(sv.regions):
-            Vc[i] = len(region)
-            if(exclude_border):
-                for v in sv.vertices[region]:
-                    if(v[2]<minZ):
-                        Vc[i]+=-1
-                        #Vc[i]=-1
-    return Vc
-
-
-def topo_connectivity(frame, vor=None, cutoff = DEFAULT_CUTOFF):
-    """
-    Given a frame of 3D coordinates, calculates the average charge per
-    neighbor of each particle. Neighbors are determined using a simple
-    cutoff radius, charges are determined via voronoi tesselation.
-    'vor': an option to provide a pre-calculated voronoi coordination with
-    custom voronoi parameters
-    number for the frame.
-    'cutoff': The cutoff radius used to find neighbors (defaulting to
-    just beyond the first coordination shell of a close-packed lattice)
-    author: Jack Bond
-    """
-    Nc, neighbors = coord(frame, cutoff=cutoff)
-
-    if not (vor is None):
-        assert vor.shape[0]==frame.shape[0], "voronoi tesselation has incorrect particle count."
-    else:
-        vor = vor_coord(frame)
-
-    c6 = np.array([np.sum(np.abs(vor[neighbors[i]]-6))/n for i,n in enumerate(Nc)])
-    c6[Nc==0]=1
-
-    return c6
-
 
 def _calculate_planar_voronoi_areas(points, regions, vertices):
     """
@@ -243,10 +107,15 @@ def _calculate_planar_voronoi_areas(points, regions, vertices):
 
     return areas
 
-
-def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfrac=0.8, exclude_border=False):
+def vor_tesselate(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfrac=0.8, return_areas=False):
     """
-    given a frame, calculates the coordination number of each particle using a voronoi tesselation. Also returns the areas assigned to each voronoi cell
+    given a frame of x,y,z coordinates, performs a voronoi tesselation.
+    Returns the coordinates of the voronoi vertices, as well as a boolean array
+    that maps each particle to the indices of its vertices.
+    The vertex map contains the coordination number of each particle, and can
+    also be used to determine nearest neighbors (use a cosine metric to determine
+    shared vertices)
+     the coordination number of each particle using a voronoi tesselation.
     'flat': determine whether the frame in question sits on a spherical
     surface or not, will detect for itself if unspecified.
     'R': specify a radius for an underlying spherical surface. Will calculate
@@ -254,11 +123,10 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc
     'tol': The tolerance passed to SphericalVoronoi. Basically it's how far
     from the spherical surface each particle is allowed to be at maximum.
     'box_basis': specify the basis vectors for period boundary conditions
-    'pbc_padfrac': specifies the proportion of extra particles needed to respect periodic
-    boundary conditions
-    'exclude_border': for particles confined to a cap on a spherical surface,
-    can opt to disregard (-1 coord number) particles who sit at the border of
-    this cap and thus aren't part of a bulk system.
+    'pbc_padfrac': specifies the proportion of extra particles needed to respect
+    periodic boundary conditions.
+    'return_areas': if True, will also return the areas associated with each
+    particle's voronoi polygon.
     author: Jack Bond
     """
 
@@ -269,18 +137,15 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc
     if flat:
         if box_basis is None: raise Exception("please input simulation box")
         sv = Voronoi(expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2])
-        Vc = np.array([len(sv.regions[i]) for i in sv.point_region[:pnum]])
+        vtx = sv.vertces
+        reg = [sv.regions[i] for i in sv.point_region[:pnum]]
 
-        regions = [sv.regions[reg] for reg in sv.point_region[:pnum]]
-        vertices = np.array([[v[0],v[1],0] for v in sv.vertices])
-        #making it so infinity is at index -1
-        vertices = np.array([*vertices,np.array([np.infty,np.infty,0])])
-
-        if -1 in [r for rs in regions for r in rs]:
-            print('tesselation includes points off the grid')
-            areas = np.array([polygon_area(vertices[reg]) for reg in regions])
-        else:
-            areas = _calculate_planar_voronoi_areas(frame,regions,vertices)
+        if return_areas:
+            if -1 in [r for rs in reg for r in rs]:
+                print('tesselation includes points off the grid')
+                areas = np.array([polygon_area(vertices[r]) for r in reg])
+            else:
+                areas = _calculate_planar_voronoi_areas(frame,ref,vtx)
     
     else:
         minZ = min(frame[:,2])
@@ -289,20 +154,46 @@ def vor_coord_with_areas(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc
         else:
             radius = R
         sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-    
-        Vc = np.zeros(pnum)
-        areas = sv.calculate_areas()
-        for i, region in enumerate(sv.regions):
-            Vc[i] = len(region)
-            if(exclude_border):
-                for v in sv.vertices[region]:
-                    if(v[2]<minZ):
-                        areas[i] = np.infty
-                        Vc[i]=-1
-    return Vc, areas
+        sv.sort_vertices_of_regions()
+        vtx = sv.vertices
+        reg  = sv.regions
+
+        if return_areas:
+            areas = sv.calculate_areas()
+
+    vtx_map = np.full((pnum,len(vtxs)),False)
+    for i, r in enumerate(reg):
+        vtx_map[i][r]=True
+
+    if return_areas:
+        return vtx, vtx_map, areas
+    else: return vtx, vtx_map
+
+def vor_coord(frame,box_basis=None):
+    """
+    given a frame of x,y,z coordinates, returns the coordinationn number
+    of each particle using the voronoi tesselation.
+    'box_basis': specify the basis vectors for period boundary conditions
+    For more tunable kwargs simply use vor_tesselate 
+    author: Jack Bond
+    """
+    vtx_map = vor_tesselate(frame,box_basis=box_basis)[1]
+    return np.sum(vtx_map,axis=-1)
 
 
-def coordination_shell_densities(frame, areas=None, cutoff=DEFAULT_CUTOFF):
+def vor_neighbors(frame, box_basis=None):
+    """
+    given a frame of x,y,z coordinates, returns a NxN boolean array of
+    which particles share a voronoi vertex
+    'box_basis': specify the basis vectors for period boundary conditions
+    For more tunable kwargs simply use vor_tesselate 
+    author: Jack Bond
+    """
+    vtx_map = voronoi_tesselate(frame, box_basis=box_basis)[1]
+    return squareform(pdist(vtx_map,'cosine'))<1 #if the dot product is zero they don't share a vertex
+
+
+def coordination_shell_densities(frame, areas=None, neighbors = None, box_basis=None, cutoff=DEFAULT_CUTOFF):
     """
     Given a frame, calclates the point-density based on the area of voronoi
     polygons INCLUDING NEAREST NEIGHBORS. Determines nearest neighbors via a 
@@ -311,21 +202,19 @@ def coordination_shell_densities(frame, areas=None, cutoff=DEFAULT_CUTOFF):
     therein.
     'areas': an option to provide a pre-calculated voronoi areas with
     custom voronoi parameters
-    'cutoff': The cutoff radius used to find neighbors (defaulting to
-    just beyond the first coordination shell of a close-packed lattice)
+    'neighbors': An NxN boolean array indicating which particles are neighbors
+    'box_basis': Needed to calculate voronoi areas if they're not provided.
+    'cutoff': Needed to calculate neighbor array if you want to avoid running the
+    voronoi calculation.
     author: Jack Bond
     """
 
     pnum, _ = frame.shape
-    Nc, neighbors = coord(frame, cutoff=cutoff)
-
-    if not (areas is None):
-        assert areas.shape[0]==frame.shape[0], "voronoi tesselation has incorrect particle count."
-    else:
-        areas = vor_coord_with_areas(frame)[1]
-
-    shell_areas = 0*areas
-    shell_counts = 0*Nc
+    if areas is None:
+        _, vtx_map, areas = vor_tesselate(frame,box_basis=box_basis,return_areas=True)
+        neighbors = squareform(pdist(vtx_map,'cosine'))<1
+    elif neighbors is None:
+        neighbors = neighbors(frame,cutoff=cutoff)
 
     for i, nei in enumerate(neighbors[:pnum]):
         #Nc does not include the particle itself when counting neighbors
@@ -461,63 +350,73 @@ def plot_voronoi_plane(points, box=None, colors = VORONOI_COLORS, filename="voro
     plt.close(fig)
 
 
-#SCAR METHODS DO NOT WORK FOR FLAT SYSTEMS ATM
-def find_charge_clusters(frame,tol=1e-5):
+def cluster_defects(frame, vtx_map = None, box_basis=None):
     """
     given a frame, finds and links together clusters of neighboring
-    topological defects (non-6-coordinated particles). Returns an list of
-    arrays of indices of these linked clusters, as well as an array of the net
-    topological charges of the cluster.
+    topological defects (non-6-coordinated particles). Determines neighbors via
+    shared voronoi vertices.
+    Assigns each particle a number corresponding to which cluster it belongs to.
+    Uncharged particles are labeled '0'
+    'vtx_map': if you've already ran vor_tesselate, you can input the vertex map here
+    'box_basis': needed if you need to recalculate the vertex map
     author: Jack Bond
     """
-    if np.std(np.linalg.norm(frame,axis=-1)) > 0.1:
-        raise Exception("input frame is not on a spherical surface")
-    N = frame.shape[0]
-    radius = np.mean(np.linalg.norm(frame,axis=1))
-    sv = SphericalVoronoi(frame, radius = radius,threshold=tol)
-    qs = np.array([6-len(region) for region in sv.regions])
+    if vtx_map is None: vtx_map = voronoi_tesselate(frame, box_basis=box_basis)
 
-    shared_vertices = np.array([[np.sum(np.isin(r1,r2)) for r1 in sv.regions] for r2 in sv.regions])
-    charged_pairs = np.abs(np.array([qs for _ in qs])*np.array([qs for _ in qs]).T)
+    #determine which particles are both charged and neighboring
+    neighbors = 1*(squareform(pdist(vtx_map,'cosine'))<1) #if the dot product is zero they don't share a vertex
+    vor = np.sum(vtx_map,axis=-1)
+    charges = np.outer((vor!=6),(vor!=6))
+    mat = (charges*neighbors)
 
-    charged_neighbors = np.array((shared_vertices>=1)*(charged_pairs>0))
+    #transforms charged neighbor array into rref form without empty slices.
+    #this is okay because the order particles within each slice is unaffected.
+    first_digit = np.argmax(mat,axis=1)
+    rref = mat[np.argsort(first_digit)]
+    links = rref[np.sum(rref,axis=-1)>0]
 
-    clusts = []
+    #iterates over the rref-formatted 'links' combining lists together which share
+    #a filled index. Does so until 'links' stops changing.
+    for i in range(100):
+        shared = np.array([[1*np.any(l1*l2) for l1 in links] for l2 in links])
+        #print(shared)
 
-    for i, ptcl in enumerate(charged_neighbors):
-        links = np.sort(np.where(ptcl!=0)[0])
-        if links.size !=0:
-            unique_ptcls = True
-            for j, clust in enumerate(clusts):
-                if(np.any(np.isin(clust, links))):
-                    new_clust = np.unique(np.append(clust,links))
-                    clusts.pop(j)
-                    clusts.append(new_clust)
-                    links = new_clust
-                    unique_ptcls = False
-            if(unique_ptcls):
-                clusts.append(links)
+        new_links = np.array([1*(np.sum(links[s>0],axis=0)>0) for s in shared])
+        # print(new_links)
+        new_links = np.unique(new_links, axis=0)
+        # print(new_links)
+        if new_links.shape==links.shape:
+            if np.any(new_links==links):
+                #print(i)
+                break
+        links = new_links.copy()
 
-    net_charges = np.array([np.sum(qs[clust]) for clust in clusts])
-
-    return clusts, net_charges
-    #see older commits for a slightly simpler version of this method
+    links = new_links
+    clust_number = np.sum([(i+1)*l for i,l in enumerate(links)],axis=0)
+    return clust_number
 
 
-def cluster_labels(frame,tol=1e-5):
+def g_ico(frame,vor=None):
     """
-    given a frame, labels each particle with the net charge of the cluster to which it belongs, as well as the number of particles in that cluster
+    Given an Nx3 frame on a spherical surface, calculate the icoashedral order parameter.
+    This parameter reflects icosahedral ordering of defects by finding a peak of defect-defect
+    correlations at the first icosahedral angle compared to the inter-icoashedral angle.
+    'vor': the voronoi coordination number of each particle, will calculate if not supplied.
+    author: Jack Bond
     """
-    Sq = np.array([None for _ in range(frame.shape[0])])
-    Sn = np.array([0 for _ in range(frame.shape[0])])
+    if vor is None: vor = vor_coord(frame, box_basis=None)
+    R = np.linalg.norm(frame,axis=-1).mean()
+    defects = frame[vor!=6]
+    dists = pdist(defects)
+    arcs = 2*np.arcsin(dists/R/2)
+    bin_edges = np.array([1,3,5])*theta_ico/4
+    heights,_ = np.histogram(arcs,bins=bin_edges)
+    norm = (np.cos(bin_edges[:-1]) - np.cos(bin_edges[1:]))/2
+    vals = heights/norm
 
-    clusts, net_charges = find_charge_clusters(frame,tol=tol)
+    return 2*(1-vals[0]/vals[1])
 
-    for i,c in enumerate(clusts):
-        Sq[c] = net_charges[i]
-        Sn[c] = len(c)
 
-    return Sq, Sn
 
 #CURRENTLY DEPRECATED, NEED TO REVISIT
 def Psi6(frame, reference = np.array([0,1,0]),coord_shell=DEFAULT_CUTOFF):

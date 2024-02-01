@@ -11,7 +11,8 @@ units and the natural units of the simulation: 2a, kT
 
 import numpy as np
 import scipy as sp
-from scipy import integrate
+from scipy.integrate import quad
+from scipy.special import gamma as gammafunc
 from timeit import default_timer as timer
 
 # General physical constants
@@ -141,14 +142,54 @@ def get_a_eff(params):
     
     debye_points = np.arange(5)/(kap)
     
-    first, fErr = sp.integrate.quad(integrand, 0, 1000/kap, points=debye_points)
-    second, sErr = sp.integrate.quad(integrand, 1000/kap, np.inf)
+    first, fErr = quad(integrand, 0, 1000/kap, points=debye_points)
+    second, sErr = quad(integrand, 1000/kap, np.inf)
     
     aeff = (a + 1/2*(first+second))
         
     end = timer()
     #print(end-start)
     return aeff
+
+
+def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
+    """
+    calculates the second virial coeffecient for an arbitrary potential. This
+    potential, phi, returns an energy in kT units based on only a pair distance
+    r, in 2a units.
+    'splits': bounds on the integration, can break the integral up into
+    discreet points for precision purposes.
+    'dim': this method can compute B2 in arbirtrary (integer) dimensions
+    'core_radius': the size of am optional hard core (phi->infinity) within
+    the potential
+    author: Jack Bond
+    """
+    
+    if type(phi) != type(np.mean): raise Exception("Input must be a python function capable of acting on arrays.")
+
+    mayer_f = lambda r: np.exp(-phi(r))-1
+
+    #hypersphere solid angle
+    g = gammafunc(dim/2+1)
+    hsolid = lambda r: dim*np.pi**(dim/2)/g *r**(dim-1)
+
+    integrand = lambda r: -1/2 * hsolid(r) * mayer_f(r)
+
+    # infinity plays poorly, so if we want a hard core we need to start from 1.0
+    if core_radius!=None:
+        splits = splits[splits>=2*core_radius]
+        if not (np.any(splits==2*core_radius)):
+            splits = np.array([2*core_radius,*splits])
+
+    bounds = zip(splits[:-1],splits[1:])
+    parts = [quad(integrand,a,b)[0] for (a,b) in bounds]
+
+    B2 = np.array(parts).sum()
+    #now we add back the hard core correction, mayer_f goes to -1 in this limit
+    if core_radius!=None:
+        B2+=quad(hsolid,0,2*core_radius)[0]/2
+
+    return B2, integrand, parts
 
 
 if __name__=="__main__":
