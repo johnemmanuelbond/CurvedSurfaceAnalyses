@@ -17,7 +17,7 @@ from GeometryHelpers import expand_around_pbc, hoomd_matrix_to_box
 
 def g_r(coords, bin_width=0.01, subset=None, box=None):
     """
-    Given a set of frames, computed the average radial distribution function
+    Given a set of frames, computes the average radial distribution function
     biw_width: determine the width in [2a] units of each rdf bin
     subset allows g_r to compute the pair correlation distribution between 
     particles in the subset and the entire ensemble. This provides a gauge on
@@ -63,7 +63,7 @@ def g_r(coords, bin_width=0.01, subset=None, box=None):
 
 def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
     """
-    Given a set of frames, computed the average radial distribution function
+    Given a set of frames, computes the average radial distribution function
     on a curved surface using the appropriate geodesic bins
     exclude is a helper kwarg for the subset functionality in g_r
     source: general_analysis, 7/23/22
@@ -102,14 +102,14 @@ def _g_r_sphere(coords, shell_radius=None, bin_width=0.01, exclude=None):
     mids = bins[:-1] + width/2
     
     counts, _ = np.histogram(allrs, bins=bins)
-    norm = fnum * pnum*(pnum-1)/2 * (np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))/2
+    norm = fnum * rnum * (np.cos(angle_bins[:-1]) - np.cos(angle_bins[1:]))/2
     vals = counts/norm
     return vals, mids, bins
 
 
 def _g_r_flat(coords, plane_area, bin_width=0.01, exclude=None):
     """
-    Given a frame or set of frames, computed the average radial distribution function
+    Given a frame or set of frames, computes the average radial distribution function
     for the simple case of a 2D flat surface. flat case g(r)'s need the number density
     rho to properly normalize the histogram
     exclude is a helper kwarg for the subset functionality in g_r
@@ -140,9 +140,27 @@ def _g_r_flat(coords, plane_area, bin_width=0.01, exclude=None):
     mids = bins[:-1] + width/2
     
     counts, _ = np.histogram(allrs, bins=bins)
-    norm = fnum * pnum*(pnum-1)/2 * 1/extent**2 * (bins[1:]**2-bins[:-1]**2)
+    norm = fnum * rnum * 1/extent**2 * (bins[1:]**2-bins[:-1]**2)
     vals = counts/norm
     return vals, mids, bins
+
+
+def g_r_low(frames, areas, bin_width=0.01, low_frac = 1/2, box=None):
+    """
+    Given a set of frames and the voronoi areas per particles. computes the 
+    average radial distribution function for only the lowest-density particles
+    biw_width: determine the width in [2a] units of each rdf bin
+    low_frac: determines the number of lowest-density particles per frame
+    to calculate the rdf for.
+    author: Jack Bond
+    """
+
+    # sorts particles by areas
+    frames_copy = np.array([frame[np.argsort(a)] for frame,a in zip(frames,areas)])
+    pnum = frames.shape[1]
+    subset = np.arange(int((1-low_frac)*pnum), pnum)
+
+    return g_r(frames_copy, bin_width=bin_width, subset=subset, box=box)
 
 
 def first_coord_shell(frames, box=None):
