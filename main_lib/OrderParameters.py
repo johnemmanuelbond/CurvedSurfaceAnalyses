@@ -21,35 +21,6 @@ from GeometryHelpers import theta1 as theta_ico
 #first coordination shell for our standard silica colloids at effective close-packing
 DEFAULT_CUTOFF = (1.44635/1.4)*0.5*(1+np.sqrt(3))
 
-
-def bond_order(frame, order=6,reference = np.array([0,1,0]), cutoff=DEFAULT_CUTOFF):
-    """
-    given a frame of 3D coordinates, calculates the bond orientational order
-    parameter of each particle with respect to a reference direction
-    'order': n-fold order defines the argument of the complex used
-    to calculate psi_n, 
-    'reference': the vector to calculate angles w.r.t. for the purpose of
-    calculating psi_n
-    author: Jack Bond
-    """
-    pnum = frame.shape[0]
-    i,j = np.mgrid[0:pnum,0:pnum]
-    dr_vec = frame[i]-frame[j]
-
-    order_param = np.zeros(pnum)+np.ones(pnum)*0j
-    neighbors = squareform(pdist(frame)) < cutoff
-
-    for i in np.arange(pnum):
-        psi=[]
-        for j in np.where(np.linalg.norm(dr_vec[i],axis=-1)<3)[0]:
-            if (i!=j) and (neighbors[i,j]):
-                arg = np.arccos(1-cosine(dr_vec[i,j],reference))
-                psi.append(np.exp(1j*order*arg))
-        order_param[i]=np.mean(np.array(psi))
-
-    return order_param
-
-
 #create the typical array of colors used to indicate topological charge
 from matplotlib.colors import to_rgb
 cols = ['grey' for _ in range(13)]
@@ -135,17 +106,20 @@ def vor_tesselate(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfra
         flat = (np.std(np.linalg.norm(frame,axis=-1)) > 0.1)
     
     if flat:
-        if box_basis is None: raise Exception("please input simulation box")
-        sv = Voronoi(expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2])
-        vtx = sv.vertces
+        if box_basis is None:
+            vor_pts = frame[:,:2]
+        else:
+            vor_pts = expand_around_pbc(frame,box_basis,padfrac=pbc_padfrac)[:,:2]
+        sv = Voronoi(vor_pts)
+        vtx = sv.vertices
         reg = [sv.regions[i] for i in sv.point_region[:pnum]]
 
         if return_areas:
             if -1 in [r for rs in reg for r in rs]:
                 print('tesselation includes points off the grid')
-                areas = np.array([polygon_area(vertices[r]) for r in reg])
+                areas = np.array([polygon_area(vtx[r]) for r in reg])
             else:
-                areas = _calculate_planar_voronoi_areas(frame,ref,vtx)
+                areas = _calculate_planar_voronoi_areas(frame,reg,vtx)
     
     else:
         minZ = min(frame[:,2])
@@ -161,7 +135,7 @@ def vor_tesselate(frame, flat=None, R=None, tol=1e-5, box_basis=None, pbc_padfra
         if return_areas:
             areas = sv.calculate_areas()
 
-    vtx_map = np.full((pnum,len(vtxs)),False)
+    vtx_map = np.full((pnum,len(vtx)),False)
     for i, r in enumerate(reg):
         vtx_map[i][r]=True
 
@@ -189,7 +163,7 @@ def vor_neighbors(frame, box_basis=None):
     For more tunable kwargs simply use vor_tesselate 
     author: Jack Bond
     """
-    vtx_map = voronoi_tesselate(frame, box_basis=box_basis)[1]
+    vtx_map = vor_tesselate(frame, box_basis=box_basis)[1]
     return squareform(pdist(vtx_map,'cosine'))<1 #if the dot product is zero they don't share a vertex
 
 
@@ -215,6 +189,9 @@ def coordination_shell_densities(frame, areas=None, neighbors = None, box_basis=
         neighbors = squareform(pdist(vtx_map,'cosine'))<1
     elif neighbors is None:
         neighbors = neighbors(frame,cutoff=cutoff)
+    
+    shell_areas = np.zeros(pnum)
+    shell_counts = np.zeros(pnum)
 
     for i, nei in enumerate(neighbors[:pnum]):
         #Nc does not include the particle itself when counting neighbors
@@ -361,7 +338,7 @@ def cluster_defects(frame, vtx_map = None, box_basis=None):
     'box_basis': needed if you need to recalculate the vertex map
     author: Jack Bond
     """
-    if vtx_map is None: vtx_map = voronoi_tesselate(frame, box_basis=box_basis)
+    if vtx_map is None: vtx_map = vor_tesselate(frame, box_basis=box_basis)[1]
 
     #determine which particles are both charged and neighboring
     neighbors = 1*(squareform(pdist(vtx_map,'cosine'))<1) #if the dot product is zero they don't share a vertex
@@ -416,6 +393,77 @@ def g_ico(frame,vor=None):
 
     return 2*(1-vals[0]/vals[1])
 
+
+def bond_order(pts, order=6, rvec = None, nei_bool = None):
+    """
+    given a frame of 3D coordinates, calculates the bond orientational order
+    parameter of each particle with respect to a reference direction
+    'order': n-fold order defines the argument of the complex used
+    to calculate psi_n, 
+    'rvec': the vector to calculate angles w.r.t. for the purpose of
+    calculating psi_n
+    'nei_bool': a [NxN] boolean array indicating neighboring particles, will
+    calculate neighbors with voronoi if none is given
+    author: Jack Bond
+    """
+    pnum = pts.shape[0]
+    i,j = np.mgrid[0:pnum,0:pnum]
+    dr_vec = pts[i]-pts[j]
+    if nei_bool is None:
+        nei_bool = vor_neighbors(pts)
+        nei_bool[i==j]=False
+
+    bonds = dr_vec[nei_bool]
+
+    sizes = np.sum(nei_bool,axis=-1)
+    csizes = np.cumsum(sizes)
+    # let the first bond in each region define the reference angle with which we calculate psi
+    point_indices = [i for i, size in enumerate(sizes) for j in range(size)]
+    ref_indices = np.array([0,*csizes[:-1]])[point_indices]
+
+    us = bonds
+    if rvec is None:
+        vs = bonds[ref_indices]
+    else:
+        vs = np.array([rvec for _ in bonds])
+
+    # compute the angles between each paired u and reference v
+    dot_prod = np.sum(us*vs,axis=-1)
+    mag_norm = np.linalg.norm(us,axis=-1)*np.linalg.norm(vs,axis=-1)
+    angles = np.arccos(np.clip(dot_prod/mag_norm,-1,1))
+    
+    # now we compute psi_ij for each of the angles
+    arg = np.exp(1j*order*angles)
+    # pick out only the last summed psi for each particle
+    arg_sum = np.cumsum(arg)[csizes-1]
+    # subtract off the previous particle's psi
+    arg_sum[1:] -= arg_sum[:-1]
+
+    #return the neighbor-averaged psi
+    return arg_sum/np.array(sizes)
+
+
+def crystal_connectivity(psis, nei_bool, crystallinity_threshold=0.32):
+    """
+    given a list of bond order parameters and a boolean matrix of neighbors, 
+    computes the crystal connectivity of each particle.
+    crystallinity_threshold
+    'crystallinity_threshold': the minimum innier product of adjacent complex bond-OPs
+    needed in order to consider adjacent particles 'connected'
+    author: Jack Bond
+    """
+    psi_prod = np.outer(psis,np.conjugate(psis))
+    chi_ij = np.real(psi_prod)/np.abs(psi_prod)
+    c6 = np.sum( (chi_ij*nei_bool)>crystallinity_threshold, axis=-1)/6
+
+    # computing the reference c6 for a perfect lattice
+    # equation 8 from SI of https://doi.org/10.1039/C2LC40692F
+    shells = -1/2 + np.sqrt((pnum-1)/3 + 1/4)
+    # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
+    c6_hex = 6*(3*shells**2 + shells)/pnum
+    standard_c6 = c6/c6_hex
+
+    return standard_c6
 
 
 #CURRENTLY DEPRECATED, NEED TO REVISIT
@@ -525,104 +573,5 @@ def C6(frame,cutoff=DEFAULT_CUTOFF):
 
 if __name__=="__main__":
 
-    from FileHandling import read_xyz_frame, output_vis
-    from UnitConversions import get_a_eff
-    from timeit import default_timer as timer
-    import json, glob
-    import matplotlib.pyplot as plt
-
-    start = timer()
-
-    #load data from a preprocessed simulation
-    config = json.load(open('config.json','r'))
-    if 'simarg' in config:
-        eta = config['simarg']['eta']
-    else:
-        aeff = get_a_eff(config['params'])/(2*config['params']['particle_radius'])
-        eta = config['arg']['npart']*aeff**2 / (4*config['arg']['xxxradiusxxx']**2)
-
-    coords = np.load('example_datapts.npy')
-
-    plot_voronoi_sphere(coords[-1])
-
-    #only get the last half
-
-    fnum, pnum, _ = coords.shape
-    vor = np.array([])
-    areas = np.array([])
-
-
-    for i,frame in enumerate(coords[int(coords.shape[0]/2):]):
-        vc, ar = vor_coord_with_areas(frame)
-        vor = np.array([*vor,vc])
-        areas = np.array([*areas,ar])
-
-#    vor = np.load('example_vor_coord.npy')
-    vor = vor[int(vor.shape[0]/2):]
-
-    bin_edges = np.histogram_bin_edges(np.random.rand(10),bins = 50, range=(0,1))
-    width = bin_edges[1]-bin_edges[0]
-    mids = bin_edges[:-1]+width/2
-
-    # calculate f5 and f7 distributions
-    f5 = np.mean(vor==5,axis=0)
-    f7 = np.mean(vor==7,axis=0)
-
-    fig, ax = plt.subplots(figsize=(3.25,3.25),dpi=600)
-    ax.set_title(f"$\eta_{{eff}}={eta:.2f}$")
-
-    vals, _ = np.histogram(f5,bins=bin_edges)
-    prob = vals/pnum
-    ax.plot(mids,prob,color='red',label='$p(f_5)$',lw=0.7)
-    avg = np.sum(mids*prob)
-    ax.axvline(x=avg,color='red',lw=0.5,ls='--')
-
-    mobile = (f5 >= avg)
-    immobile = (f5 < avg)
-    print(f"{mobile.sum()} 'mobile' particles")
-
-    vals, _ = np.histogram(f7,bins=bin_edges)
-    prob = vals/pnum
-    ax.plot(mids,prob,color='green',label='$p(f_7)$',lw=0.7)
-    avg = np.sum(mids*prob)
-    ax.axvline(x=avg,color='green',lw=0.5,ls='--')
-
-    ax.legend()
-    fig.savefig('time_average_charge_distributions.jpg',bbox_inches='tight')
-
-    # threshold based on distribution moments?
-    last_section = 1.0
-    sample_rate=20
-    idx = np.arange(int((1-last_section)*fnum),fnum,sample_rate)
-    colors = np.array([np.array([immobile,immobile,immobile]).T for _ in range(fnum)])
-    output_vis("TEST_threshold.atom",coords[idx],colors=colors[idx],show_shell=True)
-
-    # calculate eta on either side using voronoi
-    eta_low = (np.pi*aeff**2) * np.sum(mobile)/np.sum(areas[:,mobile],axis=-1).mean()
-    eta_high = (np.pi*aeff**2) * np.sum(immobile)/np.sum(areas[:,immobile],axis=-1).mean()
-    print(f"low eta: {eta_low:.4f}\nens eta: {eta:.4f}\nhigh eta:{eta_high:.4f}")
-
-    # do MSD on each side of the threshold
-
-    from MSD import mto_msd_part
-
-    times = np.load('times.npy')
-    msd_part, lag = mto_msd_part(coords,times,max_lag=100,delta=5)
-
-    fig, ax = plt.subplots(figsize=(3.25,3.25),dpi=600)
-    ax.set_xlabel("$t/\\tau$")
-    ax.set_ylabel("$<\delta r^2>/(2a)^2$")
-
-    ax.plot(lag, msd_part[:,mobile].mean(axis=-1),ls=':',lw=1.5,
-        color='black', label = 'high defect-fraction')
-    ax.plot(lag, msd_part[:,immobile].mean(axis=-1),ls=':',lw=1.5,
-        color='grey', label = 'low defect-fraction')
-    ax.plot(lag, msd_part.mean(axis=-1),ls=':',lw=1.5,
-        color='blue',label='ensemble average')
-    ax.legend()
-
-    fig.savefig('TEST_msd_threshold.jpg',bbox_inches='tight')
-
-    end = timer()
-    print(f"{end-start:.5f}s runtime")
+    print('place to test order parameter data')
 

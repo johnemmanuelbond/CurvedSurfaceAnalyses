@@ -59,8 +59,10 @@ def kappa(params):
     rel_eps = params['rel_permittivity']*eps # [F/m] permittivity of sol'n
     C = params['electrolyte_concentration']  # [mol/L]
 
+    debye_length = ((rel_eps*kT)/(2*(ze**2)*(C*1000*Na)))**(1/2)
+
     #assuming a symmetric electrolyte
-    return 2*params['particle_radius']/np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/2a]
+    return 2*params['particle_radius']/debye_length #[1/2a]
 
 
 def ion_conc(params):
@@ -165,7 +167,7 @@ def B2(phi,splits=np.array([0,5,np.infty]),dim=3, core_radius=None):
     author: Jack Bond
     """
     
-    if type(phi) != type(np.mean): raise Exception("Input must be a python function capable of acting on arrays.")
+    if type(phi) != type(lambda r: r): raise Exception("Input must be a python function capable of acting on arrays.")
 
     mayer_f = lambda r: np.exp(-phi(r))-1
 

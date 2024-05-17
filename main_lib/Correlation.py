@@ -308,7 +308,7 @@ def scar_correlation(frame,charge_to_correlate = 1, bin_width=2,tol=1e-6):
 
     print(scars, np.where(scar_charges==charge_to_correlate)[0])
     #pick out scars with the desired net charge
-    charged_scars = [scars[i] for i in np.where(scarCharges==charge_to_correlate)[0]]
+    charged_scars = [scars[i] for i in np.where(scar_charges==charge_to_correlate)[0]]
 
     #find the center of mass (average position) of each scar
     scar_coms_raw = np.array([np.mean(frame[scar],axis=0) for scar in charged_scars])
