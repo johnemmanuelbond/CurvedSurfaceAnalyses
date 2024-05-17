@@ -59,7 +59,7 @@ def kappa(params):
     C = params['electrolyte_concentration']  # [mol/L]
 
     #assuming a symmetric electrolyte
-    return 2*params['particle_radius']/np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/2a]
+    return 2*params['particle_radius']*np.sqrt(2*(ze**2)*(C*1000)*Na/(rel_eps*kT)) #[1/2a]
 
 
 def ion_conc(params):
