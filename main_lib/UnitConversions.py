@@ -87,7 +87,7 @@ def ion_conc(params):
 def field_k(params):
     """
     Takes in a dictionary of experimental quantities in  SI units.
-    Returns the prefactor on a quadratic external field of form k*r^2
+    Returns the prefactor on a quadratic external field of form 1/2k*r^2
     confining a particle to 0,0 in units of kT/(2a)^2
     Depends on the particle size, the temperature, solution permittivity
     and the voltage drop and gap distance of the electrode.

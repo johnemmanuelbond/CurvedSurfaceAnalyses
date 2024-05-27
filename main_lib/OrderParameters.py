@@ -19,7 +19,85 @@ from GeometryHelpers import expand_around_pbc, polygon_area
 from GeometryHelpers import theta1 as theta_ico
 
 #first coordination shell for our standard silica colloids at effective close-packing
-DEFAULT_CUTOFF = (1.44635/1.4)*0.5*(1+np.sqrt(3))
+DEFAULT_CUTOFF = 0.5*(1+np.sqrt(3))
+
+
+def bond_order(pts, order=6, rvec = None, nei_bool = None):
+    """
+    given a frame of 3D coordinates, calculates the bond orientational order
+    parameter of each particle with respect to a reference direction
+    'order': n-fold order defines the argument of the complex used
+    to calculate psi_n, 
+    'rvec': the vector to calculate angles w.r.t. for the purpose of
+    calculating psi_n
+    'nei_bool': a [NxN] boolean array indicating neighboring particles, will
+    calculate neighbors using the default cutoff value if none is given
+    author: Jack Bond
+    """
+    pnum = pts.shape[0]
+    i,j = np.mgrid[0:pnum,0:pnum]
+    dr_vec = pts[i]-pts[j]
+    if nei_bool is None:
+        nei_bool = squareform(pdist(pts))<=DEFAULT_CUTOFF
+        nei_bool[i==j]=False
+
+    bonds = dr_vec[nei_bool]
+
+    sizes = np.sum(nei_bool,axis=-1)
+    csizes = np.cumsum(sizes)
+    # let the first bond in each region define the reference angle with which we calculate psi
+    point_indices = [i for i, size in enumerate(sizes) for j in range(size)]
+    ref_indices = np.array([0,*csizes[:-1]])[point_indices]
+
+    us = bonds
+    if rvec is None:
+        vs = bonds[ref_indices]
+    else:
+        vs = np.array([rvec for _ in bonds])
+
+    # compute the angles between each paired u and reference v
+    dot_prod = np.sum(us*vs,axis=-1)
+    mag_norm = np.linalg.norm(us,axis=-1)*np.linalg.norm(vs,axis=-1)
+    angles = np.arccos(np.clip(dot_prod/mag_norm,-1,1))
+    
+    # now we compute psi_ij for each of the angles
+    arg = np.exp(1j*order*angles)
+    # pick out only the last summed psi for each particle
+    arg_csum = np.array([0,*np.cumsum(arg)])
+    # subtract off the previous particle's psi
+    c_idx = np.array([0,*csizes])
+    arg_sum = arg_csum[c_idx[1:]]-arg_csum[c_idx[:-1]]
+
+    #return the neighbor-averaged psi
+    psi = arg_sum
+    psi[sizes>0]*=1/sizes[sizes>0]
+    psi[sizes==0]=0
+    return psi
+
+
+def crystal_connectivity(psis, nei_bool, crystallinity_threshold=0.32):
+    """
+    given an [Nx1] list of bond order parameters, and an [NxN] boolean array
+    indicating neighboring particles, computes the crystal connectivity of
+    each particle.
+    'crystallinity_threshold': the minimum innier product of adjacent complex
+    bond-OPs needed in order to consider adjacent particles 'connected'
+    author: Jack Bond
+    """
+    # computing the reference c6 for a perfect lattice
+    # equation 8 from SI of https://doi.org/10.1039/C2LC40692F
+    shells = -1/2 + np.sqrt((len(psis)-1)/3 + 1/4)
+    # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
+    c6_hex = 6*(3*shells**2 + shells)/len(psis)
+
+    psi_prod = np.outer(psis,np.conjugate(psis))
+    chi_ij = np.abs(np.real(psi_prod))
+    chi_ij[np.abs(psi_prod)>0]*= 1/np.abs(psi_prod)[np.abs(psi_prod)>0]
+
+    c6 = np.sum( (chi_ij*nei_bool)>=crystallinity_threshold, axis=-1)
+
+    return c6/c6_hex
+
 
 #create the typical array of colors used to indicate topological charge
 from matplotlib.colors import to_rgb
@@ -394,78 +472,6 @@ def g_ico(frame,vor=None):
     return 2*(1-vals[0]/vals[1])
 
 
-def bond_order(pts, order=6, rvec = None, nei_bool = None):
-    """
-    given a frame of 3D coordinates, calculates the bond orientational order
-    parameter of each particle with respect to a reference direction
-    'order': n-fold order defines the argument of the complex used
-    to calculate psi_n, 
-    'rvec': the vector to calculate angles w.r.t. for the purpose of
-    calculating psi_n
-    'nei_bool': a [NxN] boolean array indicating neighboring particles, will
-    calculate neighbors with voronoi if none is given
-    author: Jack Bond
-    """
-    pnum = pts.shape[0]
-    i,j = np.mgrid[0:pnum,0:pnum]
-    dr_vec = pts[i]-pts[j]
-    if nei_bool is None:
-        nei_bool = vor_neighbors(pts)
-        nei_bool[i==j]=False
-
-    bonds = dr_vec[nei_bool]
-
-    sizes = np.sum(nei_bool,axis=-1)
-    csizes = np.cumsum(sizes)
-    # let the first bond in each region define the reference angle with which we calculate psi
-    point_indices = [i for i, size in enumerate(sizes) for j in range(size)]
-    ref_indices = np.array([0,*csizes[:-1]])[point_indices]
-
-    us = bonds
-    if rvec is None:
-        vs = bonds[ref_indices]
-    else:
-        vs = np.array([rvec for _ in bonds])
-
-    # compute the angles between each paired u and reference v
-    dot_prod = np.sum(us*vs,axis=-1)
-    mag_norm = np.linalg.norm(us,axis=-1)*np.linalg.norm(vs,axis=-1)
-    angles = np.arccos(np.clip(dot_prod/mag_norm,-1,1))
-    
-    # now we compute psi_ij for each of the angles
-    arg = np.exp(1j*order*angles)
-    # pick out only the last summed psi for each particle
-    arg_sum = np.cumsum(arg)[csizes-1]
-    # subtract off the previous particle's psi
-    arg_sum[1:] -= arg_sum[:-1]
-
-    #return the neighbor-averaged psi
-    return arg_sum/np.array(sizes)
-
-
-def crystal_connectivity(psis, nei_bool, crystallinity_threshold=0.32):
-    """
-    given a list of bond order parameters and a boolean matrix of neighbors, 
-    computes the crystal connectivity of each particle.
-    crystallinity_threshold
-    'crystallinity_threshold': the minimum innier product of adjacent complex bond-OPs
-    needed in order to consider adjacent particles 'connected'
-    author: Jack Bond
-    """
-    psi_prod = np.outer(psis,np.conjugate(psis))
-    chi_ij = np.real(psi_prod)/np.abs(psi_prod)
-    c6 = np.sum( (chi_ij*nei_bool)>crystallinity_threshold, axis=-1)/6
-
-    # computing the reference c6 for a perfect lattice
-    # equation 8 from SI of https://doi.org/10.1039/C2LC40692F
-    shells = -1/2 + np.sqrt((pnum-1)/3 + 1/4)
-    # equation 10 from SI of https://doi.org/10.1039/C2LC40692F
-    c6_hex = 6*(3*shells**2 + shells)/pnum
-    standard_c6 = c6/c6_hex
-
-    return standard_c6
-
-
 #CURRENTLY DEPRECATED, NEED TO REVISIT
 def Psi6(frame, reference = np.array([0,1,0]),coord_shell=DEFAULT_CUTOFF):
     """
@@ -573,5 +579,61 @@ def C6(frame,cutoff=DEFAULT_CUTOFF):
 
 if __name__=="__main__":
 
-    print('place to test order parameter data')
+    import gsd.hoomd
+    from freud.order import Hexatic
+    from freud.locality import Voronoi as vor_obj
+    from GeometryHelpers import hoomd_matrix_to_box
+    from scipy.spatial.transform import Rotation
+    
+    R = Rotation.from_rotvec(np.array([0,0,np.pi/3]))
+    a = np.array([1,0,0])
+    b = np.array([np.cos(np.pi/3),np.sin(np.pi/3),0])
 
+    nside=11
+    i,j = np.mgrid[:nside,:nside]
+    lattice = np.moveaxis(np.array([i,i,i]),0,-1)*a + np.moveaxis(np.array([j,j,j]),0,-1)*b
+    l1 = np.reshape(lattice,(nside**2,3))
+    l1 = l1 - np.mean(l1,axis=0)
+    l1 = l1[np.linalg.norm(l1,axis=-1)<3.1]
+    l2 = (R.as_matrix()@l1.T).T
+
+    pts = np.array([*(l1+np.array([4,0,0])),*(l2-np.array([4,0,0]))])
+    box_basis = np.eye(3)*50
+    hoomd_box = hoomd_matrix_to_box(box_basis)
+    hoomd_box[2]=0
+
+    temp = gsd.hoomd.open("temp.gsd",mode='w')
+    f = gsd.hoomd.Frame()
+    f.particles.N = len(pts)
+    f.particles.position = pts
+    f.particles.types=['A']
+    f.particles.typeid = [0]*len(pts)
+    f.configuration.box = hoomd_box
+    temp.append(f)
+    temp.close()
+
+    vor = vor_obj()
+    vor.compute((hoomd_box,pts))
+    nei_list = vor.nlist.filter_r(1.05*DEFAULT_CUTOFF)
+    nei_bool = np.full((len(pts),len(pts)),False)
+    for i,j in nei_list: nei_bool[i,j] = True
+
+    # print(nei_bool)
+    # print(vor_neighbors(pts))
+    # print(vor_neighbors(pts,box_basis=box_basis))
+
+
+    psis_def = bond_order(pts,rvec=np.array([1,0,0]))
+    psis_nei = bond_order(pts,nei_bool=nei_bool,rvec=np.array([1,0,0]))
+    hex = Hexatic()
+    hex.compute((hoomd_box,pts),neighbors = nei_list)
+    psis_fru = hex.particle_order
+
+    print()
+    print(np.round(psis_def,2))
+    print(np.round(psis_nei,2))
+    print(np.round(psis_fru,2))
+
+    print(np.mean(psis_def).round(4),
+          np.mean(psis_nei).round(4),
+          np.mean(psis_fru).round(4))
